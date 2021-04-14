@@ -1,0 +1,7 @@
+**/node_modules/
+**/.git/
+**/.github/
+**/dist/
+**/Dockerfile*
+**/Jenkinsfile*
+**/docs/
