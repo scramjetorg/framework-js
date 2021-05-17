@@ -23,7 +23,13 @@ const test = (async (pushTransformToStream, getStreamInOrder) => {
     let y = 0;
     let z = 0;
 
-    const ELEMENTS = 16;
+    /**
+     * How many elements should be tested
+     */
+     const ELEMENTS = 16;
+    /**
+     * How many items can be waiting to be flushed
+     */
     const MAX_PARALLEL = 8;
 
     const input = Array.from(Array(ELEMENTS).keys()).map(() => {
@@ -33,19 +39,14 @@ const test = (async (pushTransformToStream, getStreamInOrder) => {
         if (!(a % 2)) return { a, n: 0, x: x++ };
         return new Promise(res => setTimeout(() => res({ a, n: 1, x: x++ }), 200));
     };
-    const syncPromiseTransform = ({a, n, x}) => {
-        return ({a, n, x, y: y++})
-    };
+    const syncPromiseTransform = ({a, n, x}) => ({a, n, x, y: y++});
     const syncPromiseTransform2 = ({a, n, x, y}) => ({n, a, x, y, z: z++});
 
-    console.log("Running with: ", {MAX_PARALLEL, ELEMENTS})
+    console.log("Running with: ", { MAX_PARALLEL, ELEMENTS })
 
     const str = new Readable.from(input)
         .pipe(getStreamInOrder(asyncPromiseTransform, MAX_PARALLEL))
-        // .pipe(new PromiseTransformStream({
-        //     promiseTransform: syncPromiseTransform
-        // }))
-        ;
+    ;
 
         pushTransformToStream(str, syncPromiseTransform);
 
