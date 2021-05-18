@@ -1,3 +1,4 @@
+const test = require("ava");
 const { strictEqual, notStrictEqual } = require("assert");
 const { Readable } = require("stream");
 
@@ -16,7 +17,7 @@ function getStreamInOrderPTS(promiseTransform, maxParallel) {
     });
 }
 
-const test = async (pushTransformToStream, getStreamInOrder) => {
+test("PTS", async (t) => {
     let a = 0;
     let x = 0;
     let y = 0;
@@ -43,24 +44,21 @@ const test = async (pushTransformToStream, getStreamInOrder) => {
 
     console.log("Running with: ", { MAX_PARALLEL, ELEMENTS });
 
-    const str = new Readable.from(input).pipe(getStreamInOrder(asyncPromiseTransform, MAX_PARALLEL));
-    pushTransformToStream(str, syncPromiseTransform);
+    const str = new Readable.from(input).pipe(getStreamInOrderPTS(asyncPromiseTransform, MAX_PARALLEL));
+    pushTransformToStreamPTS(str, syncPromiseTransform);
 
-    const str2 = str.pipe(getStreamInOrder(syncPromiseTransform2));
+    const str2 = str.pipe(getStreamInOrderPTS(syncPromiseTransform2));
 
     let b = 0;
     for await (const x of str2) {
         console.log(x);
 
-        strictEqual(x.a, b++, "Should work in order");
-        strictEqual(x.a, x.z, "Should work in order");
-        strictEqual(x.x, x.y, "Should work out of order");
+        t.is(x.a, b++, "Should work in order");
+        t.is(x.a, x.z, "Should work in order");
+        t.is(x.x, x.y, "Should work out of order");
 
         // SKIP: if (x.a > MAX_PARALLEL / 2 && x.a < ELEMENTS - MAX_PARALLEL) strictEqual(x.x, x.a + MAX_PARALLEL / 2, "Should be out of order by maxParallel");
 
-        if (x.a > MAX_PARALLEL / 2 && x.a !== ELEMENTS - 1)
-            notStrictEqual(x.a, x.x, `Should not be chained ${x.a}, ${x.x}`);
+        if (x.a > MAX_PARALLEL / 2 && x.a !== ELEMENTS - 1) t.not(x.a, x.x, `Should not be chained ${x.a}, ${x.x}`);
     }
-};
-
-test(pushTransformToStreamPTS, getStreamInOrderPTS);
+});
