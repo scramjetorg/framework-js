@@ -1,5 +1,4 @@
 const test = require("ava");
-const { strictEqual, notStrictEqual } = require("assert");
 const { Readable } = require("stream");
 
 function pushTransformToStreamPTS(str, promiseTransform) {
