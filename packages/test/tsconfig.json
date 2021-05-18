@@ -1,5 +1,6 @@
 {
     "compilerOptions": {
+        "target": "es2017",
         "outDir": "./dist"
     },
     "extends": "../../tsconfig.react.json",
