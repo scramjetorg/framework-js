@@ -1,7 +1,9 @@
 const { IFCA } = require("./index");
 
 // const x: IFCA<string, string> = null as any;
-const x = new IFCA(1, []);
+const x = new IFCA(1);
+
+// let y = x.addTransform((str) => ({ x: +str })).addTransform(({ x }) => x);
 
 let y = x.addTransform((str) => ({ x: +str })).addTransform(({ x }) => x);
 const data = ["1", "2", "3", "4"];
@@ -20,7 +22,9 @@ async function run() {
         }
     }
 
-    await y.last();
+    out.push = await y.last();
+
+    console.log("OUT: " + JSON.stringify(out));
 }
 
 run();
