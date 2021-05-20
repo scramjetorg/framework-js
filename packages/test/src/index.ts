@@ -25,9 +25,6 @@ export class IFCA<T,S> implements IIFCA<T,S> {
     processing: T[] = [];
 
     addChunk(_chunk: T): { value: Promise<S>; drain?: Promise<void> | undefined; } {
-
-        console.log('chunk: ' + _chunk);
-
         let _drain: void | PromiseLike<void>;
 
         if (this.processing.length < this.maxParallel) {
@@ -40,7 +37,7 @@ export class IFCA<T,S> implements IIFCA<T,S> {
         const value = new Promise<S>((res) => {
             console.log('promise chunk: ' + _chunk)
 
-            const result: any = this.transforms.reduce(transform => transform.call(this, _chunk)); // Getting there....
+            const result: any = this.transforms.reduce((prev, transform) => transform.call(this, prev), _chunk );
 
             return res(result);
         });
@@ -56,7 +53,7 @@ export class IFCA<T,S> implements IIFCA<T,S> {
     last(): Promise<S> {
         const value = new Promise<S>((res) => {
 
-            const result: any = this.transforms.reduce(transform => transform.call(this, this.processing[this.processing.length - 1])); // Last item
+            const result: any = this.transforms.reduce((prev, transform) => transform.call(this, prev), this.processing[this.processing.length - 1]);
             return res(result);
         
         });

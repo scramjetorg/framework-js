@@ -10,7 +10,6 @@ var IFCA = /** @class */ (function () {
     }
     IFCA.prototype.addChunk = function (_chunk) {
         var _this = this;
-        console.log('chunk: ' + _chunk);
         var _drain;
         if (this.processing.length < this.maxParallel) {
             this.processing.push(_chunk);
@@ -21,7 +20,7 @@ var IFCA = /** @class */ (function () {
         }
         var value = new Promise(function (res) {
             console.log('promise chunk: ' + _chunk);
-            var result = _this.transforms.reduce(function (transform) { return transform.call(_this, _chunk); }); // Getting there....
+            var result = _this.transforms.reduce(function (prev, transform) { return transform.call(_this, prev); }, _chunk);
             return res(result);
         });
         console.log('value:');
@@ -34,7 +33,7 @@ var IFCA = /** @class */ (function () {
     IFCA.prototype.last = function () {
         var _this = this;
         var value = new Promise(function (res) {
-            var result = _this.transforms.reduce(function (transform) { return transform.call(_this, _this.processing[_this.processing.length - 1]); }); // Last item
+            var result = _this.transforms.reduce(function (prev, transform) { return transform.call(_this, prev); }, _this.processing[_this.processing.length - 1]);
             return res(result);
         });
         return value;

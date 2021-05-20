@@ -6,6 +6,7 @@ const x = new IFCA(1);
 // let y = x.addTransform((str) => ({ x: +str })).addTransform(({ x }) => x);
 
 let y = x.addTransform((str) => ({ x: +str })).addTransform(({ x }) => x);
+
 const data = ["1", "2", "3", "4"];
 const out = [];
 
