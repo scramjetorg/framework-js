@@ -11,6 +11,7 @@ var IFCA = /** @class */ (function () {
     IFCA.prototype.addChunk = function (_chunk) {
         var _this = this;
         var _drain;
+        console.log('this.processing.length: ' + this.processing.length);
         if (this.processing.length < this.maxParallel) {
             this.processing.push(_chunk);
             _drain = undefined;

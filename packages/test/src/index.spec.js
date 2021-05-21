@@ -14,6 +14,10 @@ async function run() {
     for (const chunk of data) {
         const { value, drain } = y.addChunk(chunk);
 
+        console.log("value and drain:");
+        console.log(value);
+        console.log(drain);
+
         if (drain) await drain;
         if (value instanceof Promise) {
             value.then((data) => out.push(data));

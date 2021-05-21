@@ -27,6 +27,7 @@ export class IFCA<T,S> implements IIFCA<T,S> {
     addChunk(_chunk: T): { value: Promise<S>; drain?: Promise<void> | undefined; } {
         let _drain: void | PromiseLike<void>;
 
+        console.log('this.processing.length: ' + this.processing.length);
         if (this.processing.length < this.maxParallel) {
             this.processing.push(_chunk);
             _drain = undefined;
