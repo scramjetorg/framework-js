@@ -12,7 +12,11 @@ const out = [];
 
 async function run() {
     for (const chunk of data) {
-        const { value, drain } = y.addChunk(chunk);
+        const result = await y.addChunk(chunk); // Resolve first Promise immediatelly
+
+        console.log("result:" + result);
+
+        const { value, drain } = result;
 
         console.log("value and drain:");
         console.log(value);
@@ -20,9 +24,12 @@ async function run() {
 
         if (drain) await drain;
         if (value instanceof Promise) {
+            console.log("instance of... then push");
+
             value.then((data) => out.push(data));
             // TODO: error handling
         } else {
+            console.log("simply push");
             out.push(value);
         }
     }

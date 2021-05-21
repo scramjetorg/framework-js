@@ -6,7 +6,7 @@ export interface IIFCA<T,S> {
     maxParallel: number;
     transforms: TransformFunction<any,any>[];
 
-    addChunk(chunk: T): {value: Promise<S>, drain?: Promise<void>}
+    addChunk(chunk: T, contd: Promise<void>): Promise<{ value: Promise<S>; drain?: Promise<void> | undefined; }>
     last(): Promise<S>
 
     // TODO: destroy(e: Error): void;
@@ -24,11 +24,17 @@ export class IFCA<T,S> implements IIFCA<T,S> {
     transforms: TransformFunction<any, any>[] = [];
     processing: T[] = [];
 
-    addChunk(_chunk: T): { value: Promise<S>; drain?: Promise<void> | undefined; } {
+   //  async addChunk(_chunk: T, contd: Promise<void>): Promise<{ value: Promise<S>; drain?: Promise<void> | undefined; }> {
+    async addChunk(_chunk: T, contd: Promise<void>): Promise<{ value: Promise<S>; drain?: Promise<void> | undefined; }> {
+
         let _drain: void | PromiseLike<void>;
 
         console.log('this.processing.length: ' + this.processing.length);
-        if (this.processing.length < this.maxParallel) {
+
+        const processMore = await contd; // await cb 4
+        console.log('processMore: ' + processMore);
+
+        if (this.processing.length < this.maxParallel && processMore !== undefined) {
             this.processing.push(_chunk);
             _drain = undefined;
         } else {
