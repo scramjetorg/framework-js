@@ -6,7 +6,7 @@ export interface IIFCA<T,S> {
     maxParallel: number;
     transforms: TransformFunction<any,any>[];
 
-    addChunk(chunk: T, contd: Promise<void>): Promise<{ value: Promise<S>; drain?: Promise<void> | undefined; }>
+    addChunk(chunk: T, contd: Promise<Boolean>): Promise<{ value: Promise<S>; drain?: Promise<Boolean> | undefined; }>
     last(): Promise<S>
 
     // TODO: destroy(e: Error): void;
@@ -24,21 +24,22 @@ export class IFCA<T,S> implements IIFCA<T,S> {
     transforms: TransformFunction<any, any>[] = [];
     processing: T[] = [];
 
-   //  async addChunk(_chunk: T, contd: Promise<void>): Promise<{ value: Promise<S>; drain?: Promise<void> | undefined; }> {
-    async addChunk(_chunk: T, contd: Promise<void>): Promise<{ value: Promise<S>; drain?: Promise<void> | undefined; }> {
+    async addChunk(_chunk: T, contd: Promise<Boolean>): Promise<{ value: Promise<S>; drain?: Promise<Boolean> | undefined; }> {
 
-        let _drain: void | PromiseLike<void>;
+        let _drain: Boolean | PromiseLike<Boolean>;
 
         console.log('this.processing.length: ' + this.processing.length);
 
         const processMore = await contd; // await cb 4
         console.log('processMore: ' + processMore);
 
-        if (this.processing.length < this.maxParallel && processMore !== undefined) {
+        if (this.processing.length < this.maxParallel && processMore === true) {
             this.processing.push(_chunk);
-            _drain = undefined;
+            _drain = false;
         } else {
             // _drain = this.processing[this.processing.length - this.maxParallel]; // That's wrong!?
+
+            _drain  = true;
         }
 
         const value = new Promise<S>((res) => {
@@ -51,7 +52,7 @@ export class IFCA<T,S> implements IIFCA<T,S> {
         console.log('value:');
         console.log(value);
 
-        const drain = new Promise<void>((res) => {
+        const drain = new Promise<Boolean>((res) => {
             res(_drain);
         })
 

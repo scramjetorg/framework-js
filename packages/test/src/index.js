@@ -44,7 +44,6 @@ var IFCA = /** @class */ (function () {
         this.processing = [];
         this.maxParallel = maxParallel;
     }
-    //  async addChunk(_chunk: T, contd: Promise<void>): Promise<{ value: Promise<S>; drain?: Promise<void> | undefined; }> {
     IFCA.prototype.addChunk = function (_chunk, contd) {
         return __awaiter(this, void 0, void 0, function () {
             var _drain, processMore, value, drain;
@@ -57,12 +56,13 @@ var IFCA = /** @class */ (function () {
                     case 1:
                         processMore = _a.sent();
                         console.log('processMore: ' + processMore);
-                        if (this.processing.length < this.maxParallel && processMore !== undefined) {
+                        if (this.processing.length < this.maxParallel && processMore === true) {
                             this.processing.push(_chunk);
-                            _drain = undefined;
+                            _drain = false;
                         }
                         else {
                             // _drain = this.processing[this.processing.length - this.maxParallel]; // That's wrong!?
+                            _drain = true;
                         }
                         value = new Promise(function (res) {
                             console.log('promise chunk: ' + _chunk);
