@@ -6,8 +6,8 @@ export interface IIFCA<T,S> {
     maxParallel: number;
     transforms: TransformFunction<any,any>[];
 
-    addChunk(chunk: T, contd: PromiseLike<Boolean>): PromiseLike<{ value: PromiseLike<S>; drain?: PromiseLike<void> | undefined; }>
-    last(): Promise<S>
+    addChunk(chunk: T, contd: PromiseLike<Boolean>): { value: PromiseLike<S>; drain?: PromiseLike<void> | undefined; }
+    last(): PromiseLike<S>
 
     // TODO: destroy(e: Error): void;
 
@@ -24,7 +24,7 @@ export class IFCA<T,S> implements IIFCA<T,S> {
     transforms: TransformFunction<any, any>[] = [];
     private processing: PromiseLike<S>[] = [];
 
-    async addChunk(_chunk: T): Promise<{ value: Promise<S>; drain?: PromiseLike<void>; }> {
+    addChunk(_chunk: T): { value: Promise<S>; drain?: PromiseLike<void>; } {
         const drain: undefined | PromiseLike<any> = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel]
 
         console.log('this.processing.length: ' + this.processing.length);
@@ -34,9 +34,11 @@ export class IFCA<T,S> implements IIFCA<T,S> {
 
             await drain;
 
-            const result: any = this.transforms.reduce((prev, transform) => transform.call(this, prev), _chunk );
+            // const result: any = this.transforms.reduce((prev, transform) => transform.call(this, prev), _chunk );
 
-            return res(result);
+            const result: Promise<any> = this.transforms.reduce((prev, transform) => prev.then(transform.bind(this)), Promise.resolve(_chunk));
+
+            return res(result as Promise<S>);
         });
 
         this.processing.push(value);
@@ -47,14 +49,9 @@ export class IFCA<T,S> implements IIFCA<T,S> {
 
         return { value, drain }
     }
-    last(): Promise<S> {
-        const value = new Promise<S>((res) => {
-
-            const result: any = this.transforms.reduce((prev, transform) => transform.call(this, prev), this.processing[this.processing.length - 1]);
-            return res(result);
-        
-        });
-        return value;
+    last(): PromiseLike<S> { 
+            return this.processing[this.processing.length - 1];        
+    
     }
     addTransform<W>(_tr: TransformFunction<S, W>): IFCA<T, S> {
         this.transforms.push(_tr);

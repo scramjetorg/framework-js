@@ -11,10 +11,8 @@ const data = ["1", "2", "3", "4"];
 const out = [];
 
 async function run() {
-    let drain = Promise.resolve(true);
-
     for (const chunk of data) {
-        const result = await y.addChunk(chunk, drain); // Resolve first Promise immediatelly
+        const result = await y.addChunk(chunk); // Resolve first Promise immediatelly
 
         console.log("result:" + result);
 

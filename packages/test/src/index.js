@@ -45,44 +45,31 @@ var IFCA = /** @class */ (function () {
         this.maxParallel = maxParallel;
     }
     IFCA.prototype.addChunk = function (_chunk) {
-        return __awaiter(this, void 0, void 0, function () {
-            var drain, value;
+        var _this = this;
+        var drain = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel];
+        console.log('this.processing.length: ' + this.processing.length);
+        var value = new Promise(function (res) { return __awaiter(_this, void 0, void 0, function () {
+            var result;
             var _this = this;
             return __generator(this, function (_a) {
-                drain = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel];
-                console.log('this.processing.length: ' + this.processing.length);
-                value = new Promise(function (res) { return __awaiter(_this, void 0, void 0, function () {
-                    var result;
-                    var _this = this;
-                    return __generator(this, function (_a) {
-                        switch (_a.label) {
-                            case 0:
-                                console.log('promise chunk: ' + _chunk);
-                                return [4 /*yield*/, drain];
-                            case 1:
-                                _a.sent();
-                                result = this.transforms.reduce(function (prev, transform) { return transform.call(_this, prev); }, _chunk);
-                                return [2 /*return*/, res(result)];
-                        }
-                    });
-                }); });
-                this.processing.push(value);
-                console.log('value:');
-                console.log(value);
-                // const drain = new Promise<Boolean>((res) => {
-                //     res(_drain);
-                // })
-                return [2 /*return*/, { value: value, drain: drain }];
+                switch (_a.label) {
+                    case 0:
+                        console.log('promise chunk: ' + _chunk);
+                        return [4 /*yield*/, drain];
+                    case 1:
+                        _a.sent();
+                        result = this.transforms.reduce(function (prev, transform) { return prev.then(transform.bind(_this)); }, Promise.resolve(_chunk));
+                        return [2 /*return*/, res(result)];
+                }
             });
-        });
+        }); });
+        this.processing.push(value);
+        console.log('value:');
+        console.log(value);
+        return { value: value, drain: drain };
     };
     IFCA.prototype.last = function () {
-        var _this = this;
-        var value = new Promise(function (res) {
-            var result = _this.transforms.reduce(function (prev, transform) { return transform.call(_this, prev); }, _this.processing[_this.processing.length - 1]);
-            return res(result);
-        });
-        return value;
+        return this.processing[this.processing.length - 1];
     };
     IFCA.prototype.addTransform = function (_tr) {
         this.transforms.push(_tr);
