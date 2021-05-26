@@ -44,38 +44,35 @@ var IFCA = /** @class */ (function () {
         this.processing = [];
         this.maxParallel = maxParallel;
     }
-    IFCA.prototype.addChunk = function (_chunk, contd) {
+    IFCA.prototype.addChunk = function (_chunk) {
         return __awaiter(this, void 0, void 0, function () {
-            var _drain, processMore, value, drain;
+            var drain, value;
             var _this = this;
             return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        console.log('this.processing.length: ' + this.processing.length);
-                        return [4 /*yield*/, contd];
-                    case 1:
-                        processMore = _a.sent();
-                        console.log('processMore: ' + processMore);
-                        if (this.processing.length < this.maxParallel && processMore === true) {
-                            this.processing.push(_chunk);
-                            _drain = false;
+                drain = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel];
+                console.log('this.processing.length: ' + this.processing.length);
+                value = new Promise(function (res) { return __awaiter(_this, void 0, void 0, function () {
+                    var result;
+                    var _this = this;
+                    return __generator(this, function (_a) {
+                        switch (_a.label) {
+                            case 0:
+                                console.log('promise chunk: ' + _chunk);
+                                return [4 /*yield*/, drain];
+                            case 1:
+                                _a.sent();
+                                result = this.transforms.reduce(function (prev, transform) { return transform.call(_this, prev); }, _chunk);
+                                return [2 /*return*/, res(result)];
                         }
-                        else {
-                            // _drain = this.processing[this.processing.length - this.maxParallel]; // That's wrong!?
-                            _drain = true;
-                        }
-                        value = new Promise(function (res) {
-                            console.log('promise chunk: ' + _chunk);
-                            var result = _this.transforms.reduce(function (prev, transform) { return transform.call(_this, prev); }, _chunk);
-                            return res(result);
-                        });
-                        console.log('value:');
-                        console.log(value);
-                        drain = new Promise(function (res) {
-                            res(_drain);
-                        });
-                        return [2 /*return*/, { value: value, drain: drain }];
-                }
+                    });
+                }); });
+                this.processing.push(value);
+                console.log('value:');
+                console.log(value);
+                // const drain = new Promise<Boolean>((res) => {
+                //     res(_drain);
+                // })
+                return [2 /*return*/, { value: value, drain: drain }];
             });
         });
     };

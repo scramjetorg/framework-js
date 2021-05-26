@@ -6,7 +6,7 @@ export interface IIFCA<T,S> {
     maxParallel: number;
     transforms: TransformFunction<any,any>[];
 
-    addChunk(chunk: T, contd: Promise<Boolean>): Promise<{ value: Promise<S>; drain?: Promise<Boolean> | undefined; }>
+    addChunk(chunk: T, contd: PromiseLike<Boolean>): PromiseLike<{ value: PromiseLike<S>; drain?: PromiseLike<void> | undefined; }>
     last(): Promise<S>
 
     // TODO: destroy(e: Error): void;
@@ -22,39 +22,28 @@ export class IFCA<T,S> implements IIFCA<T,S> {
 
     maxParallel: number;
     transforms: TransformFunction<any, any>[] = [];
-    processing: T[] = [];
+    private processing: PromiseLike<S>[] = [];
 
-    async addChunk(_chunk: T, contd: Promise<Boolean>): Promise<{ value: Promise<S>; drain?: Promise<Boolean> | undefined; }> {
-
-        let _drain: Boolean | PromiseLike<Boolean>;
+    async addChunk(_chunk: T): Promise<{ value: Promise<S>; drain?: PromiseLike<void>; }> {
+        const drain: undefined | PromiseLike<any> = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel]
 
         console.log('this.processing.length: ' + this.processing.length);
 
-        const processMore = await contd; // await cb 4
-        console.log('processMore: ' + processMore);
-
-        if (this.processing.length < this.maxParallel && processMore === true) {
-            this.processing.push(_chunk);
-            _drain = false;
-        } else {
-            // _drain = this.processing[this.processing.length - this.maxParallel]; // That's wrong!?
-
-            _drain  = true;
-        }
-
-        const value = new Promise<S>((res) => {
+        const value = new Promise<S>(async (res) => {
             console.log('promise chunk: ' + _chunk)
+
+            await drain;
 
             const result: any = this.transforms.reduce((prev, transform) => transform.call(this, prev), _chunk );
 
             return res(result);
         });
+
+        this.processing.push(value);
+
+
         console.log('value:');
         console.log(value);
-
-        const drain = new Promise<Boolean>((res) => {
-            res(_drain);
-        })
 
         return { value, drain }
     }
