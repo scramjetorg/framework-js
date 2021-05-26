@@ -3,6 +3,7 @@
 export type TransformFunction<V,U> = (chunk: V) => (Promise<U>|U)
 
 export interface IIFCA<T,S> {
+    // TODO: This may need a setter if maxParralel is increased so that chunks are not waiting for drain.
     maxParallel: number;
     transforms: TransformFunction<any,any>[];
 
@@ -58,6 +59,7 @@ export class IFCA<T,S> implements IIFCA<T,S> {
         return this;
         
     }
+    // pop
     removeTransform<W>(_tr: TransformFunction<W, S>): IFCA<T, W> {
         throw new Error("Method not implemented.");
     }
