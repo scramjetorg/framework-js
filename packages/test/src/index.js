@@ -75,6 +75,7 @@ var IFCA = /** @class */ (function () {
         this.transforms.push(_tr);
         return this;
     };
+    // pop
     IFCA.prototype.removeTransform = function (_tr) {
         throw new Error("Method not implemented.");
     };
