@@ -21,14 +21,38 @@ async function run() {
     const input = Array.from(Array(ELEMENTS).keys()).map(() => {
         return { a: a++ };
     });
-
+    // START
     const asyncPromiseTransform = async ({ a }) => {
-        if (!(a % 2)) return { a, n: 0, x: x++ };
-        return new Promise((res) => setTimeout(() => res({ a, n: 1, x: x++ }), 200));
-    };
+        console.log(a, 0);
 
-    const syncPromiseTransform = ({ a, n, x }) => ({ a, n, x, y: y++ });
-    const syncPromiseTransform2 = ({ a, n, x, y }) => ({ n, a, x, y, z: z++ });
+        if (!(a % 2)) {
+            const result = { a, n: 0, x };
+            x++;
+            console.log(a, 1, "async promise o: " + JSON.stringify(result) + " x: " + x);
+            return result;
+        }
+        return new Promise((res) =>
+            setTimeout(() => {
+                const result = { a, n: 1, x };
+                x++;
+                console.log(a, 2, "timeout promise o: " + JSON.stringify(result) + " x: " + x);
+                res(result);
+            }, 2000)
+        );
+    };
+    const syncPromiseTransform = ({ a, n, x }) => {
+        const result = { a, n, x, y };
+        y++;
+        console.log(a, 3, "sync promise1 o: " + JSON.stringify(result) + " y: " + y);
+        return result;
+    };
+    const syncPromiseTransform2 = ({ a, n, x, y }) => {
+        const result = { a, n, x, y, z };
+        z++;
+        console.log(a, 4, "sync promise2 o: " + JSON.stringify(result) + " z: " + z);
+        return result;
+    };
+    // END
 
     ifca.addTransform(asyncPromiseTransform).addTransform(syncPromiseTransform).addTransform(syncPromiseTransform2);
 
@@ -37,29 +61,30 @@ async function run() {
     for (const chunk of input) {
         const result = await ifca.addChunk(chunk);
 
-        console.log("result:" + result);
+        // console.log("result:" + result);
 
         const { value } = result;
 
         drain = result.drain;
 
-        console.log("value and drain:");
-        console.log(value);
-        console.log(drain);
+        // console.log("value and drain:");
+        // console.log(value);
+        // console.log(drain);
 
         if (drain) await drain;
         if (value instanceof Promise) {
-            console.log("instance of... then push");
+            // console.log("instance of... then push");
 
-            value.then((data) => out.push(data));
+            // value.then((data) => out.push(data));
+            out.push(value);
             // TODO: error handling
         } else {
-            console.log("simply push");
+            // console.log("simply push");
             out.push(value);
         }
     }
 
-    out.push = await ifca.last();
+    // out.push = await ifca.last();
 
     /**
      * Expected result (old algorithm)
@@ -85,7 +110,7 @@ async function run() {
      */
 
     for (result of out) {
-        console.log(result);
+        console.error(await result);
     }
 }
 

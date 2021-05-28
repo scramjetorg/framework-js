@@ -28,16 +28,22 @@ export class IFCA<T,S> implements IIFCA<T,S> {
     addChunk(_chunk: T): { value: Promise<S>; drain?: PromiseLike<void>; } {
         const drain: undefined | PromiseLike<any> = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel]
 
-        console.log('this.processing.length: ' + this.processing.length);
+        // console.log('this.processing.length: ' + this.processing.length);
 
         const value = new Promise<S>(async (res) => {
-            console.log('promise chunk: ' + _chunk)
+            // console.log('promise chunk: ' + _chunk);
+
+            // const timestamp = Date.now();
+            // console.log('drain1: ' + drain)
 
             await drain;
+            // console.log('DRAIN1: ' + (Date.now() - timestamp))
 
             // const result: any = this.transforms.reduce((prev, transform) => transform.call(this, prev), _chunk );
 
             const result: Promise<any> = this.transforms.reduce((prev, transform) => prev.then(transform.bind(this)), Promise.resolve(_chunk));
+
+            // console.log(result)
 
             return res(result as Promise<S>);
         });
@@ -45,8 +51,8 @@ export class IFCA<T,S> implements IIFCA<T,S> {
         this.processing.push(value);
 
 
-        console.log('value:');
-        console.log(value);
+        // console.log('value:');
+        // console.log(value);
 
         return { value, drain }
     }
