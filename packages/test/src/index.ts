@@ -1,9 +1,7 @@
-// import { deepStrictEqual } from "assert";
-
 export type TransformFunction<V,U> = (chunk: V) => (Promise<U>|U)
 
 export interface IIFCA<T,S> {
-    // TODO: This may need a setter if maxParralel is increased so that chunks are not waiting for drain.
+    // TODO: This may need a setter if maxParallel is increased so that chunks are not waiting for drain.
     maxParallel: number;
     transforms: TransformFunction<any,any>[];
 
@@ -28,31 +26,15 @@ export class IFCA<T,S> implements IIFCA<T,S> {
     addChunk(_chunk: T): { value: Promise<S>; drain?: PromiseLike<void>; } {
         const drain: undefined | PromiseLike<any> = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel]
 
-        // console.log('this.processing.length: ' + this.processing.length);
-
         const value = new Promise<S>(async (res) => {
-            // console.log('promise chunk: ' + _chunk);
-
-            // const timestamp = Date.now();
-            // console.log('drain1: ' + drain)
-
             await drain;
-            // console.log('DRAIN1: ' + (Date.now() - timestamp))
-
-            // const result: any = this.transforms.reduce((prev, transform) => transform.call(this, prev), _chunk );
 
             const result: Promise<any> = this.transforms.reduce((prev, transform) => prev.then(transform.bind(this)), Promise.resolve(_chunk));
-
-            // console.log(result)
 
             return res(result as Promise<S>);
         });
 
         this.processing.push(value);
-
-
-        // console.log('value:');
-        // console.log(value);
 
         return { value, drain }
     }
@@ -65,11 +47,9 @@ export class IFCA<T,S> implements IIFCA<T,S> {
         return this;
         
     }
-    // pop
+    // Remove transform (pop)
     removeTransform<W>(_tr: TransformFunction<W, S>): IFCA<T, W> {
         throw new Error("Method not implemented.");
     }
 
 }
-
-// deepStrictEqual(out, [1,2,3,4]);

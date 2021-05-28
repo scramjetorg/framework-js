@@ -1,5 +1,4 @@
 "use strict";
-// import { deepStrictEqual } from "assert";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -47,31 +46,20 @@ var IFCA = /** @class */ (function () {
     IFCA.prototype.addChunk = function (_chunk) {
         var _this = this;
         var drain = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel];
-        // console.log('this.processing.length: ' + this.processing.length);
         var value = new Promise(function (res) { return __awaiter(_this, void 0, void 0, function () {
             var result;
             var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: 
-                    // console.log('promise chunk: ' + _chunk);
-                    // const timestamp = Date.now();
-                    // console.log('drain1: ' + drain)
-                    return [4 /*yield*/, drain];
+                    case 0: return [4 /*yield*/, drain];
                     case 1:
-                        // console.log('promise chunk: ' + _chunk);
-                        // const timestamp = Date.now();
-                        // console.log('drain1: ' + drain)
                         _a.sent();
                         result = this.transforms.reduce(function (prev, transform) { return prev.then(transform.bind(_this)); }, Promise.resolve(_chunk));
-                        // console.log(result)
                         return [2 /*return*/, res(result)];
                 }
             });
         }); });
         this.processing.push(value);
-        // console.log('value:');
-        // console.log(value);
         return { value: value, drain: drain };
     };
     IFCA.prototype.last = function () {
@@ -81,11 +69,10 @@ var IFCA = /** @class */ (function () {
         this.transforms.push(_tr);
         return this;
     };
-    // pop
+    // Remove transform (pop)
     IFCA.prototype.removeTransform = function (_tr) {
         throw new Error("Method not implemented.");
     };
     return IFCA;
 }());
 exports.IFCA = IFCA;
-// deepStrictEqual(out, [1,2,3,4]);

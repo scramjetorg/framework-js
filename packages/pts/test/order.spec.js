@@ -1,4 +1,4 @@
-// const test = require("ava");
+const test = require("ava");
 const { Readable } = require("stream");
 
 function pushTransformToStreamPTS(str, promiseTransform) {
@@ -16,8 +16,7 @@ function getStreamInOrderPTS(promiseTransform, maxParallel) {
     });
 }
 
-// test("PTS", async (t) => {
-async function run() {
+test("PTS", async (t) => {
     let a = 0;
     let x = 0;
     let y = 0;
@@ -36,35 +35,11 @@ async function run() {
         return { a: a++ };
     });
     const asyncPromiseTransform = async ({ a }) => {
-        console.log(a, 0);
-
-        if (!(a % 2)) {
-            const result = { a, n: 0, x };
-            x++;
-            console.log(a, 1, "async promise o: " + JSON.stringify(result) + " x: " + x);
-            return result;
-        }
-        return new Promise((res) =>
-            setTimeout(() => {
-                const result = { a, n: 1, x };
-                x++;
-                console.log(a, 2, "timeout promise o: " + JSON.stringify(result) + " x: " + x);
-                res(result);
-            }, 2000)
-        );
+        if (!(a % 2)) return { a, n: 0, x: x++ };
+        return new Promise((res) => setTimeout(() => res({ a, n: 1, x: x++ }), 2000));
     };
-    const syncPromiseTransform = ({ a, n, x }) => {
-        const result = { a, n, x, y };
-        y++;
-        console.log(a, 3, "sync promise1 o: " + JSON.stringify(result) + " y: " + y);
-        return result;
-    };
-    const syncPromiseTransform2 = ({ a, n, x, y }) => {
-        const result = { a, n, x, y, z };
-        z++;
-        console.log(a, 4, "sync promise2 o: " + JSON.stringify(result) + " z: " + z);
-        return result;
-    };
+    const syncPromiseTransform = ({ a, n, x }) => ({ a, n, x, y: y++ });
+    const syncPromiseTransform2 = ({ a, n, x, y }) => ({ a, n, x, y, z: z++ });
 
     console.log("Running with: ", { MAX_PARALLEL, ELEMENTS });
 
@@ -73,19 +48,13 @@ async function run() {
 
     pushTransformToStreamPTS(str, syncPromiseTransform2);
 
-    // const str2 = str.pipe(getStreamInOrderPTS(syncPromiseTransform2));
-
     let b = 0;
-    for await (const x of str) {
-        console.error(x);
-        // console.log(x);
-        // t.is(x.a, b++, "Should work in order");
-        // t.is(x.a, x.z, "Should work in order");
-        // t.is(x.x, x.y, "Should work out of order");
-        // SKIP: if (x.a > MAX_PARALLEL / 2 && x.a < ELEMENTS - MAX_PARALLEL) strictEqual(x.x, x.a + MAX_PARALLEL / 2, "Should be out of order by maxParallel");
-        // if (x.a > MAX_PARALLEL / 2 && x.a !== ELEMENTS - 1) t.not(x.a, x.x, `Should not be chained ${x.a}, ${x.x}`);
+    for await (const result of str) {
+        console.error(result);
+        t.is(result.a, b++, "Should work in order");
+        t.is(result.y, result.z, "Should work in order");
+        t.is(result.x, result.y, "Should work out of order");
+        if (result.a > MAX_PARALLEL / 2 && result.a !== ELEMENTS - 1)
+            t.not(result.a, result.x, `Should not be chained ${result.a}, ${result.x}`);
     }
-    // });
-}
-
-run();
+});
