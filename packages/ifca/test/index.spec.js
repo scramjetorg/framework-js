@@ -1,6 +1,6 @@
 const test = require("ava");
 
-const { IFCA } = require("./index");
+const { IFCA } = require("../lib/index");
 
 /**
  * How many items can be waiting to be flushed

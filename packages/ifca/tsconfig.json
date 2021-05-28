@@ -5,7 +5,7 @@
     },
     "extends": "../../tsconfig.react.json",
     "include": [
-      "./src",
+      "lib",
       "./test"
     ],
     "exclude": [
