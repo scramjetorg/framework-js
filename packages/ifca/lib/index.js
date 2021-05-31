@@ -43,7 +43,7 @@ var IFCA = /** @class */ (function () {
         this.processing = [];
         this.maxParallel = maxParallel;
     }
-    IFCA.prototype.addChunk = function (_chunk) {
+    IFCA.prototype.write = function (_chunk) {
         var _this = this;
         var drain = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel];
         var value = new Promise(function (res) { return __awaiter(_this, void 0, void 0, function () {

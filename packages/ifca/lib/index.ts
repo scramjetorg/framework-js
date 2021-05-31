@@ -5,7 +5,12 @@ export interface IIFCA<T,S> {
     maxParallel: number;
     transforms: TransformFunction<any,any>[];
 
-    addChunk(chunk: T, contd: PromiseLike<Boolean>): { value: PromiseLike<S>; drain?: PromiseLike<void> | undefined; }
+    /**
+     * Write (add chunk)
+     * 
+     * @param chunk Chunk to be processed
+     */
+    write(chunk: T): { value: PromiseLike<S>; drain?: PromiseLike<void> | undefined; }
     last(): PromiseLike<S>
 
     // TODO: destroy(e: Error): void;
@@ -23,7 +28,7 @@ export class IFCA<T,S> implements IIFCA<T,S> {
     transforms: TransformFunction<any, any>[] = [];
     private processing: PromiseLike<S>[] = [];
 
-    addChunk(_chunk: T): { value: Promise<S>; drain?: PromiseLike<void>; } {
+    write(_chunk: T): { value: Promise<S>; drain?: PromiseLike<void>; } {
         const drain: undefined | PromiseLike<any> = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel]
 
         const value = new Promise<S>(async (res) => {

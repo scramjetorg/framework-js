@@ -35,7 +35,7 @@ test("PTS", async (t) => {
     const out = [];
 
     for (const chunk of input) {
-        const result = await ifca.addChunk(chunk);
+        const result = await ifca.write(chunk);
 
         const { value } = result;
 
