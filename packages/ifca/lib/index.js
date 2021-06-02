@@ -37,33 +37,64 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 exports.__esModule = true;
 exports.IFCA = void 0;
+var util = require("util");
 var IFCA = /** @class */ (function () {
     function IFCA(maxParallel) {
         this.transforms = [];
         this.processing = [];
+        this.results = [];
         this.maxParallel = maxParallel;
     }
+    IFCA.prototype.isPending = function (promise) {
+        return util.inspect(promise).indexOf("<pending>") > -1;
+    };
     IFCA.prototype.write = function (_chunk) {
         var _this = this;
         var drain = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel];
+        var last = this.processing[this.processing.length - 1];
         var value = new Promise(function (res) { return __awaiter(_this, void 0, void 0, function () {
             var result;
             var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, drain];
+                    case 0: return [4 /*yield*/, last];
                     case 1:
                         _a.sent();
                         result = this.transforms.reduce(function (prev, transform) { return prev.then(transform.bind(_this)); }, Promise.resolve(_chunk));
-                        return [2 /*return*/, res(result)];
+                        result.then(function () { return _this.processing.shift(); });
+                        result.then(res);
+                        return [2 /*return*/];
                 }
             });
         }); });
         this.processing.push(value);
+        this.results.push(value);
+        if (this.waiting) {
+            this.waiting();
+            this.waiting = undefined;
+        }
         return { value: value, drain: drain };
     };
     IFCA.prototype.last = function () {
         return this.processing[this.processing.length - 1];
+    };
+    // 
+    IFCA.prototype.read = function (items) {
+        var _this = this;
+        // let count = 0;
+        // let len = this.processing.length; // TODO: This is for debugging. Remove later.
+        // for (let i = 0; i < items; i++ ) {
+        //    if (this.isPending(this.processing[i])) break;
+        //    count = i;
+        // }
+        // const result =  this.processing.splice(0, count) as unknown as S;
+        // console.log('count: ' + count + ' result: ' + JSON.stringify(result) + ' queue: ' + this.processing.length + ' original len: ' + len)
+        // return result;
+        if (this.processing.length)
+            return this.processing.splice(0, items);
+        return new Promise(function (res) {
+            _this.waiting = res;
+        });
     };
     IFCA.prototype.addTransform = function (_tr) {
         this.transforms.push(_tr);
