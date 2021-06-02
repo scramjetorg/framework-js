@@ -62,6 +62,9 @@ var IFCA = /** @class */ (function () {
         this.processing.push(value);
         return { value: value, drain: drain };
     };
+    IFCA.prototype.read = function (items) {
+        return this.processing.splice(0, items);
+    };
     IFCA.prototype.last = function () {
         return this.processing[this.processing.length - 1];
     };

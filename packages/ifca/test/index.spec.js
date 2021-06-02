@@ -42,7 +42,11 @@ test("PTS", async (t) => {
         drain = result.drain;
 
         if (drain) await drain;
-        out.push(value);
+    }
+
+    while (out.length < ELEMENTS) {
+        const result = ifca.read(ELEMENTS);
+        out.push(...result);
     }
 
     /**

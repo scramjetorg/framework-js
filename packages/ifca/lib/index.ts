@@ -11,6 +11,8 @@ export interface IIFCA<T,S> {
      * @param chunk Chunk to be processed
      */
     write(chunk: T): { value: PromiseLike<S>; drain?: PromiseLike<void> | undefined; }
+
+    read(items: number): PromiseLike<S>[];
     last(): PromiseLike<S>
 
     // TODO: destroy(e: Error): void;
@@ -43,6 +45,11 @@ export class IFCA<T,S> implements IIFCA<T,S> {
 
         return { value, drain }
     }
+
+    read(items: number): PromiseLike<S>[] {
+        return this.processing.splice(0, items);
+    }
+
     last(): PromiseLike<S> { 
             return this.processing[this.processing.length - 1];        
     
