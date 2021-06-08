@@ -1,3 +1,5 @@
+import { Readable } from "node:stream";
+
 export type TransformFunction<V,U> = (chunk: V) => (Promise<U>|U)
 
 export interface IIFCA<T,S> {
@@ -10,9 +12,9 @@ export interface IIFCA<T,S> {
      * 
      * @param chunk Chunk to be processed
      */
-    write(chunk: T): { value: PromiseLike<S>; drain?: PromiseLike<void> | undefined; }
+    write(chunk: T): PromiseLike<void>;
 
-    read(items: number): PromiseLike<S>[];
+    read(items: number): AsyncIterable<S>;
     last(): PromiseLike<S>
 
     // TODO: destroy(e: Error): void;
@@ -21,6 +23,39 @@ export interface IIFCA<T,S> {
     removeTransform<W>(tr: TransformFunction<W,S>): IIFCA<T,W>;
 }
 
+type ChunkResolver<S> = (chunk: S) => void;
+
+class ProcessingItem<S> {
+    processing: Promise<S>;
+    done: boolean = false;
+    private read?: ChunkResolver<S>;
+    private error?: (err: Error) => void;
+
+    constructor(proc: Promise<S>) {
+        this.processing = proc;
+        proc.then(
+            (chunk) => {
+                this.done = true;
+                this.read && this.read(chunk);
+            },
+            (error) => {
+                this.done = true;
+                this.error && this.error(error)
+            }
+        )
+    }
+
+    /** @readonly */
+    get value(): Promise<S> {
+        return this.done
+            ? this.processing
+            : new Promise((res, rej) => {
+                this.read = res
+                this.error = rej;
+            });
+    }
+};
+
 export class IFCA<T,S> implements IIFCA<T,S> {
     constructor(maxParallel: number) {
         this.maxParallel = maxParallel;
@@ -28,26 +63,63 @@ export class IFCA<T,S> implements IIFCA<T,S> {
 
     maxParallel: number;
     transforms: TransformFunction<any, any>[] = [];
-    private processing: PromiseLike<S>[] = [];
+    private queue: ProcessingItem<S>[] = [];
+    private processing: PromiseLike<any>[] = [];
+    private readable: S[] = [];
+    private readers: ChunkResolver<S>[] = [];
 
-    write(_chunk: T): { value: Promise<S>; drain?: PromiseLike<void>; } {
-        const drain: undefined | PromiseLike<any> = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel]
+    async write(_chunk: T) {
+        const drain: undefined | PromiseLike<any> = 
+            this.processing.length < this.maxParallel 
+                ? undefined 
+                : this.queue[this.processing.length - this.maxParallel]
+            ;
+        const chunkBeforeThisOne = this.processing[this.processing.length - 1];
+        
+        const currentChunkResult: Promise<S> = this.transforms
+            .reduce(
+                (prev, transform) => prev.then(transform.bind(this)), 
+                Promise.resolve(_chunk)
+            ) as unknown as Promise<S>;
 
-        const value = new Promise<S>(async (res) => {
-            await drain;
+        this.queue.push(
+            new ProcessingItem(Promise
+                .all([chunkBeforeThisOne, currentChunkResult])
+                .then(([, result]) => result)
+        ));
 
-            const result: Promise<any> = this.transforms.reduce((prev, transform) => prev.then(transform.bind(this)), Promise.resolve(_chunk));
-
-            return res(result as Promise<S>);
-        });
-
-        this.processing.push(value);
-
-        return { value, drain }
+        return drain;
     }
 
-    read(items: number): PromiseLike<S>[] {
-        return this.processing.splice(0, items);
+    private addResult(resultToBeReadInOrder: S) {
+        if (this.readers.length > 0) {
+            (this.readers.shift() as ChunkResolver<S>)(resultToBeReadInOrder);
+        } else {
+            this.readable.push(resultToBeReadInOrder);
+        }
+
+        this.processing.shift();
+    }
+
+    read(items: number): AsyncIterable<S> {
+        const results = this.readable.splice(0, items);
+        if (results.length === items) return Readable.from(results);
+        
+        const resultPromises: PromiseLike<S>[] = 
+            (new Array(results.length - items))
+                .fill(1)
+                .map(() => new Promise((res: ChunkResolver<S>) => this.readers.push(res)))
+        ;
+
+        return (async function*() {
+            yield* results;
+
+            while (true) {
+                const out = await resultPromises.shift();
+                if (!out) return;
+                yield out;
+            }
+        })();
     }
 
     last(): PromiseLike<S> { 

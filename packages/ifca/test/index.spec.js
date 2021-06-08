@@ -30,24 +30,29 @@ test("PTS", async (t) => {
     const syncPromiseTransform = ({ a, n, x }) => ({ a, n, x, y: y++ });
     const syncPromiseTransform2 = ({ a, n, x, y }) => ({ a, n, x, y, z: z++ });
 
-    ifca.addTransform(asyncPromiseTransform).addTransform(syncPromiseTransform).addTransform(syncPromiseTransform2);
+    ifca.addTransform(asyncPromiseTransform)
+        .addTransform(syncPromiseTransform)
+        .addTransform(syncPromiseTransform2);
 
     const out = [];
 
+    (async () => {
+        while (true) {
+            const result = ifca.read();
+            for await (const chunk of result) {
+                console.log(chunk);
+            }
+        }
+    })();
+
     for (const chunk of input) {
-        const result = await ifca.write(chunk);
-
-        const { value } = result;
-
-        drain = result.drain;
-
-        if (drain) await drain;
+        await ifca.write(chunk);
     }
 
-    while (out.length < ELEMENTS) {
-        const result = ifca.read(ELEMENTS);
-        out.push(...result);
-    }
+    // while (out.length < ELEMENTS) {
+    //     const result = await ifca.read(ELEMENTS);
+    //     out.push(...result);
+    // }
 
     /**
      * Expected result (old algorithm)
