@@ -18,7 +18,7 @@ export interface IIFCA<T,S> {
     // TODO: destroy(e: Error): void;
 
     addTransform<W>(tr: TransformFunction<S,W>): IIFCA<T,S>;
-    removeTransform<W>(tr: TransformFunction<W,S>): IIFCA<T,W>;
+    removeTransform(): IIFCA<T,S>;
 }
 
 export class IFCA<T,S> implements IIFCA<T,S> {
@@ -60,8 +60,9 @@ export class IFCA<T,S> implements IIFCA<T,S> {
         
     }
     // Remove transform (pop)
-    removeTransform<W>(_tr: TransformFunction<W, S>): IFCA<T, W> {
-        throw new Error("Method not implemented.");
+    removeTransform(): IFCA<T, S> {
+        this.transforms.pop();
+        return this;
     }
 
 }
