@@ -1,3 +1,5 @@
+import { SSL_OP_COOKIE_EXCHANGE } from "constants";
+
 export type TransformFunction<V,U> = (chunk: V) => (Promise<U>|U)
 
 export interface IIFCA<T,S> {
@@ -10,9 +12,9 @@ export interface IIFCA<T,S> {
      * 
      * @param chunk Chunk to be processed
      */
-    write(chunk: T): { value: PromiseLike<S>; drain?: PromiseLike<void> | undefined; }
+     write(chunk: T): { value: Promise<S>; drain?: PromiseLike<void> | undefined; }
 
-    read(items: number): PromiseLike<S>[];
+    read(items: number): S[] | null;
     last(): PromiseLike<S>
 
     // TODO: destroy(e: Error): void;
@@ -22,15 +24,21 @@ export interface IIFCA<T,S> {
 }
 
 export class IFCA<T,S> implements IIFCA<T,S> {
+    // static processing: PromiseLike<S>[] = [];
     constructor(maxParallel: number) {
         this.maxParallel = maxParallel;
     }
 
     maxParallel: number;
     transforms: TransformFunction<any, any>[] = [];
-    private processing: PromiseLike<S>[] = [];
+    processing: PromiseLike<S>[] = [];
+    
+    readable: S[] = [];
 
-    write(_chunk: T): { value: Promise<S>; drain?: PromiseLike<void>; } {
+    write(_chunk: T): { value: Promise<S>; drain?: PromiseLike<void> | undefined; } {
+        console.log('');
+        console.log('WRITE.....');
+        this.readable.push();
         const drain: undefined | PromiseLike<any> = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel]
 
         const value = new Promise<S>(async (res) => {
@@ -41,13 +49,58 @@ export class IFCA<T,S> implements IIFCA<T,S> {
             return res(result as Promise<S>);
         });
 
+        console.log('ADD TO PROCESSING... chunk: ' + JSON.stringify(_chunk))
         this.processing.push(value);
+        console.log('write pre then... this.processing.length: ' + this.processing.length);
 
-        return { value, drain }
+
+        const idx = this.processing.length - 1;
+        value.then(async (res) => {
+            console.log('');
+            console.log('INDEX:' + idx + ' VALUE READY chunk: ' + JSON.stringify(_chunk) + ' value: ' + JSON.stringify(res));
+            if (drain) await drain;
+            // this.processing.shift();
+            // this.readable[this.index] = res;
+            this.readable[idx] = res;
+
+        });
+
+        // function generator(_index: number):Function {
+        //    return function (resolve: Function) {
+        //         if (drain) await drain;
+        //         IFCA.processing.shift();
+        //         this.readable[_index] = resolve;
+        //     })
+        //    };
+        // };
+
+        // value.then(generator(this.index));
+        return { value }
     }
 
-    read(items: number): PromiseLike<S>[] {
-        return this.processing.splice(0, items);
+    read(items: number):S[] | null {
+        console.log('READ: this.processing.length ' + this.processing.length + ' this.readable.length ' + this.readable.length);
+        console.log('READ readable: ' + JSON.stringify(this.readable))
+        if (this.processing.length === 0) {
+            // NOTHING TO READ - TERMINATE AND RETURN NULL
+            return null;
+        }
+        
+        const result:S[] = [];
+        let i = 0;
+        for (i; i < items; i++) {
+            if (this.readable[i]) {
+                result.push(this.readable[i])
+            } else {
+                break;
+            }
+        }
+        this.processing.splice(0, i);
+        console.log('POST READ: this.processing.length ' + this.processing.length + ' this.readable.length ' + this.readable.length);
+        console.log('POST readable: ' +JSON.stringify(this.readable))
+
+
+        return result;
     }
 
     last(): PromiseLike<S> { 

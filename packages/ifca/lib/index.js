@@ -38,13 +38,18 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 exports.IFCA = void 0;
 var IFCA = /** @class */ (function () {
+    // static processing: PromiseLike<S>[] = [];
     function IFCA(maxParallel) {
         this.transforms = [];
         this.processing = [];
+        this.readable = [];
         this.maxParallel = maxParallel;
     }
     IFCA.prototype.write = function (_chunk) {
         var _this = this;
+        console.log('');
+        console.log('WRITE.....');
+        this.readable.push();
         var drain = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel];
         var value = new Promise(function (res) { return __awaiter(_this, void 0, void 0, function () {
             var result;
@@ -59,11 +64,61 @@ var IFCA = /** @class */ (function () {
                 }
             });
         }); });
+        console.log('ADD TO PROCESSING... chunk: ' + JSON.stringify(_chunk));
         this.processing.push(value);
-        return { value: value, drain: drain };
+        console.log('write pre then... this.processing.length: ' + this.processing.length);
+        var idx = this.processing.length - 1;
+        value.then(function (res) { return __awaiter(_this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        console.log('');
+                        console.log('INDEX:' + idx + ' VALUE READY chunk: ' + JSON.stringify(_chunk) + ' value: ' + JSON.stringify(res));
+                        if (!drain) return [3 /*break*/, 2];
+                        return [4 /*yield*/, drain];
+                    case 1:
+                        _a.sent();
+                        _a.label = 2;
+                    case 2:
+                        // this.processing.shift();
+                        // this.readable[this.index] = res;
+                        this.readable[idx] = res;
+                        return [2 /*return*/];
+                }
+            });
+        }); });
+        // function generator(_index: number):Function {
+        //    return function (resolve: Function) {
+        //         if (drain) await drain;
+        //         IFCA.processing.shift();
+        //         this.readable[_index] = resolve;
+        //     })
+        //    };
+        // };
+        // value.then(generator(this.index));
+        return { value: value };
     };
     IFCA.prototype.read = function (items) {
-        return this.processing.splice(0, items);
+        console.log('READ: this.processing.length ' + this.processing.length + ' this.readable.length ' + this.readable.length);
+        console.log('READ readable: ' + JSON.stringify(this.readable));
+        if (this.processing.length === 0) {
+            // NOTHING TO READ - TERMINATE AND RETURN NULL
+            return null;
+        }
+        var result = [];
+        var i = 0;
+        for (i; i < items; i++) {
+            if (this.readable[i]) {
+                result.push(this.readable[i]);
+            }
+            else {
+                break;
+            }
+        }
+        this.processing.splice(0, i);
+        console.log('POST READ: this.processing.length ' + this.processing.length + ' this.readable.length ' + this.readable.length);
+        console.log('POST readable: ' + JSON.stringify(this.readable));
+        return result;
     };
     IFCA.prototype.last = function () {
         return this.processing[this.processing.length - 1];

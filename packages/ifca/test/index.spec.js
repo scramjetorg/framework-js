@@ -1,4 +1,4 @@
-const test = require("ava");
+// const test = require("ava");
 
 const { IFCA } = require("../lib/index");
 
@@ -14,7 +14,8 @@ const ELEMENTS = 16;
 
 const ifca = new IFCA(MAX_PARALLEL);
 
-test("PTS", async (t) => {
+// test("IFCA", async (t) => {
+(async () => {
     let a = 0;
     let x = 0;
     let y = 0;
@@ -34,20 +35,59 @@ test("PTS", async (t) => {
 
     const out = [];
 
-    for (const chunk of input) {
-        const result = await ifca.write(chunk);
+    let i = 0;
+    let output = [];
 
-        const { value } = result;
+    ifca.write(input[0]);
+    ifca.write(input[1]);
+    ifca.write(input[2]);
+    ifca.write(input[3]);
 
-        drain = result.drain;
+    const wait = () => {
+        setTimeout(() => {
+            console.log("WAIT");
+            const result = ifca.read(ELEMENTS);
+            console.log("READ RESULT: " + JSON.stringify(result));
 
-        if (drain) await drain;
-    }
+            if (result) {
+                console.log("WAIT...");
+                wait();
+            }
+        }, 1000);
+    };
 
-    while (out.length < ELEMENTS) {
-        const result = ifca.read(ELEMENTS);
-        out.push(...result);
-    }
+    wait();
+
+    ifca.write(input[4]);
+    ifca.write(input[5]);
+    ifca.write(input[6]);
+    ifca.write(input[7]);
+    ifca.write(input[8]);
+    ifca.write(input[9]);
+
+    // const result = ifca.read(ELEMENTS);
+    // console.log("READ: " + JSON.stringify(result));
+    //
+    // while (output.length < ELEMENTS) {
+    //     //    for (const chunk of input) {
+    //     if (i < ELEMENTS) {
+    //         result = await ifca.write(input[i++]);
+    //         const { value } = result;
+    //         console.log("WRITE value: " + value);
+    //     }
+
+    //     output = ifca.read(MAX_PARALLEL);
+
+    //     console.log("READ output:: " + JSON.stringify(output));
+
+    //     //out.push(value);
+    // }
+
+    // while (out.length < ELEMENTS) {
+    //     const result = ifca.read(ELEMENTS);
+    //     console.log("result:" + JSON.stringify(result));
+    //     out.push(...result);
+    // }
 
     /**
      * Expected result (old algorithm)
@@ -72,13 +112,15 @@ test("PTS", async (t) => {
      * ```
      */
 
-    let b = 0;
-    for await (const result of out) {
-        console.error(result);
-        t.is(result.a, b++, "Should work in order");
-        t.is(result.y, result.z, "Should work in order");
-        t.is(result.x, result.y, "Should work out of order");
-        if (result.a > MAX_PARALLEL / 2 && result.a !== ELEMENTS - 1)
-            t.not(result.a, result.x, `Should not be chained ${result.a}, ${result.x}`);
-    }
-});
+    // let b = 0;
+    // for await (const result of out) {
+    //     console.error(result);
+    //
+    //     t.is(result.a, b++, "Should work in order");
+    //     t.is(result.y, result.z, "Should work in order");
+    //     t.is(result.x, result.y, "Should work out of order");
+    //     if (result.a > MAX_PARALLEL / 2 && result.a !== ELEMENTS - 1)
+    //         t.not(result.a, result.x, `Should not be chained ${result.a}, ${result.x}`);
+    //
+    // }
+})();
