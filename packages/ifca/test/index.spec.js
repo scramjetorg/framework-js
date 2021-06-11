@@ -40,23 +40,31 @@ const ifca = new IFCA(MAX_PARALLEL);
 
     ifca.write(input[0]);
     ifca.write(input[1]);
+
+    (async () => {
+        console.log("IIFE BLOCK ASYNC");
+        while (true) {
+            console.log("IIFE am I blocking?");
+        }
+    })();
+
     ifca.write(input[2]);
     ifca.write(input[3]);
 
-    const wait = () => {
-        setTimeout(() => {
-            console.log("WAIT");
-            const result = ifca.read(ELEMENTS);
-            console.log("READ RESULT: " + JSON.stringify(result));
+    // const wait = () => {
+    //     setTimeout(() => {
+    //         console.log("WAIT");
+    //         const result = ifca.read(ELEMENTS);
+    //         console.log("READ RESULT: " + JSON.stringify(result));
 
-            if (result) {
-                console.log("WAIT...");
-                wait();
-            }
-        }, 1000);
-    };
+    //         if (result) {
+    //             console.log("WAIT...");
+    //             wait();
+    //         }
+    //     }, 1000);
+    // };
 
-    wait();
+    // wait();
 
     ifca.write(input[4]);
     ifca.write(input[5]);
