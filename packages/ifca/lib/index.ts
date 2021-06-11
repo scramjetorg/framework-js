@@ -19,11 +19,12 @@ export interface IIFCA<T,S> {
 
     // TODO: destroy(e: Error): void;
 
-    addTransform<W>(tr: TransformFunction<S,W>): IIFCA<T,S>;
+    addTransform<W>(tr: TransformFunction<S,W>): IIFCA<T,W>;
     removeTransform<W>(tr: TransformFunction<W,S>): IIFCA<T,W>;
 }
 
 type ChunkResolver<S> = (chunk: S) => void;
+type MaybePromise<S> = Promise<S> | S;
 
 class ProcessingItem<S> {
     processing: Promise<S>;
@@ -56,7 +57,7 @@ class ProcessingItem<S> {
     }
 };
 
-export class IFCA<T,S> implements IIFCA<T,S> {
+export class IFCA<T,S> {
     constructor(maxParallel: number) {
         this.maxParallel = maxParallel;
     }
@@ -69,10 +70,10 @@ export class IFCA<T,S> implements IIFCA<T,S> {
     private readers: ChunkResolver<S>[] = [];
 
     async write(_chunk: T) {
-        const drain: undefined | PromiseLike<any> = 
+        const drain: MaybePromise<any> | undefined = 
             this.processing.length < this.maxParallel 
                 ? undefined 
-                : this.queue[this.processing.length - this.maxParallel]
+                : this.queue[this.processing.length - this.maxParallel].done
             ;
         const chunkBeforeThisOne = this.processing[this.processing.length - 1];
         
@@ -126,13 +127,14 @@ export class IFCA<T,S> implements IIFCA<T,S> {
             return this.processing[this.processing.length - 1];        
     
     }
+
     addTransform<W>(_tr: TransformFunction<S, W>): IFCA<T, S> {
         this.transforms.push(_tr);
         return this;
         
     }
     // Remove transform (pop)
-    removeTransform<W>(_tr: TransformFunction<W, S>): IFCA<T, W> {
+    removeTransform<W>(_tr: TransformFunction<W, S>): IFCA<T, S> {
         throw new Error("Method not implemented.");
     }
 
