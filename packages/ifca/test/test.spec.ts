@@ -118,6 +118,7 @@ test("PTS", async (t) => {
     let wrote = false;
     defer(10).then(() => {
         writeNext();
+        ifca.end();
         wrote = true;
     });
 
@@ -126,6 +127,8 @@ test("PTS", async (t) => {
     logStatus();
 
     t.true(wrote, "already wrote");
+
+    t.is(ifca.read(), null, "Reached the end.");
 
     // t.true(typeof ifca.write(input[0]) === "undefined", "Initial entry should resolve immediately");
     

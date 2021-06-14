@@ -101,6 +101,7 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
 
         // but if it's undefined
         if (typeof tmpvalue === "undefined") {
+            if (this.ended) return null;
             return new Promise(async res => {
                 // that means we need to wait for it
                 if (this.work[idx]) {
