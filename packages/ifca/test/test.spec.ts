@@ -1,6 +1,6 @@
 import test from "ava";
 
-const { IFCA } = require("../lib/index");
+import { IFCA } from "../lib/test";
 
 /**
  * How many items can be waiting to be flushed
@@ -39,7 +39,7 @@ test("PTS", async (t) => {
     (async () => {
         while (true) {
             const result = ifca.read();
-            for await (const chunk of result) {
+            for await (const chunk of await result) {
                 console.log(chunk);
             }
         }
