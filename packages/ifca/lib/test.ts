@@ -10,6 +10,7 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         this.transforms = [initialTransform];
         this.work = Array(this.maxParallel);
         this.done = Array(this.maxParallel);
+        this.drain = Array(this.maxParallel);
         this.waiting = Array(this.maxParallel);
     }
 
@@ -18,6 +19,8 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     private work: (Promise<any>|undefined)[];
     private done: (T|undefined)[];
+    
+    private drain: (Waiting<void>)[];
     private waiting: Waiting<T|null>[];
 
     private writeIndex = 0;
@@ -29,7 +32,7 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         let x = Array(this.maxParallel);
 
         for (let i = 0; i < x.length; i++) {
-            x[i] = this.done[i] ? "d" : this.waiting[i] ? "f" : this.work[i] ? "w" : ".";
+            x[i] = this.drain[i] ? "D" : this.done[i] ? "d" : this.waiting[i] ? "f" : this.work[i] ? "w" : ".";
         }
 
         return x.join('');
@@ -39,11 +42,9 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         // which item to read
         const readIndex = this.readIndex++ % this.maxParallel;
         // if this is the same item we're writing, then we're full
-        if (this.isWorking(readIndex)) {
-            return this.isDrained().then(() => this._read(readIndex))
-        }
-
-        return this._read(readIndex);
+        return typeof this.work[readIndex] !== "undefined"
+            ? (this.work[readIndex] as Promise<void>).then(() => this._read(readIndex))
+            : this._read(readIndex);
     }
 
     write(data: S): MaybePromise<void> {
@@ -83,16 +84,18 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     private isWorking(index = this.readIndex): boolean {
-        return typeof this.work[index] !== "undefined";
+        return typeof this.work[index] !== "undefined" || typeof this.done[index] !== "undefined";
     }
 
     private isDrained(): Promise<void> {
-        return Promise.resolve(this.work[(this.writeIndex + 1) % this.maxParallel]);
+        const idx = (this.writeIndex + 1) % this.maxParallel;
+        return this.work[idx] || (typeof this.done[idx] !== "undefined" 
+            ? new Promise(res => this.drain[idx] = res)
+            : Promise.resolve()
+        );
     }
 
     private _read(idx: number): MaybePromise<T|null> {
-        console.log("read ", {idx, twi: this.writeIndex, tri: this.readIndex})
-
         // this is the value, when it's already done
         let tmpvalue: T | undefined = this.done[idx];
         
@@ -102,7 +105,7 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         // but if it's undefined
         if (typeof tmpvalue === "undefined") {
             if (this.ended) return null;
-            return new Promise(async res => {
+            return (new Promise(async res => {
                 // that means we need to wait for it
                 if (this.work[idx]) {
                     await this.work[idx];
@@ -111,25 +114,26 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
                 } else if (this.ended) {
                     return res(null);
                 } else {
-                    console.log("waiting", idx);
                     this.waiting[idx] = (value) => {
-                        console.log("resolve", idx, value);
                         delete this.waiting[idx];
                         res(value);
                     }
                 }
-            })
+            }) as Promise<T|null>)
+                .finally(() => {
+                    this.drain[idx] && this.drain[idx]();
+                    delete this.drain[idx];
+                })
         } else {
             delete this.done[idx];
+            this.drain[idx] && this.drain[idx]();
+            delete this.drain[idx];
             return tmpvalue;
         }
     }
 
     private _write(idx: number, result: Promise<T>): void {
-        console.log("write", {idx, twi: this.writeIndex, tri: this.readIndex})
-
         result.then(x => {
-            console.log("wrote", idx, x);
             delete this.work[idx];
             if (typeof this.waiting[idx] === "function") {
                 this.waiting[idx](x);
