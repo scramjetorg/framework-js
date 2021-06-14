@@ -1,6 +1,9 @@
 import test from "ava";
 import { IFCA } from "../lib/test";
 
+type Dict = { [k: string]: number; };
+
+
 /**
  * How many items can be waiting to be flushed
  */
@@ -10,6 +13,10 @@ const MAX_PARALLEL = 8;
  * How many elements should be tested
  */
 const ELEMENTS = 16;
+
+function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void> {
+    return new Promise((res) => setTimeout(() => res(out), ts));
+}
 
 test("PTS", async (t) => {
     let a = 0;
@@ -22,38 +29,30 @@ test("PTS", async (t) => {
     });
 
     const asyncPromiseTransform = async ({ a }: { a: number }) => {
-        const out = { a, n: a%2, x: x++ }
-        if (a % 2) await new Promise((res) => setTimeout(() => res(out), 2000));
+        const out = { a, n: a % 2, x: x++ }
+        if (a % 2) await defer(2000, out);
         return out;
     };
-    const syncPromiseTransform = ({ a, n, x }: {[k: string]: number}) => ({ a, n, x, y: y++ });
-    const syncPromiseTransform2 = ({ a, n, x, y }: {[k: string]: number}) => ({ a, n, x, y, z: z++ });
+    const syncPromiseTransform = ({ a, n, x }: Dict) => ({ a, n, x, y: y++ });
+    const syncPromiseTransform2 = ({ a, n, x, y }: Dict) => ({ a, n, x, y, z: z++ });
 
     const ifca = new IFCA(MAX_PARALLEL, asyncPromiseTransform)
         .addTransform(syncPromiseTransform)
         .addTransform(syncPromiseTransform2)
-    ;
+        ;
 
-    const out: {[k: string]: number}[] = [];
+    const out: Dict[] = [];
 
-    const write = (async () => {
-        for (const chunk of input) {
-            await ifca.write(chunk);
-        }
-        await ifca.end();
-    })();
-
-    const read = (async () => {
-        while (true) {
-            const result = await ifca.read();
-            // console.log(result);
-            if (result === null) return;
-            out.push(result);
-        }
-    })();
-
-    await Promise.all([read, write]);
-
+    t.true(typeof ifca.write(input[0]) === "undefined", "Initial entry should resolve immediately");
+    console.log(ifca.status);
+    await defer(10);
+    console.log(ifca.status);
+    const item1 = ifca.read();
+    console.log(ifca.status);
+    t.false(item1 instanceof Promise, "Not a promise.");
+    t.deepEqual(item1 as unknown as Dict, { a: 0, n: 0, x: 0, y: 0, z: 0 }, "Initial entry should be read")
+    // t.true(typeof ifca.write(input[0]) === "undefined", "Initial entry should resolve immediately");
+    
     // while (out.length < ELEMENTS) {
     //     const result = await ifca.read(ELEMENTS);
     //     out.push(...result);
@@ -92,3 +91,4 @@ test("PTS", async (t) => {
             t.not(result.a, result.x, `Should not be chained ${result.a}, ${result.x}`);
     }
 });
+

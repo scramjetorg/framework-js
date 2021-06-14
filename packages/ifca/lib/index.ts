@@ -14,15 +14,17 @@ export interface IIFCA<S,T,I extends undefined|IIFCA<S,any,any>> {
     maxParallel: number;
     transforms: TransformArray<S, T>;
 
+    status?: string;
+
     /**
      * Write (add chunk)
      * 
      * @param chunk Chunk to be processed
      */
-    write(chunk: S): PromiseLike<void>;
-    end(): PromiseLike<void>;
+    write(chunk: S): MaybePromise<void>;
+    end(): MaybePromise<void>;
 
-    read(): Promise<T|null>;
+    read(): MaybePromise<T|null>;
     
     // TODO: destroy(e: Error): void;
 
