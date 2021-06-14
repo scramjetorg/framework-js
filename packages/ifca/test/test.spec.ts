@@ -1,5 +1,4 @@
 import test from "ava";
-import { Abc } from "../lib/test";
 
 const { IFCA } = require("../lib/index");
 
@@ -24,18 +23,18 @@ test("PTS", async (t) => {
     const input = Array.from(Array(ELEMENTS).keys()).map(() => {
         return { a: a++ };
     });
-    const asyncPromiseTransform = async ({ a }) => {
+    const asyncPromiseTransform = async ({ a }: {a: any}) => {
         if (!(a % 2)) return { a, n: 0, x: x++ };
         return new Promise((res) => setTimeout(() => res({ a, n: 1, x: x++ }), 2000));
     };
-    const syncPromiseTransform = ({ a, n, x }) => ({ a, n, x, y: y++ });
-    const syncPromiseTransform2 = ({ a, n, x, y }) => ({ a, n, x, y, z: z++ });
+    const syncPromiseTransform = ({ a, n, x }: {a: any, n:any, x:any}) => ({ a, n, x, y: y++ });
+    const syncPromiseTransform2 = ({ a, n, x, y }: {a: any, n: any, x: any, y: any}) => ({ a, n, x, y, z: z++ });
 
     ifca.addTransform(asyncPromiseTransform)
         .addTransform(syncPromiseTransform)
         .addTransform(syncPromiseTransform2);
 
-    const out = [];
+    const out:any[] = [];
 
     (async () => {
         while (true) {
