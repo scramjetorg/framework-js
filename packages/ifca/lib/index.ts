@@ -1,4 +1,4 @@
-import { Readable } from "node:stream";
+import { Readable } from "stream";
 
 export type TransformFunction<V,U> = (chunk: V) => (Promise<U>|U)
 
@@ -14,13 +14,13 @@ export interface IIFCA<T,S> {
      */
     write(chunk: T): PromiseLike<void>;
 
-    read(items: number): AsyncIterable<S>;
-    last(): PromiseLike<S>
+    read(items: number): Promise<AsyncIterable<S>>;
+    // last(): PromiseLike<S>
 
     // TODO: destroy(e: Error): void;
 
-    addTransform<W>(tr: TransformFunction<S,W>): IIFCA<T,W>;
-    removeTransform<W>(tr: TransformFunction<W,S>): IIFCA<T,W>;
+    addTransform<W>(tr: TransformFunction<S,W>): IIFCA<T,S>;
+    // removeTransform<W>(tr: TransformFunction<W,S>): IIFCA<T,W>;
 }
 
 type ChunkResolver<S> = (chunk: S) => void;
@@ -92,15 +92,15 @@ export class IFCA<T,S> {
         return drain;
     }
 
-    private addResult(resultToBeReadInOrder: S) {
-        if (this.readers.length > 0) {
-            (this.readers.shift() as ChunkResolver<S>)(resultToBeReadInOrder);
-        } else {
-            this.readable.push(resultToBeReadInOrder);
-        }
+    // private addResult(resultToBeReadInOrder: S) {
+    //     if (this.readers.length > 0) {
+    //         (this.readers.shift() as ChunkResolver<S>)(resultToBeReadInOrder);
+    //     } else {
+    //         this.readable.push(resultToBeReadInOrder);
+    //     }
 
-        this.processing.shift();
-    }
+    //     this.processing.shift();
+    // }
 
     read(items: number): AsyncIterable<S> {
         const results = this.readable.splice(0, items);

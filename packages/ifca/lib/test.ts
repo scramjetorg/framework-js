@@ -45,7 +45,7 @@ export class IFCA<T,S> implements IIFCA<T,S> {
             this.writeIndex = this.writeIndex % this.MAX;
     }
 
-    addTransform<S, W>(_tr: TransformFunction<S, W>) {
+    addTransform<W>(_tr: TransformFunction<S, W>): IFCA<T, S> {
         this.transforms.push(_tr);
         return this;
     }
@@ -58,7 +58,7 @@ export class IFCA<T,S> implements IIFCA<T,S> {
         return this.work[(this.writeIndex + 1) % this.MAX];
     }
 
-    async read() {
+    async read(): Promise<AsyncIterable<S>> {
         // which item to read
         const readIndex = this.readIndex++ % this.MAX;
         // if this is the same item we're writing, then we're full
@@ -74,7 +74,7 @@ export class IFCA<T,S> implements IIFCA<T,S> {
                 await this.work[readIndex];
                 value = this.done[readIndex];
             } else {
-                value = await new Promise((res: Waiting<Z>) => {
+                value = await new Promise((res: Waiting<S>) => {
                     this.waiting[readIndex] = res;
                 });
             }
@@ -83,6 +83,7 @@ export class IFCA<T,S> implements IIFCA<T,S> {
             delete this.done[readIndex];
             delete this.work[readIndex];
         }
+        return value; // ?????
     }
 
 }
