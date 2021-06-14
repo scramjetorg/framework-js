@@ -1,39 +1,47 @@
-import { IIFCA, TransformFunction } from ".";
+import { IIFCA, TransformArray, TransformFunction } from ".";
 
 type MaybePromise<Z> = Promise<Z> | Z;
 type Waiting<Z> = (x: Z) => void;
 
-export class IFCA<T,S> implements IIFCA<T,S> {
-    constructor(maxParallel: number) {
+export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
+    constructor(maxParallel: number, initialTransform: TransformFunction<S,T>) {
         this.maxParallel = maxParallel;
+        this.transforms = [initialTransform];
+        this.work = Array(this.maxParallel);
+        this.done = Array(this.maxParallel);
+        this.waiting = Array(this.maxParallel);
     }
 
     maxParallel: number;
-    transforms: TransformFunction<any, any>[] = [];
+    transforms: TransformArray<S,T>;
 
-    MAX = 16;
-    work: (Promise<any>|undefined)[] = Array(this.MAX);
-    done: (S|undefined)[] = Array(this.MAX);
-    waiting: Waiting<S>[] = Array(this.MAX);
+    private work: (Promise<any>|undefined)[];
+    private done: (T|undefined)[];
+    private waiting: Waiting<T|null>[];
 
-    writeIndex = -1;
-    readIndex = 0;
+    private writeIndex = -1;
+    private readIndex = 0;
 
-    async write(data: T) {
-        const result: Promise<S> = this.transforms
+    private ended: boolean = false;
+
+    async write(data: S) {
+        if (this.ended) {
+            throw new Error("Write after end");
+        }
+
+        const result: Promise<T> = (this.transforms as TransformFunction<any, any>[])
             .reduce(
                 (prev, transform) => prev.then(transform.bind(this)), 
                 Promise.resolve(data)
-            ) as Promise<unknown> as Promise<S>;
+            ) as Promise<unknown> as Promise<T>;
         
         if (this.isFull()) await this.isDrained();
 
-        const idx = ++this.writeIndex % this.MAX;
+        const idx = ++this.writeIndex % this.maxParallel;
 
         result.then(x => {
             if (typeof this.waiting[idx] === "function") {
                 this.waiting[idx](x); 
-                delete this.done[idx];
             } else {
                 this.done[idx] = x;
             }
@@ -41,40 +49,57 @@ export class IFCA<T,S> implements IIFCA<T,S> {
         
         this.work[idx] = result;
 
-        if (this.writeIndex >= this.MAX) 
-            this.writeIndex = this.writeIndex % this.MAX;
+        if (this.writeIndex >= this.maxParallel) 
+            this.writeIndex = this.writeIndex % this.maxParallel;
     }
 
-    addTransform<S, W>(_tr: TransformFunction<S, W>) {
-        this.transforms.push(_tr);
-        return this;
+    async end(): Promise<void> {
+        this.ended = true;
+        await Promise.all(this.work);
+        let next: Waiting<T|null>;
+        while ((next = this.waiting[this.writeIndex++]) && !this.isFull()) {
+            next(null);
+        }
+    }
+
+    addTransform<W>(_tr: TransformFunction<T, W>): IFCA<S, W, this> {
+        (this.transforms as TransformFunction<any, any>[]).push(_tr);
+        return this as unknown as IFCA<S,W,this>;
+    }
+
+    removeTransform() {
+        this.transforms.pop();
+        return this as unknown as I;
     }
 
     private isFull(): boolean {
-        return this.readIndex === this.writeIndex % this.MAX;
+        return this.readIndex === this.writeIndex % this.maxParallel;
     }
 
     private isDrained(): MaybePromise<void> {
-        return this.work[(this.writeIndex + 1) % this.MAX];
+        return this.work[(this.writeIndex + 1) % this.maxParallel];
     }
 
-    async read() {
+    async read(): Promise<T|null> {
         // which item to read
-        const readIndex = this.readIndex++ % this.MAX;
+        const readIndex = this.readIndex++ % this.maxParallel;
         // if this is the same item we're writing, then we're full
-        if (readIndex === this.writeIndex % this.MAX) {
+        if (readIndex === this.writeIndex % this.maxParallel) {
             await this.isDrained();
         }
         // this is the value, when it's already done
-        let value = this.done[readIndex];
+        let value: T | null;
+        let tmpvalue: T | undefined = this.done[readIndex];
         // but if it's undefined
-        if (typeof value === undefined) {
+        if (typeof tmpvalue === "undefined") {
             // that means we need to wait for it
             if (this.work[readIndex]) {
                 await this.work[readIndex];
-                value = this.done[readIndex];
+                value = this.done[readIndex] as T;
+            } else if (this.ended) {
+                return null;
             } else {
-                value = await new Promise((res: Waiting<Z>) => {
+                value = await new Promise((res: Waiting<T|null>) => {
                     this.waiting[readIndex] = res;
                 });
             }
@@ -82,7 +107,11 @@ export class IFCA<T,S> implements IIFCA<T,S> {
             delete this.waiting[readIndex];
             delete this.done[readIndex];
             delete this.work[readIndex];
+        } else {
+            value = tmpvalue;
         }
+
+        return value;
     }
 
 }

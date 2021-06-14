@@ -1,7 +1,5 @@
 import test from "ava";
-import { Abc } from "../lib/test";
-
-const { IFCA } = require("../lib/index");
+import { IFCA } from "../lib/test";
 
 /**
  * How many items can be waiting to be flushed
@@ -13,8 +11,6 @@ const MAX_PARALLEL = 8;
  */
 const ELEMENTS = 16;
 
-const ifca = new IFCA(MAX_PARALLEL);
-
 test("PTS", async (t) => {
     let a = 0;
     let x = 0;
@@ -24,31 +20,39 @@ test("PTS", async (t) => {
     const input = Array.from(Array(ELEMENTS).keys()).map(() => {
         return { a: a++ };
     });
-    const asyncPromiseTransform = async ({ a }) => {
-        if (!(a % 2)) return { a, n: 0, x: x++ };
-        return new Promise((res) => setTimeout(() => res({ a, n: 1, x: x++ }), 2000));
+
+    const asyncPromiseTransform = async ({ a }: { a: number }) => {
+        const out = { a, n: a%2, x: x++ }
+        if (a % 2) await new Promise((res) => setTimeout(() => res(out), 2000));
+        return out;
     };
-    const syncPromiseTransform = ({ a, n, x }) => ({ a, n, x, y: y++ });
-    const syncPromiseTransform2 = ({ a, n, x, y }) => ({ a, n, x, y, z: z++ });
+    const syncPromiseTransform = ({ a, n, x }: {[k: string]: number}) => ({ a, n, x, y: y++ });
+    const syncPromiseTransform2 = ({ a, n, x, y }: {[k: string]: number}) => ({ a, n, x, y, z: z++ });
 
-    ifca.addTransform(asyncPromiseTransform)
+    const ifca = new IFCA(MAX_PARALLEL, asyncPromiseTransform)
         .addTransform(syncPromiseTransform)
-        .addTransform(syncPromiseTransform2);
+        .addTransform(syncPromiseTransform2)
+    ;
 
-    const out = [];
+    const out: {[k: string]: number}[] = [];
 
-    (async () => {
+    const write = (async () => {
+        for (const chunk of input) {
+            await ifca.write(chunk);
+        }
+        await ifca.end();
+    })();
+
+    const read = (async () => {
         while (true) {
-            const result = ifca.read();
-            for await (const chunk of result) {
-                console.log(chunk);
-            }
+            const result = await ifca.read();
+            // console.log(result);
+            if (result === null) return;
+            out.push(result);
         }
     })();
 
-    for (const chunk of input) {
-        await ifca.write(chunk);
-    }
+    await Promise.all([read, write]);
 
     // while (out.length < ELEMENTS) {
     //     const result = await ifca.read(ELEMENTS);
@@ -79,8 +83,8 @@ test("PTS", async (t) => {
      */
 
     let b = 0;
+    console.error(out);
     for await (const result of out) {
-        console.error(result);
         t.is(result.a, b++, "Should work in order");
         t.is(result.y, result.z, "Should work in order");
         t.is(result.x, result.y, "Should work out of order");

@@ -1,26 +1,33 @@
-import { Readable } from "node:stream";
+import { Readable } from "stream";
+import { cpus } from "os";
 
 export type TransformFunction<V,U> = (chunk: V) => (Promise<U>|U)
 
-export interface IIFCA<T,S> {
+export type TransformArray<S, T> = [] | [TransformFunction<S, T>] | [
+    TransformFunction<S, any>,
+    ...TransformFunction<any, any>[],
+    TransformFunction<any, T>
+];
+
+export interface IIFCA<S,T,I extends undefined|IIFCA<S,any,any>> {
     // TODO: This may need a setter if maxParallel is increased so that chunks are not waiting for drain.
     maxParallel: number;
-    transforms: TransformFunction<any,any>[];
+    transforms: TransformArray<S, T>;
 
     /**
      * Write (add chunk)
      * 
      * @param chunk Chunk to be processed
      */
-    write(chunk: T): PromiseLike<void>;
+    write(chunk: S): PromiseLike<void>;
+    end(): PromiseLike<void>;
 
-    read(items: number): AsyncIterable<S>;
-    last(): PromiseLike<S>
-
+    read(): Promise<T|null>;
+    
     // TODO: destroy(e: Error): void;
 
-    addTransform<W>(tr: TransformFunction<S,W>): IIFCA<T,W>;
-    removeTransform<W>(tr: TransformFunction<W,S>): IIFCA<T,W>;
+    addTransform<W>(tr: TransformFunction<T,W>): IIFCA<S,W,this>;
+    removeTransform(): I;
 }
 
 type ChunkResolver<S> = (chunk: S) => void;
@@ -62,12 +69,21 @@ export class IFCA<T,S> {
         this.maxParallel = maxParallel;
     }
 
-    maxParallel: number;
     transforms: TransformFunction<any, any>[] = [];
+
+    private _maxParallel: number = 2 * cpus().length;
     private queue: ProcessingItem<S>[] = [];
     private processing: PromiseLike<any>[] = [];
     private readable: S[] = [];
     private readers: ChunkResolver<S>[] = [];
+
+    set maxParallel(value) {
+        this._maxParallel = value;
+    }
+
+    get maxParallel() {
+        return this._maxParallel;
+    }
 
     async write(_chunk: T) {
         const drain: MaybePromise<any> | undefined = 
@@ -90,16 +106,6 @@ export class IFCA<T,S> {
         ));
 
         return drain;
-    }
-
-    private addResult(resultToBeReadInOrder: S) {
-        if (this.readers.length > 0) {
-            (this.readers.shift() as ChunkResolver<S>)(resultToBeReadInOrder);
-        } else {
-            this.readable.push(resultToBeReadInOrder);
-        }
-
-        this.processing.shift();
     }
 
     read(items: number): AsyncIterable<S> {
