@@ -6,7 +6,8 @@ type Waiting<Z> = ((x: Z) => void) | undefined;
 const callif = <T extends (...args: Z) => void, Z extends any[]>(f: T|undefined, ...args: Z) => {
     f && f(...args);
     return !!f;
-}
+};
+// const t = console.log.bind(console);
 
 export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
 
@@ -30,8 +31,22 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
     private waiting: (Waiting<T|null>)[];
 
     // Indexes will overflow after reading 2^52 items.
-    private writeIndex = 0;
-    private readIndex = 0;
+    private _writeIndex = 0;
+    private _readIndex = 0;
+
+    private get writeIndex() {
+        return this._writeIndex % this.maxParallel;
+    }
+    private set writeIndex(value) {
+        this._writeIndex = value;
+    }
+
+    private get readIndex() {
+        return this._readIndex % this.maxParallel;
+    }
+    private set readIndex(value) {
+        this._readIndex = value;
+    }
 
     private ended: boolean = false;
 
@@ -39,18 +54,28 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         let x = Array(this.maxParallel);
 
         for (let i = 0; i < x.length; i++) {
-            x[i] = this.drain[i] ? "D" : this.done[i] ? "d" : this.waiting[i] ? "f" : this.work[i] ? "w" : ".";
+            x[i] = this.done[i] ? "d" : this.waiting[i] ? "f" : this.work[i] ? "w" : ".";
         }
 
-        return x.join('');
+        return [...x,'-',this.writeIndex,'x',this.readIndex,'+D',this.drain.length].join('');
     }
 
     read(): MaybePromise<T|null> {
         // which item to read
-        const readIndex = this.readIndex++ % this.maxParallel;
+        const readIndex = this.readIndex++;
+
+        let awaiting: Promise<any> | undefined;
+        if (typeof this.work[readIndex] !== "undefined") {
+            awaiting = this.work[readIndex] as Promise<any>;
+        }
+
+        // we may have the previous read waiting!!!
+        // we may have the data ready => return
+        // we may have the data processed => await -> return
+
         // if this is the same item we're writing, then we're full
-        return typeof this.work[readIndex] !== "undefined"
-            ? (this.work[readIndex] as Promise<void>).then(() => this._read(readIndex))
+        return awaiting
+            ? awaiting.then(() => this._read(readIndex))
             : this._read(readIndex);
     }
 
@@ -59,7 +84,7 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
             throw new Error("Write after end");
         }
 
-        const idx = this.writeIndex++ % this.maxParallel;
+        const idx = this.writeIndex++;
         const result: Promise<T> = (this.transforms as TransformFunction<any, any>[])
             .reduce(
                 (prev, transform) => prev.then(transform.bind(this)), 
@@ -98,10 +123,13 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     private isDrained(): Promise<void> {
         const idx = (this.writeIndex + 1) % this.maxParallel;
-        return this.work[idx] || (typeof this.done[idx] !== "undefined" 
-            ? new Promise(res => this.drain[idx] = res)
-            : Promise.resolve()
-        );
+
+        return this.work[idx] || (
+            typeof this.done[idx] !== "undefined" 
+                ? new Promise(res => this.drain[idx] = res)
+                : Promise.resolve()
+            )
+        ;
     }
 
     private _read(idx: number): MaybePromise<T|null> {
@@ -124,10 +152,16 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
                 } else if (this.ended) {
                     return res(null);
                 } else {
-                    this.waiting[idx] = (value) => {
-                        this.waiting[idx] = undefined;
+                    const resolver = (value: T|null) => {
+                        this.waiting[idx] = this.waiting.length > this.maxParallel 
+                            ? this.waiting.splice(this.maxParallel, 1)[0]
+                            : undefined
+                        ;
                         res(value);
                     }
+
+                    if (this.waiting[idx]) this.waiting.push(resolver);
+                    else this.waiting[idx] = resolver;
                 }
             }) as Promise<T|null>)
                 .finally(() => {

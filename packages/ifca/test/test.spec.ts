@@ -2,6 +2,7 @@ import test from "ava";
 import { IFCA } from "../lib/test";
 
 type Dict = { [k: string]: number; };
+type MaybePromise<X> = Promise<X>|X;
 
 /**
  * How many items can be waiting to be flushed
@@ -17,7 +18,7 @@ function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void
     return new Promise((res) => setTimeout(() => res(out), ts));
 }
 
-test("order and latency", async (t) => {
+test("OaL", async (t) => {
     let sum: bigint = BigInt(0);
     let cnt = BigInt(0);
 
@@ -141,17 +142,44 @@ test("PTS", async (t) => {
 
 });
 
-test("Overload", async (t) => {
+test("Overflow reads", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
 
+    const read8: MaybePromise<number|null>[] = [];
+    for (let i = 0; i < 8; i++) {
+        const ret = ifca.read();
+        read8.push(ret);
+        t.log("r", ifca.status, ret)
+    }
+
+    for (let i = 0; i < 8; i++) {
+        ifca.write(i);
+        t.log("w", ifca.status)
+    }
+    ifca.end();
+
+    const results: (null|number)[] = [];
+    for (const x of read8) {
+        t.log(x);
+        results.push(await x);
+    }
+
+    t.deepEqual(results, [1,2,3,4,5,6,7,8], "Should work well");
+});
+
+test("Overflow writes", async (t) => {
+    const ifca = new IFCA(4, (x: number) => x+1);
+    
+    for (let i = 0; i < 8; i++) {
+        ifca.write(i);
+    }
+    ifca.end();
+    
     const read8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
     ];
-
-    for (let i = 0; i < 8; i++) ifca.write(i);
-    ifca.end();
-
     const results = await Promise.all(read8);
 
-    t.deepEqual(results, [2,3,4,5,6,7,8,9], "Should work well");
-})
+    t.deepEqual(results, [1,2,3,4,5,6,7,8], "Should work well");
+});
+
