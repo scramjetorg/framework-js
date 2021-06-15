@@ -1,13 +1,19 @@
 import { IIFCA, TransformArray, TransformFunction } from ".";
 
 type MaybePromise<Z> = Promise<Z> | Z;
-type Waiting<Z> = (x: Z) => void;
+type Waiting<Z> = ((x: Z) => void) | undefined;
+
+const callif = <T extends (...args: Z) => void, Z extends any[]>(f: T|undefined, ...args: Z) => {
+    f && f(...args);
+    return !!f;
+}
 
 export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     constructor(maxParallel: number, initialTransform: TransformFunction<S,T>) {
         this.maxParallel = maxParallel;
         this.transforms = [initialTransform];
+
         this.work = Array(this.maxParallel);
         this.done = Array(this.maxParallel);
         this.drain = Array(this.maxParallel);
@@ -21,8 +27,9 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
     private done: (T|undefined)[];
     
     private drain: (Waiting<void>)[];
-    private waiting: Waiting<T|null>[];
+    private waiting: (Waiting<T|null>)[];
 
+    // Indexes will overflow after reading 2^52 items.
     private writeIndex = 0;
     private readIndex = 0;
 
@@ -59,8 +66,10 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
                 Promise.resolve(data)
             ) as Promise<unknown> as Promise<T>;
         
+        // check if two items couldn't be overwriting items on maxParallel 
+        // consecutive writes
         return this.isWorking(idx)
-            ?  this.isDrained().then(() => this._write(idx, result))
+            ? this.isDrained().then(() => this._write(idx, result))
             : this._write(idx, result);
     }
 
@@ -100,43 +109,44 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         let tmpvalue: T | undefined = this.done[idx];
         
         // let's mark this as read?
-        // delete this.work[readIndex];
+        // this.work[readIndex] = undefined;
 
         // but if it's undefined
         if (typeof tmpvalue === "undefined") {
             if (this.ended) return null;
+
             return (new Promise(async res => {
                 // that means we need to wait for it
                 if (this.work[idx]) {
                     await this.work[idx];
                     res(this.done[idx] as T);
-                    delete this.done[idx];
+                    this.done[idx] = undefined;
                 } else if (this.ended) {
                     return res(null);
                 } else {
                     this.waiting[idx] = (value) => {
-                        delete this.waiting[idx];
+                        this.waiting[idx] = undefined;
                         res(value);
                     }
                 }
             }) as Promise<T|null>)
                 .finally(() => {
-                    this.drain[idx] && this.drain[idx]();
-                    delete this.drain[idx];
+                    callif(this.drain[idx]);
+                    this.drain[idx] = undefined;
                 })
         } else {
-            delete this.done[idx];
-            this.drain[idx] && this.drain[idx]();
-            delete this.drain[idx];
+            this.done[idx] = undefined;
+            callif(this.drain[idx]);
+            this.drain[idx] = undefined;
             return tmpvalue;
         }
     }
 
     private _write(idx: number, result: Promise<T>): void {
         result.then(x => {
-            delete this.work[idx];
+            this.work[idx] = undefined;
             if (typeof this.waiting[idx] === "function") {
-                this.waiting[idx](x);
+                callif(this.waiting[idx], x);
             } else {
                 this.done[idx] = x;
             }
@@ -147,6 +157,5 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         if (this.writeIndex >= this.maxParallel)
             this.writeIndex = this.writeIndex % this.maxParallel;
     }
-
 
 }

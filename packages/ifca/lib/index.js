@@ -35,35 +35,152 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __asyncValues = (this && this.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
+var __await = (this && this.__await) || function (v) { return this instanceof __await ? (this.v = v, this) : new __await(v); }
+var __asyncDelegator = (this && this.__asyncDelegator) || function (o) {
+    var i, p;
+    return i = {}, verb("next"), verb("throw", function (e) { throw e; }), verb("return"), i[Symbol.iterator] = function () { return this; }, i;
+    function verb(n, f) { i[n] = o[n] ? function (v) { return (p = !p) ? { value: __await(o[n](v)), done: n === "return" } : f ? f(v) : v; } : f; }
+};
+var __asyncGenerator = (this && this.__asyncGenerator) || function (thisArg, _arguments, generator) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var g = generator.apply(thisArg, _arguments || []), i, q = [];
+    return i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i;
+    function verb(n) { if (g[n]) i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; }
+    function resume(n, v) { try { step(g[n](v)); } catch (e) { settle(q[0][3], e); } }
+    function step(r) { r.value instanceof __await ? Promise.resolve(r.value.v).then(fulfill, reject) : settle(q[0][2], r); }
+    function fulfill(value) { resume("next", value); }
+    function reject(value) { resume("throw", value); }
+    function settle(f, v) { if (f(v), q.shift(), q.length) resume(q[0][0], q[0][1]); }
+};
+var __values = (this && this.__values) || function(o) {
+    var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
+    if (m) return m.call(o);
+    if (o && typeof o.length === "number") return {
+        next: function () {
+            if (o && i >= o.length) o = void 0;
+            return { value: o && o[i++], done: !o };
+        }
+    };
+    throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
+};
 exports.__esModule = true;
 exports.IFCA = void 0;
+var stream_1 = require("stream");
+var os_1 = require("os");
+var ProcessingItem = /** @class */ (function () {
+    function ProcessingItem(proc) {
+        var _this = this;
+        this.done = false;
+        this.processing = proc;
+        proc.then(function (chunk) {
+            _this.done = true;
+            _this.read && _this.read(chunk);
+        }, function (error) {
+            _this.done = true;
+            _this.error && _this.error(error);
+        });
+    }
+    Object.defineProperty(ProcessingItem.prototype, "value", {
+        /** @readonly */
+        get: function () {
+            var _this = this;
+            return this.done
+                ? this.processing
+                : new Promise(function (res, rej) {
+                    _this.read = res;
+                    _this.error = rej;
+                });
+        },
+        enumerable: false,
+        configurable: true
+    });
+    return ProcessingItem;
+}());
+;
 var IFCA = /** @class */ (function () {
     function IFCA(maxParallel) {
         this.transforms = [];
+        this._maxParallel = 2 * os_1.cpus().length;
+        this.queue = [];
         this.processing = [];
+        this.readable = [];
+        this.readers = [];
         this.maxParallel = maxParallel;
     }
+    Object.defineProperty(IFCA.prototype, "maxParallel", {
+        get: function () {
+            return this._maxParallel;
+        },
+        set: function (value) {
+            this._maxParallel = value;
+        },
+        enumerable: false,
+        configurable: true
+    });
     IFCA.prototype.write = function (_chunk) {
-        var _this = this;
-        var drain = this.processing.length < this.maxParallel ? undefined : this.processing[this.processing.length - this.maxParallel];
-        var value = new Promise(function (res) { return __awaiter(_this, void 0, void 0, function () {
-            var result;
+        return __awaiter(this, void 0, void 0, function () {
+            var drain, chunkBeforeThisOne, currentChunkResult;
             var _this = this;
             return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0: return [4 /*yield*/, drain];
-                    case 1:
-                        _a.sent();
-                        result = this.transforms.reduce(function (prev, transform) { return prev.then(transform.bind(_this)); }, Promise.resolve(_chunk));
-                        return [2 /*return*/, res(result)];
-                }
+                drain = this.processing.length < this.maxParallel
+                    ? undefined
+                    : this.queue[this.processing.length - this.maxParallel].done;
+                chunkBeforeThisOne = this.processing[this.processing.length - 1];
+                currentChunkResult = this.transforms
+                    .reduce(function (prev, transform) { return prev.then(transform.bind(_this)); }, Promise.resolve(_chunk));
+                this.queue.push(new ProcessingItem(Promise
+                    .all([chunkBeforeThisOne, currentChunkResult])
+                    .then(function (_a) {
+                    var result = _a[1];
+                    return result;
+                })));
+                return [2 /*return*/, drain];
             });
-        }); });
-        this.processing.push(value);
-        return { value: value, drain: drain };
+        });
     };
     IFCA.prototype.read = function (items) {
-        return this.processing.splice(0, items);
+        var _this = this;
+        var results = this.readable.splice(0, items);
+        if (results.length === items)
+            return stream_1.Readable.from(results);
+        var resultPromises = (new Array(results.length - items))
+            .fill(1)
+            .map(function () { return new Promise(function (res) { return _this.readers.push(res); }); });
+        return (function () {
+            return __asyncGenerator(this, arguments, function () {
+                var out;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [5 /*yield**/, __values(__asyncDelegator(__asyncValues(results)))];
+                        case 1: return [4 /*yield*/, __await.apply(void 0, [_a.sent()])];
+                        case 2:
+                            _a.sent();
+                            _a.label = 3;
+                        case 3:
+                            if (!true) return [3 /*break*/, 9];
+                            return [4 /*yield*/, __await(resultPromises.shift())];
+                        case 4:
+                            out = _a.sent();
+                            if (!!out) return [3 /*break*/, 6];
+                            return [4 /*yield*/, __await(void 0)];
+                        case 5: return [2 /*return*/, _a.sent()];
+                        case 6: return [4 /*yield*/, __await(out)];
+                        case 7: return [4 /*yield*/, _a.sent()];
+                        case 8:
+                            _a.sent();
+                            return [3 /*break*/, 3];
+                        case 9: return [2 /*return*/];
+                    }
+                });
+            });
+        })();
     };
     IFCA.prototype.last = function () {
         return this.processing[this.processing.length - 1];

@@ -100,6 +100,8 @@ test("PTS", async (t) => {
     t.false(isPromise(writeNext()), "Asynchronous entry should resolve write immediately");
     t.false(isPromise(writeNext()), "Asynchronous entry should resolve write immediately");
     t.true(isPromise(writeNext()), "Entries should fill up when it reaches the end");
+    
+    // TODO: make this go 8 items beyond 
     const item2 = ifca.read();
     const item3 = ifca.read();
     t.true(isPromise(item2), "Is a promise.");
@@ -139,3 +141,17 @@ test("PTS", async (t) => {
 
 });
 
+test("Overload", async (t) => {
+    const ifca = new IFCA(4, (x: number) => x+1);
+
+    const read8 = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+
+    for (let i = 0; i < 8; i++) ifca.write(i);
+    ifca.end();
+
+    const results = await Promise.all(read8);
+
+    t.deepEqual(results, [2,3,4,5,6,7,8,9], "Should work well");
+})
