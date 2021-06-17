@@ -169,23 +169,24 @@ test("Overflow reads", async (t) => {
 
 test("Overflow writes", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
-    
+
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
     }
     ifca.end();
-    
-    const read8 = [
-        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read() 
-    ];
-    const first8 = await Promise.all(read8);
 
-    const another8 = [
-        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read() 
-    ];
-    const second8 = await Promise.all(another8);
 
-    const results = [...first8, ...second8];
+    const read7 = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(),
+    ];
+    const first7 = await Promise.all(read7);
+
+    const another9 = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+    const second9 = await Promise.all(another9);
+
+    const results = [...first7, ...second9];
 
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12,null,null,null,null], "Should work well");
 });

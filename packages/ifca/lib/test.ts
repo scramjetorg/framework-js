@@ -9,6 +9,9 @@ const callif = <T extends (...args: Z) => void, Z extends any[]>(f: T|undefined,
 };
 // const t = console.log.bind(console);
 
+const consistentIndex = (index: number, partition:number, length:number) => 
+    -partition * ~~((index + 1 - length)/partition) + index%partition;
+
 export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     constructor(maxParallel: number, initialTransform: TransformFunction<S,T>) {
@@ -57,21 +60,16 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
             x[i] = this.done[i] ? "d" : this.waiting[i] ? "f" : this.work[i] ? "w" : ".";
         }
 
-        return [...x,'-',this.writeIndex,'x',this.readIndex,'+D',this.drain.length].join('');
+        return [...x,'-',this.writeIndex,'x',this.readIndex,'+D',this.waiting.length,'+W',this.work.length].join('');
     }
 
     read(): MaybePromise<T|null> {
         // which item to read
         const readIndex = this.readIndex++;
 
-        let awaiting: Promise<any> | undefined;
-        if (typeof this.work[readIndex] !== "undefined") {
-            awaiting = this.work[readIndex] as Promise<any>;
-        }
-
-        // we may have the previous read waiting!!!
-        // we may have the data ready => return
-        // we may have the data processed => await -> return
+        const awaiting: Promise<any> | undefined = this.work[
+            consistentIndex(readIndex, this.maxParallel, this.work.length)
+        ];
 
         // if this is the same item we're writing, then we're full
         return awaiting
@@ -177,9 +175,20 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         }
     }
 
-    private _write(idx: number, result: Promise<T>): void {
+    private _write(idx: number, _result: Promise<T>): void {
+        let result: Promise<any> = _result;
+        if (this.work[idx]) {
+            this.work.push()
+            result = this.work[idx] 
+                ? Promise.all([_result, this.work[idx]]).then(([result]) => result)
+                : _result;
+        }
+
         result.then(x => {
-            this.work[idx] = undefined;
+            this.work[idx] = this.work.length > this.maxParallel 
+                ? this.work.splice(this.maxParallel, 1)[0]
+                : undefined
+            ;
             if (typeof this.waiting[idx] === "function") {
                 callif(this.waiting[idx], x);
             } else {
