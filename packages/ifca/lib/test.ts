@@ -141,7 +141,8 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
 
         // but if it's undefined
         if (typeof tmpvalue === "undefined") {
-            if (this.ended) return null;
+            const isAllProcessed = this.work.every(item => item == null );
+            if (this.ended && isAllProcessed) return null;
 
             return (new Promise(async res => {
                 // that means we need to wait for it
@@ -149,7 +150,7 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
                     await this.work[idx];
                     res(this.done[idx] as T);
                     this.done[idx] = undefined;
-                } else if (this.ended) {
+                } else if (this.ended && this.work.length === 0) {
                     return res(null);
                 } else {
                     const resolver = (value: T|null) => {
