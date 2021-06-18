@@ -189,4 +189,23 @@ test("Overflow writes", async (t) => {
 
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12,null,null,null,null], "Should work well");
 });
+test("Overflow writes with read(2) lower than max parallel(4)", async (t) => {
+    const ifca = new IFCA(4, (x: number) => x+1);
+    
+    for (let i = 0; i < 12; i++) {
+        ifca.write(i);
+    }
+    ifca.end();
 
+    let results:any[] = [];
+    
+    for (let j = 0; j < 6; j++) {
+        const read2 = [ ifca.read(), ifca.read()];
+        const result = await Promise.all(read2);
+        results = [...results, ...result]
+    }
+
+    console.log('JSON:' + JSON.stringify(results))
+
+    t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12], "Should work well");
+});
