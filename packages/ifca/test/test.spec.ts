@@ -167,7 +167,30 @@ test("Overflow reads", async (t) => {
     t.deepEqual(results, [1,2,3,4,5,6,7,8], "Should work well");
 });
 
-test("Overflow writes", async (t) => {
+test("Overflow writes. Read 8 x 2", async (t) => {
+    const ifca = new IFCA(4, (x: number) => x+1);
+    
+    for (let i = 0; i < 12; i++) {
+        ifca.write(i);
+    }
+    ifca.end();
+    
+    const read8 = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read() 
+    ];
+    const first8 = await Promise.all(read8);
+
+    const another8 = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read() 
+    ];
+    const second8 = await Promise.all(another8);
+
+    const results = [...first8, ...second8];
+
+    t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12,null,null,null,null], "Should work well");
+});
+
+test("Overflow writes. Read 7 + read 9", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
 
     for (let i = 0; i < 12; i++) {
