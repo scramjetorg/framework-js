@@ -198,7 +198,6 @@ test("Overflow writes. Read 7 + read 9", async (t) => {
     }
     ifca.end();
 
-
     const read7 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(),
     ];
@@ -213,6 +212,23 @@ test("Overflow writes. Read 7 + read 9", async (t) => {
 
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12,null,null,null,null], "Should work well");
 });
+
+test("Overflow writes. Read 12", async (t) => {
+    const ifca = new IFCA(4, (x: number) => x+1);
+
+    for (let i = 0; i < 12; i++) {
+        ifca.write(i);
+    }
+    ifca.end();
+
+    const read12 = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+    const results = await Promise.all(read12);
+
+    t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12], "Should work well");
+});
+
 test("Overflow writes with read(2) lower than max parallel(4)", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
     
