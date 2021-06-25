@@ -18,7 +18,7 @@ function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void
     return new Promise((res) => setTimeout(() => res(out), ts));
 }
 
-test("OaL", async (t) => {
+test.skip("OaL", async (t) => {
     let sum: bigint = BigInt(0);
     let cnt = BigInt(0);
 
@@ -57,7 +57,7 @@ test("OaL", async (t) => {
     t.pass();
 });
 
-test("PTS", async (t) => {
+test.skip("PTS", async (t) => {
     let a = 0;
     let x = 0;
     let y = 0;
@@ -142,7 +142,7 @@ test("PTS", async (t) => {
 
 });
 
-test("Overflow reads", async (t) => {
+test.skip("Overflow reads", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
 
     const read8: MaybePromise<number|null>[] = [];
@@ -167,7 +167,7 @@ test("Overflow reads", async (t) => {
     t.deepEqual(results, [1,2,3,4,5,6,7,8], "Should work well");
 });
 
-test("Overflow writes. Read 8 x 2", async (t) => {
+test.skip("Overflow writes. Read 8 x 2", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
     
     for (let i = 0; i < 12; i++) {
@@ -179,11 +179,13 @@ test("Overflow writes. Read 8 x 2", async (t) => {
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read() 
     ];
     const first8 = await Promise.all(read8);
+    console.log('FIRST8: ' + JSON.stringify(first8))
 
     const another8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read() 
     ];
     const second8 = await Promise.all(another8);
+    console.log('SECOND8: ' + JSON.stringify(second8))
 
     const results = [...first8, ...second8];
 
@@ -199,21 +201,23 @@ test("Overflow writes. Read 7 + read 9", async (t) => {
     ifca.end();
 
     const read7 = [
-        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(),
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
     ];
     const first7 = await Promise.all(read7);
+    console.log('FIRST7: ' + JSON.stringify(first7));
 
-    const another9 = [
-        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
-    ];
-    const second9 = await Promise.all(another9);
+    // const another9 = [
+    //     ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    // ];
+    // const second9 = await Promise.all(another9);
+    // console.log('SECOND9: ' + JSON.stringify(second9));
 
-    const results = [...first7, ...second9];
+    // const results = [...first7, ...second9];
 
-    t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12,null,null,null,null], "Should work well");
+    // t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12,null,null,null,null], "Should work well");
 });
 
-test("Overflow writes. Read 12", async (t) => {
+test.skip("Overflow writes. Read 12", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
 
     for (let i = 0; i < 12; i++) {
@@ -225,11 +229,12 @@ test("Overflow writes. Read 12", async (t) => {
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
     ];
     const results = await Promise.all(read12);
+    console.log('SECOND12: ' + JSON.stringify(results));
 
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12], "Should work well");
 });
 
-test("Overflow writes with read(2) lower than max parallel(4)", async (t) => {
+test.skip("Overflow writes with read(2) lower than max parallel(4)", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
     
     for (let i = 0; i < 12; i++) {
@@ -242,6 +247,7 @@ test("Overflow writes with read(2) lower than max parallel(4)", async (t) => {
     for (let j = 0; j < 6; j++) {
         const read2 = [ ifca.read(), ifca.read()];
         const result = await Promise.all(read2);
+        console.log('RESULT2: ' + JSON.stringify(result))
         results = [...results, ...result]
     }
 
