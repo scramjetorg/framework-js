@@ -2,9 +2,9 @@
 
 ## Possible states
 
-* R - items to read
-* W - items to write
-* M - max parallel
+-   R - items to read
+-   W - items to write
+-   M - max parallel
 
 | Case                  | Condition    | Read                                                       |
 | --------------------- | ------------ | ---------------------------------------------------------- |
@@ -25,3 +25,47 @@
 
 [I,I,I,I,I,I,I,I] -> on write await proc[-6].read, on read proc.shift().value;
 [D,D,D,D,D,D,D,D] -> on write await proc[-6].read
+
+## Debug
+
+In order to debug ava test in VS Code, add following configuration to `launch.json`:
+
+```
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations":[
+      {
+         "type":"pwa-node",
+         "request":"launch",
+         "name":"Launch Program",
+         "skipFiles":[
+            "<node_internals>/**"
+         ],
+         "program":"${workspaceFolder}/test/test.spec.ts",
+         "outFiles":[
+            "${workspaceFolder}/**/*.js"
+         ]
+      },
+      {
+         "type":"node",
+         "request":"launch",
+         "name":"Debug AVA test file",
+         "runtimeExecutable":"${workspaceFolder}/node_modules/ava/cli.js",
+         "runtimeArgs":[
+            "${file}"
+         ],
+         "outputCapture":"std",
+         "skipFiles":[
+            "<node_internals>/**/*.js"
+         ]
+      }
+   ]
+}
+```
+
+Note that `runtimeExecutable` in the example above has been changed to: `node_modules/ava/cli.js`. More details in the follwing link:
+
+https://github.com/avajs/ava/blob/main/docs/recipes/debugging-with-vscode.md
