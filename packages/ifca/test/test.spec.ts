@@ -18,7 +18,7 @@ function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void
     return new Promise((res) => setTimeout(() => res(out), ts));
 }
 
-test("OaL", async (t) => {
+test.skip("OaL", async (t) => {
     let sum: bigint = BigInt(0);
     let cnt = BigInt(0);
 
@@ -57,7 +57,7 @@ test("OaL", async (t) => {
     t.pass();
 });
 
-test("PTS", async (t) => {
+test.skip("PTS", async (t) => {
     let a = 0;
     let x = 0;
     let y = 0;
@@ -142,7 +142,7 @@ test("PTS", async (t) => {
 
 });
 
-test("Overflow reads", async (t) => {
+test.skip("Overflow reads", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
 
     const read8: MaybePromise<number|null>[] = [];
@@ -167,7 +167,7 @@ test("Overflow reads", async (t) => {
     t.deepEqual(results, [1,2,3,4,5,6,7,8], "Should work well");
 });
 
-test("Overflow writes. Read 8 x 2", async (t) => {
+test.skip("Overflow writes. Read 8 x 2", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
     
     for (let i = 0; i < 12; i++) {
@@ -193,7 +193,7 @@ test("Overflow writes. Read 8 x 2", async (t) => {
 });
 
 // This is the problematic case. Strip down to minimum.
-test.skip("Overflow writes Write: 5x Read: 3x Max Parallel: 2", async(t) => {
+test("Overflow writes Write: 5x Read: 3x Max Parallel: 2", async(t) => {
     const ifca = new IFCA(2, (x: number) => x+1);
 
     for (let i = 0; i < 5; i++) {

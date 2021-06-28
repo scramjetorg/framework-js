@@ -150,15 +150,23 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         return typeof this.work[index] !== "undefined" || typeof this.done[index] !== "undefined";
     }
 
-    private isDrained(): Promise<void> {
+    private isDrained(): Promise<unknown> {
         const idx = (this.writeIndex + 1) % this.maxParallel;
 
-        return this.work[idx] || (
-            typeof this.done[idx] !== "undefined" 
-                ? new Promise(res => this.drain[idx] = res)
-                : Promise.resolve()
-            )
-        ;
+  
+        logger('IS DRAINED this.work[idx]: ' + this.work[idx] + ' idx: ' + idx + ' writeIndex: ' + this.writeIndex, this.work);
+        logger('IS DRAINED done:', this.done);
+        // Is that OR actualy working?
+        const result = typeof this.done[idx] !== "undefined" 
+                ? (() => { 
+                    logger('IS DRAINED assign res to this.drain[idx]');
+                    return new Promise(res => this.drain[idx] = res) })()
+                : (() => { 
+                    logger('IS DRAINED resolve')
+                    return Promise.resolve()})()
+            ;
+        logger('IS DRAINED result: ' + result)
+        return result;
     }
 
     private _read(idx: number, debugIDX: number): MaybePromise<T|null> {
