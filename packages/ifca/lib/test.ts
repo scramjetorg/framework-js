@@ -184,7 +184,7 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
 
 
         if (typeof tmpvalue === "undefined") {
-            const isAllProcessed = this.work.every(item => item == null );
+            const isAllProcessed = this.work.every(item => item == null) && this.waiting.every(item => item == null);
             if (this.ended && isAllProcessed) return null;
 
             return (new Promise(async res => {
