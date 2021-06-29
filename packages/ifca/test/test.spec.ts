@@ -57,7 +57,7 @@ test.skip("OaL", async (t) => {
     t.pass();
 });
 
-test.skip("PTS", async (t) => {
+test("PTS", async (t) => {
     let a = 0;
     let x = 0;
     let y = 0;
@@ -142,7 +142,7 @@ test.skip("PTS", async (t) => {
 
 });
 
-test.skip("Overflow reads", async (t) => {
+test("Overflow reads", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
 
     const read8: MaybePromise<number|null>[] = [];
@@ -167,7 +167,7 @@ test.skip("Overflow reads", async (t) => {
     t.deepEqual(results, [1,2,3,4,5,6,7,8], "Should work well");
 });
 
-test.skip("Overflow writes. Read 8 x 2", async (t) => {
+test("Overflow writes. Read 8 x 2", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
     
     for (let i = 0; i < 12; i++) {
@@ -179,21 +179,18 @@ test.skip("Overflow writes. Read 8 x 2", async (t) => {
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read() 
     ];
     const first8 = await Promise.all(read8);
-    console.log('FIRST8: ' + JSON.stringify(first8))
 
     const another8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read() 
     ];
     const second8 = await Promise.all(another8);
-    console.log('SECOND8: ' + JSON.stringify(second8))
 
     const results = [...first8, ...second8];
 
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12,null,null,null,null], "Should work well");
 });
 
-// This is the problematic case. Strip down to minimum.
-test.skip("Overflow writes Write: 5x Read: 3x Max Parallel: 2", async(t) => {
+test("Overflow writes Write: 5x Read: 3x Max Parallel: 2", async(t) => {
     const ifca = new IFCA(2, (x: number) => x+1);
 
     for (let i = 0; i < 5; i++) {
@@ -241,14 +238,13 @@ test("Overflow writes. Read 4x", async (t) => {
         ifca.read(), ifca.read(), ifca.read(), ifca.read()
     ];
     const results = await Promise.all(read4);
-    console.log('read4: ' + JSON.stringify(results));
 
     t.deepEqual(results, [1,2,3,4], "Should work well");
 });
 
 
 // This used to work. Now I've got: Error: Promise returned by test never resolved
-test.skip("Overflow writes. Read 12x", async (t) => {
+test("Overflow writes. Read 12x", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
 
     for (let i = 0; i < 12; i++) {
@@ -260,7 +256,6 @@ test.skip("Overflow writes. Read 12x", async (t) => {
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
     ];
     const results = await Promise.all(read12);
-    console.log('read12: ' + JSON.stringify(results));
 
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12], "Should work well");
 });
