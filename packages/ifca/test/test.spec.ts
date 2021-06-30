@@ -205,7 +205,7 @@ test("Overflow writes Write: 5x Read: 3x Max Parallel: 2", async(t) => {
 })
 
 // Same as above.
-test.skip("Overflow writes. Read 7x + read 9x", async (t) => {
+test("Overflow writes. Read 7x + read 9x", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
 
     for (let i = 0; i < 12; i++) {

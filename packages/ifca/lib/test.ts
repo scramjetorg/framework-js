@@ -193,13 +193,13 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
                     await this.work[idx];
                     res(this.done[idx] as T);
                     this.done[idx] = undefined;
-                } else if (this.ended && this.work.length === 0) {
+                } else if (this.ended && this.work.length === 0) { // THIS NEVER WORKS
                     logger('THE END')
                     return res(null);
                 } else {
                     const resolver = (value: T|null) => {
-                        const spliceit = this.waiting.length > this.maxParallel;
-                        logger('spliceit: ' + spliceit)
+                        const spliceit = this.waiting.length > this.maxParallel; // same logic as in this.work... it doesn't work. this.waiting.length is a constant
+                        logger('Spliceit is always false: ' + spliceit)
 
                         this.waiting[idx] = spliceit 
                             ? this.waiting.splice(this.maxParallel, 1)[0]
@@ -228,6 +228,10 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
             this.done[idx] = undefined;
             callif(this.drain[idx]);
             this.drain[idx] = undefined;
+            // Logic that removes undefined when done.length > maxParallel (waitForRead case)
+            if (this.done.length > this.maxParallel) {
+                this.done = this.done.filter(d => d !== undefined)
+            }
             return tmpvalue;
         }
     }
@@ -258,22 +262,26 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
 
             logger('_WRITE.THEN() WAITING:', this.waiting)
 
-            this.work[idx] = this.work.length > this.maxParallel 
+            this.work[idx] = this.work.length > this.maxParallel // work.length is constant... therefore splice is never happening....
                 ? (() => { 
-                    logger('_WRITE.THEN SPLICE')
+                    logger('_WRITE.THEN SPLICE') // ...does this ever happen - check logs.... NOPE!
                     return this.work.splice(this.maxParallel, 1)[0]})()
                 : (() => { 
-                    logger('_WRITE.THEN UNDEFINED')
-                    return undefined})()
+                    logger('_WRITE.THEN UNDEFINED') // Removes Promise { 12 } in 7+9 test
+                    return undefined })()
             ;
 
 
-            const waitForRead = idx === this.readIndex && this.done[idx] != null;
+            const waitForRead = idx === this.readIndex && this.done[idx] != null; // THIS BREAKS THE LAST ELEMENT
             const type = typeof this.waiting[idx];
 
-            if (type === "function" || waitForRead) {
+            if (type === "function") {
                 callif(this.waiting[idx], x);
                 logger('_WRITE WAIT idx: ' + idx + ' x: ' + x + ' type: ' + type + ' waitForRead: ' + waitForRead);
+
+            } else if (waitForRead) {
+                // return x; //Does this make any sense? resolver is doing res(value) and this.waiting[idx] is already undefined.
+                this.done.push(x);
             } else {
                 this.done[idx] = x;
                 logger('_WRITE.THEN DONE UPDATED idx: ' + idx + ' VALUE: ' + this.done[idx]);
