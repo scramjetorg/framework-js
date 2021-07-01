@@ -285,8 +285,8 @@ test("Write. Read. Write. Read", async (t) => {
 
 });
 
-// TODO: Re-check this test again.
-test.skip("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times", async (t) => {
+// Works okay now
+test("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
     
     for (let i = 0; i < 12; i++) {
@@ -297,7 +297,7 @@ test.skip("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 
     let results:any[] = [];
     
     for (let j = 0; j < 6; j++) {
-        const read2 = [ ifca.read(), ifca.read()];
+        const read2 = [ ifca.read(), ifca.read() ];
         const result = await Promise.all(read2);
         results = [...results, ...result]
     }

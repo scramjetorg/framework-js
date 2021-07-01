@@ -51,6 +51,7 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
     private _readIndex = 0;
     private _debugReadIndex = 0;
     private _debugWriteIndex = 0;
+    private _resetIndex = false;
 
     private get writeIndex() {
         return this._writeIndex % this.maxParallel;
@@ -81,6 +82,13 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
     read(): MaybePromise<T|null> {
         // which item to read
         const readIndex = this.readIndex++;
+
+        // Reset index for next read
+        if (this._resetIndex) { 
+            this.readIndex = 0;
+            this._resetIndex = false;
+        }
+
         const debugReadIndex = this._debugReadIndex++;
 
         // const index = consistentIndex(readIndex, this.maxParallel, this.work.length);
@@ -230,7 +238,17 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
             this.drain[idx] = undefined;
             // Logic that removes undefined when done.length > maxParallel (waitForRead case)
             if (this.done.length > this.maxParallel) {
+                const before = this.done.length;
                 this.done = this.done.filter(d => d !== undefined)
+                const after = this.done.length;
+                const adjustIndex = before - after;
+                this.readIndex -= adjustIndex; // reset read index;
+                if (this.readIndex < 0 ) { 
+                    this.readIndex = 0; // start from beginning
+                } else {
+                    this._resetIndex = true; // will reset index for next read
+                }
+                
             }
             return tmpvalue;
         }
@@ -272,22 +290,26 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
             ;
 
 
-            const waitForRead = idx === this.readIndex && this.done[idx] != null; // THIS BREAKS THE LAST ELEMENT
+            // const waitForRead = idx === this.readIndex && this.done[idx] != null; // THIS BREAKS THE LAST ELEMENT
             const type = typeof this.waiting[idx];
 
             if (type === "function") {
                 callif(this.waiting[idx], x);
-                logger('_WRITE WAIT idx: ' + idx + ' x: ' + x + ' type: ' + type + ' waitForRead: ' + waitForRead);
-
-            } else if (waitForRead) {
+           //     logger('_WRITE WAIT idx: ' + idx + ' x: ' + x + ' type: ' + type + ' waitForRead: ' + waitForRead);
+           // } else if (waitForRead) {
                 // return x; //Does this make any sense? resolver is doing res(value) and this.waiting[idx] is already undefined.
-                this.done.push(x);
+           //     this.done.push(x);
             } else {
-                this.done[idx] = x;
+                // check if undefined first! don't overwrite
+                if (this.done[idx] === undefined) {
+                    this.done[idx] = x;
+                } else {
+                    this.done.push(x)
+                }
                 logger('_WRITE.THEN DONE UPDATED idx: ' + idx + ' VALUE: ' + this.done[idx]);
             }
 
-            logger('FUNCTION AFTER CALLIF idx: ' + idx + ' this.waiting.length: ' + this.waiting.length + ' waitForRead: ' + waitForRead);
+            // logger('FUNCTION AFTER CALLIF idx: ' + idx + ' this.waiting.length: ' + this.waiting.length + ' waitForRead: ' + waitForRead);
             logger('WAITING: ', this.waiting);
         
         });
