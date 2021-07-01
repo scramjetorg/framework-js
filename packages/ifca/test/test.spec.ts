@@ -260,6 +260,31 @@ test("Overflow writes. Read 12x", async (t) => {
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12], "Should work well");
 });
 
+test("Write. Read. Write. Read", async (t) => {
+    const ifca = new IFCA(4, (x: number) => x+1);
+
+    for (let i = 0; i < 4; i++) {
+        ifca.write(i);
+    }
+
+    const read4 = [ ifca.read(), ifca.read(), ifca.read(), ifca.read() ];
+    
+    for (let i = 4; i < 8; i++) {
+        ifca.write(i);
+    }
+    ifca.end();
+
+    const another4 = [ ifca.read(), ifca.read(), ifca.read(), ifca.read() ];
+
+    const first4 = await Promise.all(read4);
+    const second4 = await Promise.all(another4);
+
+    const results = [...first4, ...second4];
+
+    t.deepEqual(results, [1,2,3,4,5,6,7,8], "Should work well");
+
+});
+
 // TODO: Re-check this test again.
 test.skip("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
