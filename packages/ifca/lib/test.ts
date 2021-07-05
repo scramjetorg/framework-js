@@ -14,17 +14,6 @@ const callif = <T extends (...args: Z) => void, Z extends any[]>(f: T|undefined,
 //    return -partition * ~~((index + 1 - length)/partition) + index%partition;
 // }
 
-const logger = (msg:string, array: any[]|null = null) => {
-    console.log(msg);
-    if (array) {
-        for (let i = 0; i < array.length; i++) {
-            console.log(array[i]);
-        }
-        console.log('Length: ' + array.length);
-    }
-    console.log();
-}
-
 export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     constructor(maxParallel: number, initialTransform: TransformFunction<S,T>) {
@@ -90,21 +79,13 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         }
 
         const debugReadIndex = this._debugReadIndex++;
-
-        // const index = consistentIndex(readIndex, this.maxParallel, this.work.length);
-        logger('READ INDEX: ' + readIndex + /* ' CONSISTENT INDEX: ' + index + */ ' debugReadIndex: ' + debugReadIndex);
-        logger('READ WORK', this.work);
         
         const awaiting: Promise<any> | undefined = this.work[readIndex];
 
         // if this is the same item we're writing, then we're full
         return awaiting
-            ? awaiting.then(() => { 
-                logger('READ() AWAITING RESOLVED IDX: ' +  readIndex + ' debugReadIndex: ' + debugReadIndex)
-                return this._read(readIndex, debugReadIndex)})
-            : (() => {
-                logger('READ() IMMEDIATELLY IDX: ' + readIndex + ' debugReadIndex: ' + debugReadIndex)
-                return this._read(readIndex, debugReadIndex)})() ;
+            ? awaiting.then(() => this._read(readIndex, debugReadIndex))
+            : this._read(readIndex, debugReadIndex) ;
     }
 
     write(data: S): MaybePromise<void> {
@@ -122,17 +103,11 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         
         // check if two items couldn't be overwriting items on maxParallel 
         // consecutive writes
-        logger('WRITE this.isWorking(idx): ' + this.isWorking(idx) + ' idx: ' + idx + ' debugWriteIndex: ' + debugWriteIndex);
         return this.isWorking(idx)
-            ? (() => {
-                logger('WRITE AFTER DRAIN... debugWriteIndex ' + debugWriteIndex)
-                return this.isDrained().then(() => { 
-                    logger('...WRITE AFTER DRAINED');
+            ? this.isDrained().then(() => { 
                     return this._write(idx, result, debugWriteIndex)} 
-                )})()
-            : (() => { 
-                logger('WRITE AT ONCE debugWriteIndex: ' + debugWriteIndex);
-                return this._write(idx, result, debugWriteIndex)})();
+                )
+            : this._write(idx, result, debugWriteIndex)
     }
 
     async end(): Promise<void> {
@@ -161,19 +136,11 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
     private isDrained(): Promise<unknown> {
         const idx = (this.writeIndex + 1) % this.maxParallel;
 
-  
-        logger('IS DRAINED this.work[idx]: ' + this.work[idx] + ' idx: ' + idx + ' writeIndex: ' + this.writeIndex, this.work);
-        logger('IS DRAINED done:', this.done);
         // Is that OR actualy working?
         const result = typeof this.done[idx] !== "undefined" 
-                ? (() => { 
-                    logger('IS DRAINED assign res to this.drain[idx]');
-                    return new Promise(res => this.drain[idx] = res) })()
-                : (() => { 
-                    logger('IS DRAINED resolve')
-                    return Promise.resolve()})()
+                ? new Promise(res => this.drain[idx] = res)
+                : Promise.resolve()
             ;
-        logger('IS DRAINED result: ' + result)
         return result;
     }
 
@@ -185,12 +152,6 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         // this.work[readIndex] = undefined;
 
         // but if it's undefined
-        logger('_READ: ' + idx + ' tmpvalue: ' + tmpvalue + ' debugReadIndex: ' + debugIDX);
-        logger('READ.DONE:', this.done);
-        logger('READ.WORK:', this.work);
-        logger('READ.WAITING:', this.waiting);
-
-
         if (typeof tmpvalue === "undefined") {
             const isAllProcessed = this.work.every(item => item == null) && this.waiting.every(item => item == null);
             if (this.ended && isAllProcessed) return null;
@@ -202,24 +163,18 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
                     res(this.done[idx] as T);
                     this.done[idx] = undefined;
                 } else if (this.ended && this.work.length === 0) { // THIS NEVER WORKS
-                    logger('THE END')
                     return res(null);
                 } else {
                     const resolver = (value: T|null) => {
                         const spliceit = this.waiting.length > this.maxParallel; // same logic as in this.work... it doesn't work. this.waiting.length is a constant
-                        logger('Spliceit is always false: ' + spliceit)
-
                         this.waiting[idx] = spliceit 
                             ? this.waiting.splice(this.maxParallel, 1)[0]
                             : undefined
                         ;
-
-                        logger('AFTER splice value: ' + value + ' WAITING: ',  this.waiting)
                         res(value);
                     }
 
-                    logger('WHAT IS HAPPENING HERE? WAITING:', this.waiting);
-
+                    // What's happening here?
                     if (this.waiting[idx]) this.waiting.push(resolver);
                     else this.waiting[idx] = resolver;
                 }
@@ -229,10 +184,6 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
                     this.drain[idx] = undefined;
                 })
         } else {
-            logger('ELSE idx: ' + idx + ' tmpvalue: ' + tmpvalue);
-            logger('ELSE DONE', this.done)
-            logger('ELSE DRAIN', this.drain);
-
             this.done[idx] = undefined;
             callif(this.drain[idx]);
             this.drain[idx] = undefined;
@@ -255,38 +206,21 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     private _write(idx: number, _result: Promise<T>, writeIDX: number): void {
-        logger('_WRITE: ' + idx + ' debugWriteIndex: ' + writeIDX + ' ');
         let result: Promise<any> = _result;
         if (this.work[idx]) {
-            logger('PUSH TO WORK BEFORE:', this.work)
-
             this.work.push() // What's the purpose? Works with 8x2 test correctly
-            logger('PUSH TO WORK AFTER:', this.work)
 
             // result = this.work[idx] // Always going to be true
             //     ? (() => { 
-            //         console.log('ALWAYS TRUE WRITE RETURN PROMISE');
             //         return Promise.all([_result, this.work[idx]]).then(([result]) => result) })()
             //     : (() => { 
-            //         console.log('FALSE RETURN RESULT - CAN IT HAPPEN?')
             //         return _result})(); // POINTLESS
         } 
 
         result.then(x => {
-            logger('_WRITE.THEN IDX: ' + idx + ' x: ' + x + ' debugWriteIndex: ' + writeIDX);
-            logger('_WRITE.THEN() WORK:', this.work)
-
-            logger('_WRITE.THEN() DONE:', this.done)
-
-            logger('_WRITE.THEN() WAITING:', this.waiting)
-
             this.work[idx] = this.work.length > this.maxParallel // work.length is constant... therefore splice is never happening....
-                ? (() => { 
-                    logger('_WRITE.THEN SPLICE') // ...does this ever happen - check logs.... NOPE!
-                    return this.work.splice(this.maxParallel, 1)[0]})()
-                : (() => { 
-                    logger('_WRITE.THEN UNDEFINED') // Removes Promise { 12 } in 7+9 test
-                    return undefined })()
+                ? this.work.splice(this.maxParallel, 1)[0] // ...does this ever happen - check logs.... NOPE!
+                : undefined // Removes Promise { 12 } in 7+9 test
             ;
 
 
@@ -295,10 +229,6 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
 
             if (type === "function") {
                 callif(this.waiting[idx], x);
-           //     logger('_WRITE WAIT idx: ' + idx + ' x: ' + x + ' type: ' + type + ' waitForRead: ' + waitForRead);
-           // } else if (waitForRead) {
-                // return x; //Does this make any sense? resolver is doing res(value) and this.waiting[idx] is already undefined.
-           //     this.done.push(x);
             } else {
                 // check if undefined first! don't overwrite
                 if (this.done[idx] === undefined) {
@@ -306,16 +236,10 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
                 } else {
                     this.done.push(x)
                 }
-                logger('_WRITE.THEN DONE UPDATED idx: ' + idx + ' VALUE: ' + this.done[idx]);
-            }
-
-            // logger('FUNCTION AFTER CALLIF idx: ' + idx + ' this.waiting.length: ' + this.waiting.length + ' waitForRead: ' + waitForRead);
-            logger('WAITING: ', this.waiting);
-        
+            }        
         });
 
         this.work[idx] = result;
-        logger('FINAL WORK AFTER WRITE:', this.work);
 
         if (this.writeIndex >= this.maxParallel)
             this.writeIndex = this.writeIndex % this.maxParallel;

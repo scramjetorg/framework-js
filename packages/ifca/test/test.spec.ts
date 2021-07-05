@@ -176,12 +176,9 @@ test("Overflow writes. Read 7x + read 9x", async (t) => {
 
     const read7 = [ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()];
     const first7 = await Promise.all(read7);
-    console.log('first7: ' + JSON.stringify(first7));
-
 
     const another9 = [ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()];
     const second9 = await Promise.all(another9);
-    console.log('second9: ' + JSON.stringify(second9))
 
     const results = [...first7, ...second9];
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12,null,null,null,null], "Should work well");
