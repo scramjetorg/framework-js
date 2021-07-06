@@ -1,23 +1,19 @@
 {
-    "name": "@scramjet/tests",
-    "version": "0.1.0-pre.1",
-    "description": "Tests intended to run on ",
-    "main": "./src/index.ts",
+    "name": "@scramjet/promise-transform-stream",
+    "version": "5.0.0-pre.1",
+    "description": "The implementation of scramjet framework",
+    "main": "./index.js",
     "scripts": {
-        "start": "ts-node ./src/index",
-        "build": "tsc -p tsconfig.build.json",
-        "clean": "rm -rf ./dist",
-        "watch": "tsc -b --watch",
         "test": "npm run test:ava",
         "test:ava": "ava",
         "prepack": "LOCAL_PACKAGES=true node ../../scripts/publish.js"
     },
+    "types": "./index.ts",
     "author": "Scramjet <open-source@scramjet.org>",
     "license": "AGPL-3.0",
-    "dependencies": {
-        "@scramjet/framework": "0.1.0-pre.1"
-    },
+    "dependencies": {},
     "devDependencies": {
+        "@types/node": "^14.14.33",
         "ava": "^3.15.0",
         "ts-node": "^9.1.1",
         "typedoc": "0.20.28",
@@ -26,11 +22,13 @@
     },
     "ava": {
         "extensions": [
+            "js",
             "ts",
             "tsx"
         ],
         "files": [
-            "**/*.spec.ts"
+            "test/**/*.spec.js",
+            "test/**/*.spec.ts"
         ],
         "require": [
             "ts-node/register"

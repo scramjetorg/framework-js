@@ -12,7 +12,7 @@
     "sourceMap": true,
     "allowJs": true,
     "target": "es6",
-    "lib": ["es7"],
+    "lib": ["es2019"],
     "strict": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true
@@ -31,8 +31,7 @@
     "fallbackPolling": "dynamicPriority"
   },
   "exclude": [
-    "node_modules",
-    "**/*.spec.ts",
+    "**/node_modules",
     "dist"
   ]
 }

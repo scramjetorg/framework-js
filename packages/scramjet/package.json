@@ -1,6 +1,6 @@
 {
     "name": "@scramjet/framework",
-    "version": "0.1.0-pre.1",
+    "version": "5.0.0-pre.1",
     "description": "The implementation of scramjet framework",
     "main": "./src/index.ts",
     "scripts": {

@@ -127,3 +127,4 @@ bdd/*report*.html
 packages/pre-runner/sample-package/
 
 bdd/dataOut.txt
+*.DS_Store
