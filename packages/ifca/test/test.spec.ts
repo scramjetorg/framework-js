@@ -14,9 +14,24 @@ const MAX_PARALLEL = 8;
  */
 const ELEMENTS = 16;
 
+/**
+ * Helper function that defers and optionaly returns given output after waiting.
+ * 
+ * @param {number} ts Number of milliseconds to wait
+ * @param {Object} [out] Optional output
+ * @returns {Promise}
+ */
 function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void> {
     return new Promise((res) => setTimeout(() => res(out), ts));
 }
+
+/**
+ * Helper function that checks if passed argument is a promise.
+ * 
+ * @param {Object} x Obejct to be checked
+ * @returns {Boolean}
+ */
+const isPromise = (x: any) => typeof x !== "undefined" && typeof x.then === "function";
 
 test("PTS", async (t) => {
     let a = 0;
@@ -45,7 +60,6 @@ test("PTS", async (t) => {
         if (!ref) throw new Error("End of input");
         return ifca.write(ref);
     };
-    const isPromise = (x: any) => typeof x !== "undefined" && typeof x.then === "function";
 
     t.false(isPromise(writeNext()), "Synchronous entry should resolve write immediately");
     await defer(10);

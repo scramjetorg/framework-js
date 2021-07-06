@@ -3,6 +3,13 @@ import { IIFCA, TransformArray, TransformFunction } from ".";
 type MaybePromise<Z> = Promise<Z> | Z;
 type Waiting<Z> = ((x: Z) => void) | undefined;
 
+/**
+ * Helper function that calls passed function f if function is not undefined
+ * 
+ * @param {Function} f Function to be called
+ * @param {Object} args Additional function arguments 
+ * @returns {boolean}
+ */
 const callif = <T extends (...args: Z) => void, Z extends any[]>(f: T|undefined, ...args: Z) => {
     f && f(...args);
     return !!f; // Not needed as we don't check return results. Also this is always true as long as there is a function. False when undefined.
@@ -38,8 +45,6 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
     // Indexes will overflow after reading 2^52 items.
     private _writeIndex = 0;
     private _readIndex = 0;
-    private _debugReadIndex = 0;
-    private _debugWriteIndex = 0;
     private _resetIndex = false;
 
     private get writeIndex() {
@@ -77,15 +82,13 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
             this.readIndex = 0;
             this._resetIndex = false;
         }
-
-        const debugReadIndex = this._debugReadIndex++;
         
         const awaiting: Promise<any> | undefined = this.work[readIndex];
 
         // if this is the same item we're writing, then we're full
         return awaiting
-            ? awaiting.then(() => this._read(readIndex, debugReadIndex))
-            : this._read(readIndex, debugReadIndex) ;
+            ? awaiting.then(() => this._read(readIndex))
+            : this._read(readIndex) ;
     }
 
     write(data: S): MaybePromise<void> {
@@ -94,7 +97,6 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         }
 
         const idx = this.writeIndex++;
-        const debugWriteIndex = this._debugWriteIndex++;
         const result: Promise<T> = (this.transforms as TransformFunction<any, any>[])
             .reduce(
                 (prev, transform) => prev.then(transform.bind(this)), 
@@ -105,9 +107,9 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         // consecutive writes
         return this.isWorking(idx)
             ? this.isDrained().then(() => { 
-                    return this._write(idx, result, debugWriteIndex)} 
+                    return this._write(idx, result)} 
                 )
-            : this._write(idx, result, debugWriteIndex)
+            : this._write(idx, result)
     }
 
     async end(): Promise<void> {
@@ -144,7 +146,7 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         return result;
     }
 
-    private _read(idx: number, debugIDX: number): MaybePromise<T|null> {
+    private _read(idx: number): MaybePromise<T|null> {
         // this is the value, when it's already done
         let tmpvalue: T | undefined = this.done[idx];
         
@@ -205,7 +207,7 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
         }
     }
 
-    private _write(idx: number, _result: Promise<T>, writeIDX: number): void {
+    private _write(idx: number, _result: Promise<T>): void {
         let result: Promise<any> = _result;
         if (this.work[idx]) {
             this.work.push() // What's the purpose? Works with 8x2 test correctly
