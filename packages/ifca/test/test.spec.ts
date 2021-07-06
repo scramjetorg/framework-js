@@ -1,5 +1,6 @@
 import test from "ava";
 import { IFCA } from "../lib/test";
+import { defer } from "../utils"
 
 type Dict = { [k: string]: number; };
 type MaybePromise<X> = Promise<X>|X;
@@ -13,17 +14,6 @@ const MAX_PARALLEL = 8;
  * How many elements should be tested
  */
 const ELEMENTS = 16;
-
-/**
- * Helper function that defers and optionaly returns given output after waiting.
- * 
- * @param {number} ts Number of milliseconds to wait
- * @param {Object} [out] Optional output
- * @returns {Promise}
- */
-function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void> {
-    return new Promise((res) => setTimeout(() => res(out), ts));
-}
 
 /**
  * Helper function that checks if passed argument is a promise.

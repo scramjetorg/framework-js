@@ -1,14 +1,11 @@
 import test from "ava";
 import { IFCA } from "../lib/test";
+import { defer } from "../utils"
 
 /**
  * How many items can be waiting to be flushed
  */
 const MAX_PARALLEL = 8;
-
-function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void> {
-    return new Promise((res) => setTimeout(() => res(out), ts));
-}
 
 test("OaL", async (t) => {
     let sum: bigint = BigInt(0);
