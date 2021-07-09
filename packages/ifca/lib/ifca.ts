@@ -122,6 +122,7 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     addTransform<W>(_tr: TransformFunction<T, W>): IFCA<S, W, this> {
+        console.log('IFCA ADD TRANSFORM');
         (this.transforms as TransformFunction<any, any>[]).push(_tr);
         return this as unknown as IFCA<S,W,this>;
     }

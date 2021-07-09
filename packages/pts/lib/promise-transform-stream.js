@@ -306,7 +306,8 @@ class PromiseTransformStream extends Transform {
     }
 
     pushTransform(options) {
-        console.log("this.pushTransform...");
+        console.log("PTS.pushTransform... options:");
+        console.log(options);
         if (typeof options.promiseTransform === "function") {
             if (!this._scramjet_options.transforms) {
                 this._pushedTransform = options.promiseTransform;

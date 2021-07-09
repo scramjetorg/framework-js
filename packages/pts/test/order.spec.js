@@ -1,12 +1,25 @@
 const test = require("ava");
 const { Readable } = require("stream");
 
+/**
+ * Push transform to PromiseTransformStream
+ *
+ * @param {Readable} str
+ * @param {Function} promiseTransform
+ */
 function pushTransformToStreamPTS(str, promiseTransform) {
     str.pushTransform({
         promiseTransform,
     });
 }
 
+/**
+ * Get stream
+ *
+ * @param {Function} promiseTransform
+ * @param {integer} maxParallel
+ * @returns {PromiseTransformStream}
+ */
 function getStreamInOrderPTS(promiseTransform, maxParallel) {
     console.log("FN getStreamInOrderPTS:");
     console.log(promiseTransform);
@@ -28,16 +41,20 @@ test("PTS", async (t) => {
      * How many elements should be tested
      */
     const ELEMENTS = 16;
+
     /**
      * How many items can be waiting to be flushed
      */
     const MAX_PARALLEL = 8;
 
+    /**
+     * Create input array
+     */
     const input = Array.from(Array(ELEMENTS).keys()).map(() => {
         return { a: a++ };
     });
+
     const asyncPromiseTransform = async ({ a }) => {
-        // console.log("CALLED asyncPromiseTransform");
         if (!(a % 2)) return { a, n: 0, x: x++ };
         return new Promise((res) => setTimeout(() => res({ a, n: 1, x: x++ }), 2000));
     };
@@ -47,6 +64,9 @@ test("PTS", async (t) => {
     console.log("Running with: ", { MAX_PARALLEL, ELEMENTS });
 
     const str = new Readable.from(input).pipe(getStreamInOrderPTS(asyncPromiseTransform, MAX_PARALLEL));
+    console.log("PromiseTransformStream:");
+    console.log(str);
+
     pushTransformToStreamPTS(str, syncPromiseTransform);
 
     pushTransformToStreamPTS(str, syncPromiseTransform2);

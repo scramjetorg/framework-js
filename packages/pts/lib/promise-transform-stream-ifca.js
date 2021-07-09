@@ -2,7 +2,10 @@
 
 const { Transform /* Readable */ } = require("stream");
 // const { EventEmitter } = require("events");
+const DefaultHighWaterMark = require("os").cpus().length * 2;
 const { IFCA } = require("../../ifca/lib/ifca");
+
+let seq = 0;
 
 const rename = (ob, fr, to) => {
     if (ob[fr]) {
@@ -74,11 +77,12 @@ class PromiseTransformStream extends Transform {
             console.log("TRANSFORM...");
             // It's always false
             // if (newOptions.promiseTransform && mkTransform.call(this, newOptions)) {
-            if (newOptions.promiseTransform && this.ifca.addTransform(newOptions.promiseTransform)) {
-                // returns true if transform can be pushed to referring stream
-                console.log("RETURN AND PUSH TRANSFORM"); // Never executed
-                return options.referrer.pushTransform(options);
-            }
+            // if (newOptions.promiseTransform && this.ifca.addTransform(newOptions.promiseTransform)) {
+            //     // returns true if transform can be pushed to referring stream
+            //     console.log("RETURN AND PUSH TRANSFORM"); // Never executed
+            //     return options.referrer.pushTransform(options);
+            // }
+            this.ifca.addTransform(newOptions.promiseTransform);
         }
         // What's this?
         // const pluginConstructors = this.constructor[plgctor].get();
@@ -92,7 +96,45 @@ class PromiseTransformStream extends Transform {
         // }
     }
 
-    async _transform(chunk, encoding, callback) {}
+    setOptions(...options) {
+        Object.assign(this._scramjet_options, ...options);
+
+        if (this._scramjet_options.maxParallel) this.setMaxListeners(this._scramjet_options.maxParallel);
+
+        if (this._flushed) {
+            options.forEach(({ promiseFlush }) =>
+                Promise.resolve()
+                    .then(promiseFlush)
+                    .catch((e) => this.raise(e))
+            );
+        }
+
+        return this;
+    }
+
+    pushTransform(options) {
+        console.log("PTS.pushTransform... options:");
+        console.log(options);
+        if (typeof options.promiseTransform === "function") {
+            this.ifca.addTransform(options.promiseTransform);
+        }
+
+        if (typeof options.promiseFlush === "function") {
+            if (this._scramjet_options.runFlush) {
+                throw new Error("Promised Flush cannot be overwritten!");
+            } else {
+                this._scramjet_options.runFlush = options.promiseFlush;
+            }
+        }
+
+        return this;
+    }
+
+    async _transform(chunk, encoding, callback) {
+        console.log("PTS-IFCA _transform chunk: " + JSON.stringify(chunk));
+        this.ifca.write(chunk);
+        callback();
+    }
 
     _flush(callback) {}
 }
