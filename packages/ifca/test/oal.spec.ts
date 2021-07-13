@@ -1,5 +1,5 @@
 import test from "ava";
-import { IFCA } from "../lib/ifca";
+import { IFCA } from "../lib/index";
 import { defer } from "../utils"
 
 /**
