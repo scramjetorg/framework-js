@@ -1,5 +1,5 @@
 import test from "ava";
-import { IFCA } from "../lib/ifca";
+import { IFCA } from "../lib/index";
 import { defer } from "../utils"
 
 type Dict = { [k: string]: number; };
@@ -101,7 +101,7 @@ test("PTS", async (t) => {
 
     t.true(wrote, "already wrote");
 
-    t.is(ifca.read(), null, "Reached the end.");
+    t.is(await ifca.read(), null, "Reached the end."); // TODO: we need await since the read is resolved before end is.
 
     t.pass();
 
@@ -179,10 +179,16 @@ test("Overflow writes. Read 7x + read 9x", async (t) => {
     ifca.end();
 
     const read7 = [ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()];
+    t.log(read7);
     const first7 = await Promise.all(read7);
 
     const another9 = [ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()];
-    const second9 = await Promise.all(another9);
+    const second9 = [];
+    for (const next of another9) {
+        const val = await next;
+        t.log(val, ifca.status);
+        second9.push(val);
+    }
 
     const results = [...first7, ...second9];
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12,null,null,null,null], "Should work well");
