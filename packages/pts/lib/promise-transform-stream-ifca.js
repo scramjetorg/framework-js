@@ -1,7 +1,6 @@
 "use strict";
 
 const { Duplex } = require("stream");
-// const { EventEmitter } = require("events");
 const DefaultHighWaterMark = require("os").cpus().length * 2;
 const { IFCA } = require("../../ifca/lib/ifca");
 
@@ -59,46 +58,6 @@ class PromiseTransformStream extends Duplex {
 
         // IFCA
         this.ifca = new IFCA(newOptions.maxParallel, newOptions.promiseTransform);
-
-        if (newOptions.promiseRead) {
-            this.type = "Read";
-            // mkRead.call(this, newOptions);
-            this.ifca.read();
-            this.tap();
-        } else if (newOptions.promiseWrite) {
-            this.type = "Write";
-            // mkWrite.call(this, newOptions);
-            this.ifca.write();
-        } else if (newOptions.transform || !newOptions.promiseTransform) {
-            this.type = "Transform-"; // ???????
-            this.tap();
-        } else {
-            this.type = "Transform";
-            console.log("TRANSFORM...");
-            // It's always false
-            // if (newOptions.promiseTransform && mkTransform.call(this, newOptions)) {
-            // if (newOptions.promiseTransform && this.ifca.addTransform(newOptions.promiseTransform)) {
-            //     // returns true if transform can be pushed to referring stream
-            //     console.log("RETURN AND PUSH TRANSFORM"); // Never executed
-            //     return options.referrer.pushTransform(options);
-            // }
-            this.ifca.addTransform(newOptions.promiseTransform);
-        }
-        // What's this?
-        // const pluginConstructors = this.constructor[plgctor].get();
-        // if (pluginConstructors.length) {
-        //     let ret;
-        //     pluginConstructors.find((Ctor) => (ret = Ctor.call(this, options)));
-
-        //     if (typeof ret !== "undefined") {
-        //         return ret;
-        //     }
-        // }
-
-        // this.addListener("data", (chunk) => {
-        //     console.log("LISTNER1 data chunk: " + chunk); // Why this is [object Promises]
-        //     this.ifca.write(chunk);
-        // });
     }
 
     setOptions(...options) {
@@ -167,9 +126,6 @@ class PromiseTransformStream extends Duplex {
 
         // const resolved = Promise.all([result]);
         this.push(result);
-        // result.then((value) => {
-        //     console.log("read result then value: " + value);
-        // });
     }
 }
 
