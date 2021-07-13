@@ -10,8 +10,8 @@ let seq = 0;
 
 const shared = { filter, DefaultHighWaterMark, plgctor, storector };
 const mkTransform = require("./mk-transform")(shared);
-const mkRead = require("./mk-read")(shared);
-const mkWrite = require("./mk-write")(shared);
+// const mkRead = require("./mk-read")(shared);
+// const mkWrite = require("./mk-write")(shared);
 const { StreamError } = require("./stream-errors");
 
 const rename = (ob, fr, to) => {
@@ -71,26 +71,29 @@ class PromiseTransformStream extends Transform {
         this.setOptions(newOptions);
         console.log("NEW OPTIONS BEFORE IF:");
         console.log(newOptions);
-        if (newOptions.promiseRead) {
-            this.type = "Read";
-            mkRead.call(this, newOptions);
-            this.tap();
-        } else if (newOptions.promiseWrite) {
-            this.type = "Write";
-            mkWrite.call(this, newOptions);
-        } else if (newOptions.transform || !newOptions.promiseTransform) {
-            this.type = "Transform-";
-            this.tap();
-        } else {
-            this.type = "Transform";
-            console.log("TRANSFORM...");
-            // It's always false
-            if (newOptions.promiseTransform && mkTransform.call(this, newOptions)) {
-                // returns true if transform can be pushed to referring stream
-                console.log("RETURN AND PUSH TRANSFORM"); // Never executed
-                return options.referrer.pushTransform(options);
-            }
+        //
+        // if (newOptions.promiseRead) {
+        //     console.log("PTS constructor READ");
+        //     this.type = "Read";
+        //     mkRead.call(this, newOptions);
+        //     this.tap();
+        // } else if (newOptions.promiseWrite) {
+        //     this.type = "Write";
+        //     mkWrite.call(this, newOptions);
+        // } else if (newOptions.transform || !newOptions.promiseTransform) {
+        //     this.type = "Transform-";
+        //     this.tap();
+        // } else {
+        this.type = "Transform";
+        console.log("TRANSFORM...");
+        // It's always false
+        if (newOptions.promiseTransform && mkTransform.call(this, newOptions)) {
+            // returns true if transform can be pushed to referring stream
+            console.log("RETURN AND PUSH TRANSFORM"); // Never executed
+            return options.referrer.pushTransform(options);
         }
+        // }
+        // ^^^^^^^
         // What's this?
         // const pluginConstructors = this.constructor[plgctor].get();
         // if (pluginConstructors.length) {
@@ -154,37 +157,38 @@ class PromiseTransformStream extends Transform {
         };
     }
 
-    async whenRead(count) {
-        return Promise.race([
-            new Promise((res) => {
-                const read = () => {
-                    const ret = this.read(count);
-                    if (ret !== null) {
-                        return res(ret);
-                    } else {
-                        this.once("readable", read);
-                    }
-                };
-                read();
-            }),
-            this.whenError(),
-            this.whenEnd(),
-        ]);
-    }
+    // async whenRead(count) {
+    //     console.log("PTS.whenRead count: " + count);
+    //     return Promise.race([
+    //         new Promise((res) => {
+    //             const read = () => {
+    //                 const ret = this.read(count);
+    //                 if (ret !== null) {
+    //                     return res(ret);
+    //                 } else {
+    //                     this.once("readable", read);
+    //                 }
+    //             };
+    //             read();
+    //         }),
+    //         this.whenError(),
+    //         this.whenEnd(),
+    //     ]);
+    // }
 
-    async whenDrained() {
-        return (
-            this._scramjet_drainPromise ||
-            (this._scramjet_drainPromise = new Promise((res, rej) =>
-                this.once("drain", () => {
-                    this._scramjet_drainPromise = null;
-                    res();
-                })
-                    .whenError()
-                    .then(rej)
-            ))
-        );
-    }
+    // async whenDrained() {
+    //     return (
+    //         this._scramjet_drainPromise ||
+    //         (this._scramjet_drainPromise = new Promise((res, rej) =>
+    //             this.once("drain", () => {
+    //                 this._scramjet_drainPromise = null;
+    //                 res();
+    //             })
+    //                 .whenError()
+    //                 .then(rej)
+    //         ))
+    //     );
+    // }
 
     async whenWrote(...data) {
         let ret;
@@ -251,24 +255,25 @@ class PromiseTransformStream extends Transform {
             .catch((err) => this.emit("error", err, ...args));
     }
 
-    pipe(to, options) {
-        if (to === this) {
-            return this;
-        }
+    // pipe(to, options) {
+    //     console.log("PTS.pipe()");
+    //     if (to === this) {
+    //         return this;
+    //     }
 
-        if (this !== to && to instanceof PromiseTransformStream) {
-            to.setOptions({ referrer: this });
-            this.on("error", (err) => to.raise(err));
-            this.tap().catch(async (err, ...args) => {
-                await to.raise(err, ...args);
-                return filter;
-            });
-        } else if (to instanceof Readable) {
-            this.on("error", (...err) => to.emit("error", ...err));
-        }
+    //     if (this !== to && to instanceof PromiseTransformStream) {
+    //         to.setOptions({ referrer: this });
+    //         this.on("error", (err) => to.raise(err));
+    //         this.tap().catch(async (err, ...args) => {
+    //             await to.raise(err, ...args);
+    //             return filter;
+    //         });
+    //     } else if (to instanceof Readable) {
+    //         this.on("error", (...err) => to.emit("error", ...err));
+    //     }
 
-        return super.pipe(to, options || { end: true });
-    }
+    //     return super.pipe(to, options || { end: true });
+    // }
 
     graph(func) {
         let referrer = this;
@@ -282,6 +287,7 @@ class PromiseTransformStream extends Transform {
     }
 
     tap() {
+        console.log("PTS.tap()");
         this._tapped = true;
         return this;
     }
@@ -348,23 +354,24 @@ class PromiseTransformStream extends Transform {
         return new this.constructor(...args);
     }
 
-    async _transform(chunk, encoding, callback) {
-        console.log("PTS._transform. chunk: " + JSON.stringify(chunk));
-        console.log(callback);
-        if (!this._delayed_first) {
-            await new Promise((res) => res());
-            this._delayed_first = 1;
-        }
+    // async _transform(chunk, encoding, callback) {
+    //     console.log("PTS._transform. chunk: " + JSON.stringify(chunk));
+    //     console.log(callback);
+    //     if (!this._delayed_first) {
+    //         await new Promise((res) => res());
+    //         this._delayed_first = 1;
+    //     }
 
-        try {
-            if (this._pushedTransform) chunk = await this._pushedTransform(chunk);
-            callback(null, chunk);
-        } catch (err) {
-            callback(err);
-        }
-    }
+    //     try {
+    //         if (this._pushedTransform) chunk = await this._pushedTransform(chunk);
+    //         callback(null, chunk);
+    //     } catch (err) {
+    //         callback(err);
+    //     }
+    // }
 
     _flush(callback) {
+        console.log("PTS._flush");
         const last = Promise.resolve();
 
         if (this._scramjet_options.runFlush) {

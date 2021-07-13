@@ -94,6 +94,11 @@ class PromiseTransformStream extends Transform {
         //         return ret;
         //     }
         // }
+
+        this.addListener("data", (chunk) => {
+            console.log("LISTNER1 data chunk: " + chunk); // Why his is [object Promises]
+            this.ifca.write(chunk);
+        });
     }
 
     setOptions(...options) {
@@ -136,7 +141,35 @@ class PromiseTransformStream extends Transform {
         callback();
     }
 
-    _flush(callback) {}
+    _flush(callback) {
+        console.log("PTS-IFCA FLUSH");
+        this.ifca.end();
+        callback();
+    }
+
+    async _write(data) {
+        console.log("PTS-IFCA WRITE data:" + JSON.stringify(data));
+        this.ifca.write(data);
+    }
+
+    // This happens to early! Why!? Before the first write there are almost 20 reads....
+    /**
+     *
+     * @param {integer} size
+     */
+    async _read(size) {
+        console.log("PTS-IFCA _read size: " + size);
+
+        const result = this.ifca.read(); // result is Promise { <pending> }
+        console.log("PTS.read result:");
+        // console.log(result);
+
+        const resolved = Promise.all([result]);
+        this.push(resolved);
+        // result.then((value) => {
+        //     console.log("read result then value: " + value);
+        // });
+    }
 }
 
 module.exports = {

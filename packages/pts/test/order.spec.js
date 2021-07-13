@@ -1,5 +1,6 @@
 const test = require("ava");
 const { Readable } = require("stream");
+const { defer } = require("../../ifca/utils");
 
 /**
  * Push transform to PromiseTransformStream
@@ -71,6 +72,8 @@ test("PTS", async (t) => {
 
     pushTransformToStreamPTS(str, syncPromiseTransform2);
 
+    await defer(2000); // This defers read after write
+
     /**
      * Current results:
      *
@@ -95,11 +98,12 @@ test("PTS", async (t) => {
      */
     let b = 0;
     for await (const result of str) {
-        console.error(result);
+        console.error("RESULT: " + JSON.stringify(result));
         t.is(result.a, b++, "Should work in order");
         t.is(result.y, result.z, "Should work in order");
         t.is(result.x, result.y, "Should work out of order");
         if (result.a > MAX_PARALLEL / 2 && result.a !== ELEMENTS - 1)
             t.not(result.a, result.x, `Should not be chained ${result.a}, ${result.x}`);
     }
+    t.pass();
 });

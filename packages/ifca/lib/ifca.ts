@@ -92,6 +92,7 @@ export class IFCA<S,T,I extends IIFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     write(data: S): MaybePromise<void> {
+        console.log('IFCA write data: ' + JSON.stringify(data))
         if (this.ended) {
             throw new Error("Write after end");
         }
