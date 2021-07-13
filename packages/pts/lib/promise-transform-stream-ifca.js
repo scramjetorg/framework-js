@@ -2,7 +2,7 @@
 
 const { Duplex } = require("stream");
 const DefaultHighWaterMark = require("os").cpus().length * 2;
-const { IFCA } = require("../../ifca/lib/ifca");
+const { IFCA } = require("../../ifca/lib/index");
 
 let seq = 0;
 
