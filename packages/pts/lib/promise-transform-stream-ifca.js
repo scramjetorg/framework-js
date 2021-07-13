@@ -94,15 +94,9 @@ class PromiseTransformStream extends Duplex {
         return this;
     }
 
-    async _transform(chunk, encoding, callback) {
-        console.log("PTS-IFCA _transform chunk: " + JSON.stringify(chunk));
-        this.ifca.write(chunk);
-        callback();
-    }
-
-    _flush(callback) {
-        console.log("PTS-IFCA FLUSH");
-        this.ifca.end();
+    async _final(callback) {
+        console.log("PTS-IFCA FINAL");
+        await this.ifca.end();
         callback();
     }
 
@@ -120,11 +114,8 @@ class PromiseTransformStream extends Duplex {
     async _read(size) {
         console.log("PTS-IFCA _read size: " + size);
 
-        const result = await this.ifca.read(); // result is Promise { <pending> }
-        console.log("PTS.read result:");
-        // console.log(result);
-
-        // const resolved = Promise.all([result]);
+        const result = await this.ifca.read();
+        console.log("PTS.read result: " + JSON.stringify(result));
         this.push(result);
     }
 }
