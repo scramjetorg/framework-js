@@ -41,7 +41,7 @@ test("PTS", async (t) => {
     const syncPromiseTransform = ({ a, n, x }: Dict) => ({ a, n, x, y: y++ });
     const syncPromiseTransform2 = ({ a, n, x, y }: Dict) => ({ a, n, x, y, z: z++ });
 
-    const ifca = new IFCA(MAX_PARALLEL, asyncPromiseTransform)
+    const ifca = new IFCA(MAX_PARALLEL, asyncPromiseTransform, {strict: true})
         .addTransform(syncPromiseTransform)
         .addTransform(syncPromiseTransform2)
         ;

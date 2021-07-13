@@ -11,13 +11,13 @@ test("OaL", async (t) => {
     let sum: bigint = BigInt(0);
     let cnt = BigInt(0);
 
-    const ifca = new IFCA(MAX_PARALLEL, ({i}: {i: number}) => ({i, ts: process.hrtime.bigint()}))
+    const ifca = new IFCA(MAX_PARALLEL, ({i}: {i: number}) => ({i, ts: process.hrtime.bigint()}), {strict: true})
         .addTransform(({i, ts}) => ({ i, latency: process.hrtime.bigint() - ts }))
     ;
 
     await Promise.all([
         (async () => {
-            for (let i = 0; i < 300; i++) {
+            for (let i = 0; i < 3000; i++) {
                 const ret = ifca.write({i: i+1});
                 // console.log("write", {i}, ifca.status, ret instanceof Promise);
                 await Promise.all([ret, defer(1)]);

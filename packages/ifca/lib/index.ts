@@ -1,12 +1,14 @@
 import { cpus } from "os";
 
 export type TransformFunction<V,U> = (chunk: V) => (Promise<U>|U)
-
+export type IFCAOptions = Partial<{ strict: boolean }>
 export type TransformArray<S, T> = [TransformFunction<S, T>] | [
     TransformFunction<S, any>,
     ...TransformFunction<any, any>[],
     TransformFunction<any, T>
 ];
+
+const isAsync = (func?: any) => !!func && func[Symbol.toStringTag] === 'AsyncFunction';
 
 export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
     // TODO: This may need a setter if maxParallel is increased so that chunks are not waiting for drain.
@@ -39,9 +41,11 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     constructor(
         public maxParallel: number = 2 * cpus().length, 
-        initialTransform: TransformFunction<S,T>
+        initialTransform: TransformFunction<S,T>,
+        options: IFCAOptions = {}
     ) {
         this.transforms = [initialTransform];
+        this.strict = !!options.strict;
     }
 
     transforms: TransformArray<S, T>;
@@ -50,6 +54,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     private readable: NullTerminatedArray<T[]> = [];
     private readers: ChunkResolver<T>[] = [];
     private ended: boolean = false;
+    private readonly strict: boolean;
 
     get status() {
         return "R,".repeat(this.readers.length) + this.processing.slice(this.readers.length).map((x,i) => this.readable[this.readers.length + i] ? 'd,' : 'p,')
@@ -64,7 +69,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             : this.processing[pos - this.maxParallel]
         ;
         const chunkBeforeThisOne = this.processing[pos - 1];
-        const currentChunkResult = this.makeTransformChain(_chunk);
+        const currentChunkResult = this.strict ? this.makeStrictTransformChain(_chunk) : this.makeTransformChain(_chunk);
         
         this.processing.push(
             this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult)
@@ -73,15 +78,19 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return drain;
     }
 
-    private makeProcessingItem(chunkBeforeThisOne: Promise<any>, currentChunkResult: Promise<T>): Promise<any> {
-        return Promise.all([
-            chunkBeforeThisOne, 
-            currentChunkResult
-                .catch(
+    private makeProcessingItem(chunkBeforeThisOne: Promise<any>, currentChunkResult: MaybePromise<T>): Promise<any> {
+        const currentSafeChunkResult = 
+            "catch" in currentChunkResult
+                ? currentChunkResult.catch(
                     (err: Error) => this.readers.length
                         ? (this.readers.shift() as ChunkResolver<T>)[1](err)
                         : undefined
-                )
+                    )
+                : currentChunkResult
+
+        return Promise.all([
+            chunkBeforeThisOne, 
+            currentSafeChunkResult
         ])
             .then(([, result]) => {
                 // console.log("result", result, this.processing.length, this.readers.length);
@@ -94,10 +103,45 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             });
     }
 
+    private makeStrictTransformChain(_chunk: S): MaybePromise<T> {
+        let funcs = [...this.transforms] as TransformFunction<any, any>[];
+        if (!funcs.length) return _chunk as unknown as T;
+        
+        let value: any = _chunk;
+
+        // Synchronous start
+        const syncFunctions = funcs.findIndex(isAsync);
+        if (syncFunctions > 0) {
+            value = this.makeSynchronousChain(funcs.slice(0, syncFunctions))(value);
+            funcs = funcs.slice(syncFunctions);
+        }
+
+        if (!funcs.length) return value;
+
+        let next = Promise.resolve(value);
+        while(funcs.length) {
+            next = next.then(funcs.shift());
+
+            const syncFunctions = funcs.findIndex(isAsync);
+            
+            if (syncFunctions > 0) {
+                next = next.then(this.makeSynchronousChain(funcs.slice(0, syncFunctions)));
+                funcs = funcs.slice(syncFunctions);
+            }
+        }
+        return next;
+    }
+
+    private makeSynchronousChain<X,Y>(funcs: TransformFunction<X, Y>[]): (a: X) => Y {
+        return funcs.reduce.bind(funcs, (acc, func) => func(acc as any)) as (a: X) => Y;
+    }
+        
     private makeTransformChain(_chunk: S): Promise<T> {
         return (this.transforms as TransformFunction<any, any>[])
             .reduce(
-                (prev, transform) => prev.then(transform.bind(this)),
+                (prev, transform) => {
+                    return prev.then(transform.bind(this))
+                },
                 Promise.resolve(_chunk)
             ) as Promise<unknown> as Promise<T>;
     }
