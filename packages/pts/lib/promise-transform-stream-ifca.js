@@ -1,6 +1,6 @@
 "use strict";
 
-const { Transform /* Readable */ } = require("stream");
+const { Duplex } = require("stream");
 // const { EventEmitter } = require("events");
 const DefaultHighWaterMark = require("os").cpus().length * 2;
 const { IFCA } = require("../../ifca/lib/ifca");
@@ -24,7 +24,7 @@ const checkOptions = (options) => {
         throw new Error("Scramjet stream can be either Read, Write or Transform");
 };
 
-class PromiseTransformStream extends Transform {
+class PromiseTransformStream extends Duplex {
     constructor(options = {}) {
         const newOptions = Object.assign(
             {
@@ -95,10 +95,10 @@ class PromiseTransformStream extends Transform {
         //     }
         // }
 
-        this.addListener("data", (chunk) => {
-            console.log("LISTNER1 data chunk: " + chunk); // Why his is [object Promises]
-            this.ifca.write(chunk);
-        });
+        // this.addListener("data", (chunk) => {
+        //     console.log("LISTNER1 data chunk: " + chunk); // Why this is [object Promises]
+        //     this.ifca.write(chunk);
+        // });
     }
 
     setOptions(...options) {
@@ -147,9 +147,10 @@ class PromiseTransformStream extends Transform {
         callback();
     }
 
-    async _write(data) {
+    async _write(data, encoding, callback) {
         console.log("PTS-IFCA WRITE data:" + JSON.stringify(data));
-        this.ifca.write(data);
+        await this.ifca.write(data);
+        callback();
     }
 
     // This happens to early! Why!? Before the first write there are almost 20 reads....
@@ -160,12 +161,12 @@ class PromiseTransformStream extends Transform {
     async _read(size) {
         console.log("PTS-IFCA _read size: " + size);
 
-        const result = this.ifca.read(); // result is Promise { <pending> }
+        const result = await this.ifca.read(); // result is Promise { <pending> }
         console.log("PTS.read result:");
         // console.log(result);
 
-        const resolved = Promise.all([result]);
-        this.push(resolved);
+        // const resolved = Promise.all([result]);
+        this.push(result);
         // result.then((value) => {
         //     console.log("read result then value: " + value);
         // });

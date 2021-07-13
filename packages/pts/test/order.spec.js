@@ -72,7 +72,7 @@ test("PTS", async (t) => {
 
     pushTransformToStreamPTS(str, syncPromiseTransform2);
 
-    await defer(2000); // This defers read after write
+    // await defer(2000); // This defers read after write
 
     /**
      * Current results:
@@ -105,5 +105,4 @@ test("PTS", async (t) => {
         if (result.a > MAX_PARALLEL / 2 && result.a !== ELEMENTS - 1)
             t.not(result.a, result.x, `Should not be chained ${result.a}, ${result.x}`);
     }
-    t.pass();
 });
