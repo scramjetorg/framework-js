@@ -113,9 +113,9 @@ class PromiseTransformStream extends Duplex {
      * @param {Function} callback
      */
     async _writev(chunks, callback) {
-        for (let i = 0; i < chunks.length; i++) {
-            await this.ifca.write(chunks[i].chunk);
-        }
+        console.log("WRITEV chunks: " + JSON.stringify(chunks));
+
+        await this.ifca.writev(chunks.map((o) => o.chunk));
         callback();
     }
 
