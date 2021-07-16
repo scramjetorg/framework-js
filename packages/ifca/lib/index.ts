@@ -2,6 +2,8 @@ import { cpus } from "os";
 
 export type TransformFunction<V,U> = (chunk: V) => (Promise<U>|U)
 export type IFCAOptions = Partial<{ strict: boolean }>
+export type ErrorWithReason = Error & { cause?: Error };
+export type TransformErrorHandler<S, T> = (err: ErrorWithReason|undefined, chunk: S) => MaybePromise<T|undefined>;
 export type TransformArray<S, T> = [TransformFunction<S, T>] | [
     TransformFunction<S, any>,
     ...TransformFunction<any, any>[],
@@ -14,8 +16,10 @@ export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
     // TODO: This may need a setter if maxParallel is increased so that chunks are not waiting for drain.
     maxParallel: number;
     transforms: TransformArray<S, T>;
+    handlers: TransformErrorHandler<S, T>[];
 
     status?: string;
+    
 
     /**
      * Write (add chunk)
@@ -40,7 +44,7 @@ type NullTerminatedArray<X extends any[]> = X | [...X, null]
 export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     constructor(
-        public maxParallel: number = 2 * cpus().length, 
+        public maxParallel = 2 * cpus().length, 
         initialTransform: TransformFunction<S,T>,
         options: IFCAOptions = {}
     ) {
@@ -51,6 +55,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     transforms: TransformArray<S, T>;
 
     private processing: Promise<any>[] = []
+    public handlers = [] as TransformErrorHandler<S,T>[];
     private readable: NullTerminatedArray<T[]> = [];
     private readers: ChunkResolver<T>[] = [];
     private ended: boolean = false;
@@ -89,7 +94,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
                 : currentChunkResult
 
         return Promise.all([
-            chunkBeforeThisOne, 
+            chunkBeforeThisOne.catch(e => e !== undefined ? Promise.reject(e) : undefined), 
             currentSafeChunkResult
         ])
             .then(([, result]) => {
@@ -137,13 +142,39 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
         
     private makeTransformChain(_chunk: S): Promise<T> {
-        return (this.transforms as TransformFunction<any, any>[])
+        const ret = (this.transforms as TransformFunction<any, any>[])
             .reduce(
                 (prev, transform) => {
+                    // TODO: if (transform.isHandler === true) prev.catch(transform);
                     return prev.then(transform.bind(this))
                 },
                 Promise.resolve(_chunk)
             ) as Promise<unknown> as Promise<T>;
+
+        // Promise.resolve(1)
+        //     .then(b => b+2)
+        //     .then(a => a+1)
+        //     .then(x, y)
+        //     .catch(z)
+
+        if (this.handlers) {
+            const handlers = this.handlers;
+            ret.catch(async error => {
+                let ret: T|undefined;
+                for (const hnd of handlers) {
+                    try {
+                        ret = await hnd(error, _chunk);
+                    } catch(e) {
+                        e.cause = error;
+                        error = e;
+                    }
+                }
+                if (!ret) return Promise.reject(undefined);
+                return ret;
+            })
+        }
+
+        return ret;
     }
 
     end(): MaybePromise<void> {
@@ -180,6 +211,12 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     last(): PromiseLike<T> { 
         return this.processing[this.processing.length - 1];
+    }
+
+    addErrorHandler(handler: TransformErrorHandler<S,T>): this {
+        this.handlers.push(handler);
+
+        return this;
     }
 
     addTransform<W>(_tr: TransformFunction<T, W>): IFCA<S, W, this> {
