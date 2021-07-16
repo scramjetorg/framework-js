@@ -19,7 +19,6 @@ export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
     handlers: TransformErrorHandler<S, T>[];
 
     status?: string;
-    
 
     /**
      * Write (add chunk)
@@ -83,6 +82,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return drain;
     }
 
+    // TODO: here's a low hanging fruit for implementing non-ordered processing
     private makeProcessingItem(chunkBeforeThisOne: Promise<any>, currentChunkResult: MaybePromise<T>): Promise<any> {
         const currentSafeChunkResult = 
             "catch" in currentChunkResult
