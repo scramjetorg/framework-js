@@ -82,6 +82,37 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return drain;
     }
 
+    writev(_chunks: S[]):MaybePromise<void> {
+        if (this.ended) throw new Error("Write after end");
+
+        const pos = this.processing.length;
+        console.log('IFCA WRITE pos: ' + pos)
+        const drain: MaybePromise<any> = pos < this.maxParallel 
+            ? undefined 
+            : this.processing[pos - this.maxParallel]
+        ;
+        const chunkBeforeThisOne = this.processing[pos - 1];
+        const currentChunksResult = _chunks.map(chunk => this.strict ? this.makeStrictTransformChain(chunk) : this.makeTransformChain(chunk));
+        
+        this.processing.push(
+            ...this.makeProcessingItems(chunkBeforeThisOne, currentChunksResult)
+        );
+        console.log('DRAIN:');
+        console.log(drain);
+
+        return drain;
+    }
+
+    private makeProcessingItems(chunkBeforeThisOne: Promise<any>, currentChunksResult: MaybePromise<T>[]): Promise<any>[] {
+        const result:MaybePromise<any>[] = [];
+        result.push(this.makeProcessingItem(chunkBeforeThisOne, currentChunksResult[0]));
+        for (let i = 1; i < currentChunksResult.length; i++) {
+            result.push(currentChunksResult[i - 1], currentChunksResult[i])
+        }
+
+        return result;
+    } 
+
     // TODO: here's a low hanging fruit for implementing non-ordered processing
     private makeProcessingItem(chunkBeforeThisOne: Promise<any>, currentChunkResult: MaybePromise<T>): Promise<any> {
         const currentSafeChunkResult = 
