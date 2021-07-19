@@ -94,7 +94,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
                 : currentChunkResult
 
         return Promise.all([
-            chunkBeforeThisOne.catch(e => e !== undefined ? Promise.reject(e) : undefined), 
+            chunkBeforeThisOne?.catch(e => e !== undefined ? Promise.reject(e) : undefined), 
             currentSafeChunkResult
         ])
             .then(([, result]) => {
