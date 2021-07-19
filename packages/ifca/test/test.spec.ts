@@ -1,5 +1,5 @@
 import test from "ava";
-import { IFCA } from "../lib/test";
+import { IFCA } from "../lib/ifca";
 import { defer } from "../utils"
 
 type Dict = { [k: string]: number; };
