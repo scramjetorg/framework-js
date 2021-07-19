@@ -106,7 +106,19 @@ class PromiseTransformStream extends Duplex {
         callback();
     }
 
-    // This happens to early! Why!? Before the first write there are almost 20 reads....
+    /**
+     * https://nodejs.org/api/stream.html#stream_writable_writev_chunks_callback
+     *
+     * @param {Object[]} chunks
+     * @param {Function} callback
+     */
+    async _writev(chunks, callback) {
+        console.log("WRITEV chunks: " + JSON.stringify(chunks));
+
+        await this.ifca.writev(chunks.map((o) => o.chunk));
+        callback();
+    }
+
     /**
      *
      * @param {integer} size
