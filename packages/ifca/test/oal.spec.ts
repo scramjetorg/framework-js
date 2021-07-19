@@ -1,5 +1,5 @@
 import test from "ava";
-import { IFCA } from "../lib/ifca";
+import { IFCA } from "../lib/index";
 import { defer } from "../utils"
 
 /**
@@ -43,5 +43,4 @@ test("OaL", async (t) => {
     const latency = Number(sum * BigInt(1e6) / cnt ) / 1e6;
     t.log("Latency:", latency);
     t.false(latency > 1e4, "Latency does not exceed 10us");
-    t.pass();
 });

@@ -1,5 +1,5 @@
-import { PassThrough } from "stream";
+import { Duplex, DuplexOptions } from "stream";
 
-export class PromiseTransformStream extends PassThrough {
-    constructor(options: Options);
-};
+export class PromiseTransformStream extends Duplex {
+    constructor(options: DuplexOptions);
+}

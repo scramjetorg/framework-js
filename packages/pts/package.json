@@ -13,22 +13,21 @@
     "license": "AGPL-3.0",
     "dependencies": {},
     "devDependencies": {
-        "@types/node": "^14.14.33",
+        "@types/node": "^15.3.0",
         "ava": "^3.15.0",
         "ts-node": "^9.1.1",
         "typedoc": "0.20.28",
         "typedoc-plugin-markdown": "3.4.5",
-        "typescript": "4.1.4"
+        "typescript": "^4.3.5"
     },
     "ava": {
         "extensions": [
             "js",
-            "ts",
-            "tsx"
+            "ts"
         ],
         "files": [
-            "test/**/*.spec.js",
-            "test/**/*.spec.ts"
+            "**/*.spec.js",
+            "**/*.spec.ts"
         ],
         "require": [
             "ts-node/register"

@@ -1,0 +1,4 @@
+{
+  "files": ["*.ts"],
+  "extends": "../../tsconfig.base.json"
+}
