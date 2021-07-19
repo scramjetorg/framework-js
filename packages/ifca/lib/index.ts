@@ -1,4 +1,5 @@
 import { cpus } from "os";
+import { trace } from "../utils"
 
 export type TransformFunction<V,U> = (chunk: V) => (Promise<U>|U)
 export type IFCAOptions = Partial<{ strict: boolean }>
@@ -86,7 +87,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         if (this.ended) throw new Error("Write after end");
 
         const pos = this.processing.length;
-        console.log('IFCA WRITE pos: ' + pos)
+        trace('IFCA WRITE pos: ' + pos)
         const drain: MaybePromise<any> = pos < this.maxParallel 
             ? undefined 
             : this.processing[pos - this.maxParallel]
@@ -97,8 +98,8 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         this.processing.push(
             ...this.makeProcessingItems(chunkBeforeThisOne, currentChunksResult)
         );
-        console.log('DRAIN:');
-        console.log(drain);
+        trace('DRAIN:');
+        trace(drain);
 
         return drain;
     }
@@ -129,8 +130,6 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             currentSafeChunkResult
         ])
             .then(([, result]) => {
-                // console.log("result", result, this.processing.length, this.readers.length);
-
                 this.processing.shift();
                 if (result !== undefined)
                     this.readers.length
@@ -217,7 +216,6 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     private handleEnd() {
-        // console.log("HE");
         this.ended = true;
         this.readers.slice(this.processing.length).forEach(([res]) => res(null));
         this.readable.push(null as unknown as T);
@@ -225,8 +223,6 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     read(): MaybePromise<T|null> {
-        // console.log("R", this.ended, this.readable[0], this.readable.length, this.processing.length)
-
         const ret = this.processing.shift();
         if (this.readable[0] === null)
             return this.handleEnd();

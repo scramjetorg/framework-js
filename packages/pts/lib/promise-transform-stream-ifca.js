@@ -3,6 +3,7 @@
 const { Duplex } = require("stream");
 const DefaultHighWaterMark = require("os").cpus().length * 2;
 const { IFCA } = require("../../ifca/lib/index");
+const { trace } = require("../../ifca/utils");
 
 let seq = 0;
 
@@ -53,8 +54,8 @@ class PromiseTransformStream extends Duplex {
 
         this.setMaxListeners(DefaultHighWaterMark);
         this.setOptions(newOptions);
-        console.log("NEW OPTIONS BEFORE IF:");
-        console.log(newOptions);
+        trace("NEW OPTIONS BEFORE IF:");
+        trace(newOptions);
 
         // IFCA
         this.ifca = new IFCA(newOptions.maxParallel, newOptions.promiseTransform);
@@ -77,8 +78,8 @@ class PromiseTransformStream extends Duplex {
     }
 
     pushTransform(options) {
-        console.log("PTS.pushTransform... options:");
-        console.log(options);
+        trace("PTS.pushTransform... options:");
+        trace(options);
         if (typeof options.promiseTransform === "function") {
             this.ifca.addTransform(options.promiseTransform);
         }
@@ -95,13 +96,13 @@ class PromiseTransformStream extends Duplex {
     }
 
     async _final(callback) {
-        console.log("PTS-IFCA FINAL");
+        trace("PTS-IFCA FINAL");
         await this.ifca.end();
         callback();
     }
 
     async _write(data, encoding, callback) {
-        console.log("PTS-IFCA WRITE data:" + JSON.stringify(data));
+        trace("PTS-IFCA WRITE data:" + JSON.stringify(data));
         await this.ifca.write(data);
         callback();
     }
@@ -113,7 +114,7 @@ class PromiseTransformStream extends Duplex {
      * @param {Function} callback
      */
     async _writev(chunks, callback) {
-        console.log("WRITEV chunks: " + JSON.stringify(chunks));
+        trace("WRITEV chunks: " + JSON.stringify(chunks));
 
         await this.ifca.writev(chunks.map((o) => o.chunk));
         callback();
@@ -124,10 +125,10 @@ class PromiseTransformStream extends Duplex {
      * @param {integer} size
      */
     async _read(size) {
-        console.log("PTS-IFCA _read size: " + size);
+        trace("PTS-IFCA _read size: " + size);
 
         const result = await this.ifca.read();
-        console.log("PTS.read result: " + JSON.stringify(result));
+        trace("PTS.read result: " + JSON.stringify(result));
         this.push(result);
     }
 }
