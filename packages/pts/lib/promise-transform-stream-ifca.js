@@ -95,6 +95,15 @@ class PromiseTransformStream extends Duplex {
         return this;
     }
 
+    addTransform(transform) {
+        return this.ifca.addTransform(transform);
+    }
+
+    addHandler(handler) {
+        console.log(handler);
+        return this.ifca.addErrorHandler(handler);
+    }
+
     async _final(callback) {
         trace("PTS-IFCA FINAL");
         await this.ifca.end();

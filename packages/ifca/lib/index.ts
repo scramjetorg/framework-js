@@ -27,7 +27,7 @@ export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
      * @param chunk Chunk to be processed
      */
     write(chunk: S): MaybePromise<void>;
-    end(): MaybePromise<void>;
+    end(): MaybePromise<void|null>;
 
     read(): MaybePromise<T|null>;
     
@@ -79,7 +79,9 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         this.processing.push(
             this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult)
         );
-
+        
+        trace('DRAIN WRITE:');
+        trace(drain);
         return drain;
     }
 
@@ -98,17 +100,17 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         this.processing.push(
             ...this.makeProcessingItems(chunkBeforeThisOne, currentChunksResult)
         );
-        trace('DRAIN:');
+        trace('DRAIN WRITEV:');
         trace(drain);
 
         return drain;
     }
 
-    private makeProcessingItems(chunkBeforeThisOne: Promise<any>, currentChunksResult: MaybePromise<T>[]): Promise<any>[] {
+    private makeProcessingItems(chunkBeforeThisOne: Promise<any>, currentChunksResult: Promise<T>[]): Promise<any>[] {
         const result:MaybePromise<any>[] = [];
         result.push(this.makeProcessingItem(chunkBeforeThisOne, currentChunksResult[0]));
         for (let i = 1; i < currentChunksResult.length; i++) {
-            result.push(currentChunksResult[i - 1], currentChunksResult[i])
+            result.push(this.makeProcessingItem(currentChunksResult[i - 1], currentChunksResult[i]))
         }
 
         return result;
@@ -138,9 +140,11 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             });
     }
 
-    private makeStrictTransformChain(_chunk: S): MaybePromise<T> {
+    // TODO: Check this - why type T is assignable to MaybePromise<T>
+    // Yet, type T is not assignable to Promise<any> or Promise<T>
+    private makeStrictTransformChain(_chunk: S): Promise<any> {
         let funcs = [...this.transforms] as TransformFunction<any, any>[];
-        if (!funcs.length) return _chunk as unknown as T;
+        if (!funcs.length) return _chunk as unknown as any;
         
         let value: any = _chunk;
 
@@ -207,12 +211,11 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return ret;
     }
 
-    end(): MaybePromise<void> {
+    end(): MaybePromise<void|null> {
         const last = this.processing[this.processing.length - 1];
         
         if (last) 
-            return last.then(() => this.end())
-        this.handleEnd();
+            return last.then(() => this.handleEnd());
     }
 
     private handleEnd() {
