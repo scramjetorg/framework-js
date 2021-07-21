@@ -106,11 +106,11 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return drain;
     }
 
-    private makeProcessingItems(chunkBeforeThisOne: Promise<any>, currentChunksResult: Promise<T>[]): Promise<any>[] {
+    private makeProcessingItems(chunkBeforeThisOne: Promise<any>, currentChunksResult: MaybePromise<T>[]): Promise<any>[] {
         const result:MaybePromise<any>[] = [];
         result.push(this.makeProcessingItem(chunkBeforeThisOne, currentChunksResult[0]));
         for (let i = 1; i < currentChunksResult.length; i++) {
-            result.push(this.makeProcessingItem(currentChunksResult[i - 1], currentChunksResult[i]))
+            result.push(this.makeProcessingItem(currentChunksResult[i - 1] as Promise<T>, currentChunksResult[i]))
         }
 
         return result;
@@ -140,11 +140,9 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             });
     }
 
-    // TODO: Check this - why type T is assignable to MaybePromise<T>
-    // Yet, type T is not assignable to Promise<any> or Promise<T>
-    private makeStrictTransformChain(_chunk: S): Promise<any> {
+    private makeStrictTransformChain(_chunk: S): MaybePromise<T> {
         let funcs = [...this.transforms] as TransformFunction<any, any>[];
-        if (!funcs.length) return _chunk as unknown as any;
+        if (!funcs.length) return _chunk as unknown as T;
         
         let value: any = _chunk;
 
