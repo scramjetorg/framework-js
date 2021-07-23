@@ -44,8 +44,10 @@ test("Error Handler", async (t) => {
     // .getStreamAdapter(gen);
     // .getStreamAdapter();
     let items = [];
+    const generator = str.getGenerator(1000);
+    // const generator = str.next(); // OKAYISH...
     try {
-        for await (const chunk of str.next()) {
+        for await (const chunk of generator) {
             console.log("FOR AWAIT chunk: " + JSON.stringify(chunk));
             items.push(chunk);
         }

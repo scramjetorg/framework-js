@@ -187,6 +187,28 @@ class PromiseTransformStream extends Duplex {
             });
         }
     }
+
+    getRandomString() {
+        return (Math.random() * 16).toString(16);
+    }
+
+    /**
+     * Dummy generator used for tesing.
+     * TODO: Remove later
+     *
+     * @param {Number} time Milliseconds
+     */
+    *getGenerator(time) {
+        console.log("INSIDE GENERATOR");
+        const streamEnds = Date.now() + time;
+        while (Date.now() < streamEnds) {
+            yield new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve(this.getRandomString());
+                }, 100);
+            });
+        }
+    }
 }
 
 module.exports = {
