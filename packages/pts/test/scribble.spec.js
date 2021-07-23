@@ -1,5 +1,10 @@
-const assert = require("assert");
+const test = require("ava");
 const { PromiseTransformStream } = require("../lib/promise-transform-stream-ifca");
+
+/**
+ * How many items can be waiting to be flushed
+ */
+const MAX_PARALLEL = 8;
 
 const gen = function* () {
     let i = 0;
@@ -8,44 +13,45 @@ const gen = function* () {
 
 const databaseSave = () => new Promise((res) => setTimeout(res, 100));
 
-const str = new PromiseTransformStream(
-    { read: gen } // TODO: Add
-)
-    .addTransform((x) => (x.a % 2 ? x : undefined))
-    .addTransform((x) => ({ b: x.a }))
-    .addTransform((x) => {
-        if (x.b % 10 === 7) throw new Error("This should be handled"); // 7 and 17 throws Error
-
-        return x;
-    })
-    .addHandler((err, x) => {
-        // TODO: Add addHandler
-        if (x.b === 7 || x.b === 21) return undefined;
-        throw err;
-    })
-    .addTransform(
-        (x) => {
-            if (x.b === 17) throw new Error("This should be handled");
-            if (x.b === 21) throw new Error("This should not be handled");
-        },
-        (err, x) => {
-            if (x.b === 17) return x;
-            throw err;
-        } // TODO: add.
-        // Only applies to if (x.b === 17) throw new Error("This should be handled");
-        // This drills down to IFCA to add such an option.
+test("Error Handler", async (t) => {
+    const str = new PromiseTransformStream(
+        { read: gen, maxParallel: MAX_PARALLEL, promiseTransform: (x) => (x.a % 2 ? x : undefined) } // TODO: Add
     )
-    .addTransform((x) => databaseSave(x));
-(async () => {
+        .addTransform((x) => ({ b: x.a }))
+        .addTransform((x) => {
+            if (x.b % 10 === 7) throw new Error("This should be handled"); // 7 and 17 throws Error
+
+            return x;
+        })
+        .addErrorHandler((err, x) => {
+            // TODO: Add addHandler
+            if (x.b === 7 || x.b === 21) return undefined;
+            throw err;
+        })
+        .addTransform(
+            (x) => {
+                if (x.b === 17) throw new Error("This should be handled");
+                if (x.b === 21) throw new Error("This should not be handled");
+            },
+            (err, x) => {
+                if (x.b === 17) return x;
+                throw err;
+            } // TODO: add.
+            // Only applies to if (x.b === 17) throw new Error("This should be handled");
+            // This drills down to IFCA to add such an option.
+        )
+        .addTransform((x) => databaseSave(x));
+    // .getStreamAdapter(gen);
+    // .getStreamAdapter();
     let items = [];
     try {
-        for await (const chunk of str) {
-            items.push(chunk.b);
+        for await (const chunk of str.next()) {
+            console.log("FOR AWAIT chunk: " + JSON.stringify(chunk));
+            items.push(chunk);
         }
-    } catch {
-        assert.deepStrictEqual(items, [1, 3, 5, 9, 11, 13, 15, 17, 19]); // 21 will go to the next catch
+    } catch (e) {
+        console.log(e);
+        console.log(items);
+        t.deepEqual(items, [1, 3, 5, 9, 11, 13, 15, 17, 19]); // 21 will go to the next catch
     }
-})().catch((e) => {
-    process.exitCode = 10;
-    console.error(e.stack);
 });

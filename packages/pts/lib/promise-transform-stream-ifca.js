@@ -59,7 +59,30 @@ class PromiseTransformStream extends Duplex {
 
         // IFCA
         this.ifca = new IFCA(newOptions.maxParallel, newOptions.promiseTransform);
+
+        let generator;
+        if (options.read) {
+            generator = options.read();
+            for (const value of generator) {
+                console.log("value: " + JSON.stringify(value));
+                this.ifca.write(value);
+            }
+            console.log("LOADED VALUES");
+        }
     }
+
+    // *getStreamAdapter() {
+    //     let done = false;
+    //     this.on("end", (d) => {
+    //         done = true;
+    //     });
+    //     while (!done) {
+    //         yield new Promise((resolve, reject) => {
+    //             stream.once("data", resolve);
+    //             stream.once("end", resolve);
+    //         });
+    //     }
+    // }
 
     setOptions(...options) {
         Object.assign(this._scramjet_options, ...options);
@@ -95,13 +118,26 @@ class PromiseTransformStream extends Duplex {
         return this;
     }
 
+    /**
+     * Add TransformFunction to PromiseTransformStream
+     *
+     * @param {TransformFunction} transform
+     * @returns {PromiseTransformStream}
+     */
     addTransform(transform) {
-        return this.ifca.addTransform(transform);
+        this.ifca.addTransform(transform);
+        return this;
     }
 
-    addHandler(handler) {
-        console.log(handler);
-        return this.ifca.addErrorHandler(handler);
+    /**
+     * Add TransformErrorHandler to PromiseTransformStream
+     *
+     * @param {TransformErrorHandler} handler
+     * @returns {PromiseTransformStream}
+     */
+    addErrorHandler(handler) {
+        this.ifca.addErrorHandler(handler);
+        return this;
     }
 
     async _final(callback) {
@@ -139,6 +175,17 @@ class PromiseTransformStream extends Duplex {
         const result = await this.ifca.read();
         trace("PTS.read result: " + JSON.stringify(result));
         this.push(result);
+    }
+
+    *next() {
+        let value = await this.ifca.read();
+        console.log("DEBUG VALUE: ");
+        console.log(value);
+        while (true) {
+            yield new Promise((resolve) => {
+                resolve(value);
+            });
+        }
     }
 }
 
