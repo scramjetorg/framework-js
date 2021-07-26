@@ -8,18 +8,24 @@ const MAX_PARALLEL = 8;
 
 const gen = function* () {
     let i = 0;
-    while (i < 100) yield { a: i++ };
+    while (i < 25) yield { a: i++ };
 };
 
 const databaseSave = () => new Promise((res) => setTimeout(res, 100));
 
 test("Error Handler", async (t) => {
-    const str = new PromiseTransformStream(
-        { read: gen, maxParallel: MAX_PARALLEL, promiseTransform: (x) => (x.a % 2 ? x : undefined) } // TODO: Add
-    )
+    const str = new PromiseTransformStream({
+        read: gen,
+        maxParallel: MAX_PARALLEL,
+        promiseTransform: (x) => (x.a % 2 ? x : 0), // If 0 is undefined then the next transform gives: TypeError: Cannot read property 'a' of undefined
+    })
         .addTransform((x) => ({ b: x.a }))
         .addTransform((x) => {
-            if (x.b % 10 === 7) throw new Error("This should be handled"); // 7 and 17 throws Error
+            if (x.b % 10 === 7) {
+                console.log("HANDLE ERROR");
+                throw new Error("This should be handled"); // 7 and 17 throws Error
+            }
+            console.log("ADD TRANSFORM RETURN x: " + JSON.stringify(x));
 
             return x;
         })
@@ -41,13 +47,10 @@ test("Error Handler", async (t) => {
             // This drills down to IFCA to add such an option.
         )
         .addTransform((x) => databaseSave(x));
-    // .getStreamAdapter(gen);
-    // .getStreamAdapter();
+
     let items = [];
-    const generator = str.getGenerator();
-    // const generator = str.next(); // OKAYISH...
     try {
-        for await (const chunk of generator) {
+        for await (const chunk of str) {
             console.log("FOR AWAIT chunk: " + JSON.stringify(chunk));
             items.push(chunk);
         }

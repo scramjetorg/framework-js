@@ -4,6 +4,7 @@ const { Duplex } = require("stream");
 const DefaultHighWaterMark = require("os").cpus().length * 2;
 const { IFCA } = require("../../ifca/lib/index");
 const { trace } = require("../../ifca/utils");
+const { Readable } = require("stream");
 
 let seq = 0;
 
@@ -63,26 +64,9 @@ class PromiseTransformStream extends Duplex {
         let generator;
         if (options.read) {
             generator = options.read();
-            for (const value of generator) {
-                console.log("value: " + JSON.stringify(value));
-                this.ifca.write(value);
-            }
-            console.log("LOADED VALUES");
+            return new Readable.from(generator).pipe(this);
         }
     }
-
-    // *getStreamAdapter() {
-    //     let done = false;
-    //     this.on("end", (d) => {
-    //         done = true;
-    //     });
-    //     while (!done) {
-    //         yield new Promise((resolve, reject) => {
-    //             stream.once("data", resolve);
-    //             stream.once("end", resolve);
-    //         });
-    //     }
-    // }
 
     setOptions(...options) {
         Object.assign(this._scramjet_options, ...options);
@@ -102,7 +86,7 @@ class PromiseTransformStream extends Duplex {
 
     pushTransform(options) {
         trace("PTS.pushTransform... options:");
-        trace(options);
+        trace(JSON.stringify(options));
         if (typeof options.promiseTransform === "function") {
             this.ifca.addTransform(options.promiseTransform);
         }
