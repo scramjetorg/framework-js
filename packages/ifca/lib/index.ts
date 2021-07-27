@@ -224,17 +224,33 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     read(): MaybePromise<T|null> {
+        trace('IFCA-READ()')
         const ret = this.processing.shift();
-        if (this.readable[0] === null)
+        if (this.readable[0] === null) {
+            trace('IFCA-READ THIS.HANDLEEND()')
             return this.handleEnd();
-        else if (this.readable[0])
+        }
+        else if (this.readable[0]) {
+            trace('IFCA-READ READABLE.SHIFT()');
             return this.readable.shift() as T;
-        else if (ret)
+        }
+        else if (ret) {
+            trace('IFCA-READ THIS.READ()');
             return ret.then(() => this.read());
-        else if (this.ended)
+        }
+        else if (this.ended) {
+            trace('IFCA-READ RETURN NULL');
             return null;
+        }
 
-        return new Promise((...res) => this.readers.push(res));
+        trace('IFCA-READ RETURN NEW PROMISE');
+        // This gives Promise { <pending> }
+        // In scribbe.spec.js this never resolves
+        return new Promise((...res) => { 
+            trace('IFCA-READ INSIDE PROMISE');
+            trace('READERS', this.readers);
+            return this.readers.push(res)
+        });
     }
 
     last(): PromiseLike<T> { 

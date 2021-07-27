@@ -27,6 +27,8 @@ const checkOptions = (options) => {
 
 class PromiseTransformStream extends Duplex {
     constructor(options = {}) {
+        // Deconstrucing. Remove read and write
+        const { read, write, ...rest } = options;
         const newOptions = Object.assign(
             {
                 objectMode: true,
@@ -37,7 +39,7 @@ class PromiseTransformStream extends Duplex {
                 beforeTransform: null,
                 afterTransform: null,
             },
-            options
+            rest
         );
         checkOptions(newOptions);
 
@@ -61,10 +63,8 @@ class PromiseTransformStream extends Duplex {
         // IFCA
         this.ifca = new IFCA(newOptions.maxParallel, newOptions.promiseTransform);
 
-        let generator;
-        if (options.read) {
-            generator = options.read();
-            return new Readable.from(generator).pipe(this);
+        if (read) {
+            return new Readable.from(read()).pipe(this);
         }
     }
 
@@ -159,17 +159,6 @@ class PromiseTransformStream extends Duplex {
         const result = await this.ifca.read();
         trace("PTS.read result: " + JSON.stringify(result));
         this.push(result);
-    }
-
-    *next() {
-        let value = await this.ifca.read();
-        console.log("DEBUG VALUE: ");
-        console.log(value);
-        while (true) {
-            yield new Promise((resolve) => {
-                resolve(value);
-            });
-        }
     }
 
     /**

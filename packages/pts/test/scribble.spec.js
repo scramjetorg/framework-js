@@ -11,33 +11,46 @@ const gen = function* () {
     while (i < 25) yield { a: i++ };
 };
 
-const databaseSave = () => new Promise((res) => setTimeout(res, 100));
+const databaseSave = (x) => {
+    console.log("DATABASE SAVE x: " + JSON.stringify(x));
+    return new Promise((res) => setTimeout(res(x.b), 100));
+};
 
 test("Error Handler", async (t) => {
     const str = new PromiseTransformStream({
         read: gen,
         maxParallel: MAX_PARALLEL,
-        promiseTransform: (x) => (x.a % 2 ? x : 0), // If 0 is undefined then the next transform gives: TypeError: Cannot read property 'a' of undefined
+        promiseTransform: (x) => (x.a % 2 ? x : Promise.reject(undefined)),
     })
-        .addTransform((x) => ({ b: x.a }))
+        // If undefined don't move to the next step
+        .addTransform((x) => {
+            console.log("TRANSFORM - remove undefined: x: ");
+            console.log(x);
+            return {
+                b: x.a,
+            };
+        })
         .addTransform((x) => {
             if (x.b % 10 === 7) {
                 console.log("HANDLE ERROR");
                 throw new Error("This should be handled"); // 7 and 17 throws Error
             }
-            console.log("ADD TRANSFORM RETURN x: " + JSON.stringify(x));
+            console.log("SECOND TRANSFORM RETURN x: " + JSON.stringify(x));
 
             return x;
         })
         .addErrorHandler((err, x) => {
             // TODO: Add addHandler
+            console.log("ERROR HANDLER x: " + JSON.stringify(x) + " err: " + JSON.stringify(err));
             if (x.b === 7 || x.b === 21) return undefined;
-            throw err;
+            if (err) throw err;
         })
         .addTransform(
             (x) => {
+                console.log("ANOTHER TRANSFORM x: " + JSON.stringify(x));
                 if (x.b === 17) throw new Error("This should be handled");
                 if (x.b === 21) throw new Error("This should not be handled");
+                return x;
             },
             (err, x) => {
                 if (x.b === 17) return x;
@@ -55,6 +68,7 @@ test("Error Handler", async (t) => {
             items.push(chunk);
         }
     } catch (e) {
+        // TypeError: Cannot set property 'cause' of undefined - remove that element completely
         console.log(e);
         console.log(items);
         t.deepEqual(items, [1, 3, 5, 9, 11, 13, 15, 17, 19]); // 21 will go to the next catch
