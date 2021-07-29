@@ -42,7 +42,7 @@ test("Error Handler", async (t) => {
         .addErrorHandler((err, x) => {
             // TODO: Add addHandler
             console.log("ERROR HANDLER x: " + JSON.stringify(x) + " err: " + JSON.stringify(err));
-            if (x.a === 7 || x.a === 21) return undefined;
+            if (x.a === 7 || x.a === 21) return Promise.reject(undefined);
             if (err) throw err;
         })
         .addTransform(

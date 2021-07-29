@@ -214,9 +214,11 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     private makeTransformChain(_chunk: S): Promise<T> {
         let ret: Promise<T> = (this.transformHandlers as TransformHandler<any, any>[])
             .reduce(
+                // TODO: maybe here we should have the argument to prev
                 (prev, [_executor, _handler]) => {
                     if (!_handler) return prev.then(_executor?.bind(this));
 
+                    // TODO: check why chunk is undefined
                     const handler: TransformErrorHandler<any, any> = (err, chunk) => {
                         if (typeof err === "undefined") return Promise.reject(undefined);
                         return _handler.bind(this)(err, chunk);
