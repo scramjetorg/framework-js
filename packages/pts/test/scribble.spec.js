@@ -33,7 +33,7 @@ test("Error Handler", async (t) => {
         .addTransform((x) => {
             if (x.b % 10 === 7) {
                 console.log("HANDLE ERROR");
-                throw new Error("This should be handled"); // 7 and 17 throws Error
+                throw new Error("This should be handled %7"); // 7 and 17 throws Error
             }
             console.log("SECOND TRANSFORM RETURN x: " + JSON.stringify(x));
 
@@ -48,7 +48,7 @@ test("Error Handler", async (t) => {
         .addTransform(
             (x) => {
                 console.log("ANOTHER TRANSFORM x: " + JSON.stringify(x));
-                if (x.b === 17) throw new Error("This should be handled");
+                if (x.b === 17) throw new Error("This should be handled 17");
                 if (x.b === 21) throw new Error("This should not be handled");
                 return x;
             },
@@ -74,4 +74,8 @@ test("Error Handler", async (t) => {
         console.log(items);
         t.deepEqual(items, [1, 3, 5, 9, 11, 13, 15, 17, 19]); // 21 will go to the next catch
     }
+});
+
+process.on("unhandledRejection", (e, ...args) => {
+    console.error(args, e?.stack, new Error().stack)
 });

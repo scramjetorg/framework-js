@@ -83,7 +83,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             ? undefined 
             : this.processing[pos - this.maxParallel].finally()
         ;
-        const chunkBeforeThisOne = this.processing[pos - 1];
+        const chunkBeforeThisOne = this.processing[pos - 1]?.finally();
         const currentChunkResult = this.strict ? this.makeStrictTransformChain(_chunk) : this.makeTransformChain(_chunk);
         
         this.processing.push(
@@ -102,9 +102,9 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         trace('IFCA WRITE pos: ' + pos)
         const drain: MaybePromise<any> = pos < this.maxParallel 
             ? undefined 
-            : this.processing[pos - this.maxParallel]
+            : this.processing[pos - this.maxParallel].finally()
         ;
-        const chunkBeforeThisOne = this.processing[pos - 1];
+        const chunkBeforeThisOne = this.processing[pos - 1]?.finally();
         const currentChunksResult = _chunks.map(chunk => this.strict ? this.makeStrictTransformChain(chunk) : this.makeTransformChain(chunk));
         
         this.processing.push(
@@ -120,6 +120,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     private makeProcessingItems(chunkBeforeThisOne: Promise<any>, currentChunksResult: MaybePromise<T>[], _chunks: S[]): Promise<any>[] {
         const result:MaybePromise<any>[] = [];
         result.push(this.makeProcessingItem(chunkBeforeThisOne, currentChunksResult[0], _chunks[0]));
+        // TODO: maybe generators here?
         for (let i = 1; i < currentChunksResult.length; i++) {
             result.push(this.makeProcessingItem(currentChunksResult[i - 1] as Promise<T>, currentChunksResult[i], _chunks[i]))
         }
@@ -219,9 +220,9 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
                     if (!_handler) return prev.then(_executor?.bind(this));
 
                     // TODO: check why chunk is undefined
-                    const handler: TransformErrorHandler<any, any> = (err, chunk) => {
+                    const handler: TransformErrorHandler<any, any> = (err) => {
                         if (typeof err === "undefined") return Promise.reject(undefined);
-                        return _handler.bind(this)(err, chunk);
+                        return _handler.call(this, err, _chunk);
                     }
                     if (!_executor && handler) return prev.catch(handler);
                     return prev.then(_executor?.bind(this), handler);
