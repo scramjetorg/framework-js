@@ -67,6 +67,7 @@ test("Error Handler", async (t) => {
             console.log("FOR AWAIT chunk: " + JSON.stringify(chunk));
             items.push(chunk);
         }
+        t.fail("Should throw error on 21");
     } catch (e) {
         // TypeError: Cannot set property 'cause' of undefined - remove that element completely
         console.log(e);
