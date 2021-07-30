@@ -257,13 +257,13 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     read(): MaybePromise<T|null> {
         trace('IFCA-READ()')
         const ret = this.processing.shift();
-        if (this.readable[0] === null) {
+        if (this.readable[0] === null) { // After last element this.readable[0] gives undefined and check is for null. We can't check for undefined as this causes too early termination.
             trace('IFCA-READ THIS.HANDLEEND()')
             return this.handleEnd();
         }
         else if (this.readable[0]) {
             trace('IFCA-READ READABLE.SHIFT()');
-            return this.readable.shift() as T;
+            return this.readable.shift() as T; // This causes this.readable[0] === undefined
         }
         else if (ret) {
             trace('IFCA-READ THIS.READ()');
@@ -280,7 +280,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return new Promise((...res) => { 
             trace('IFCA-READ INSIDE PROMISE');
             trace('READERS', this.readers);
-            return this.readers.push(res)
+            this.readers.push(res); // Returning from push just gives number of rows inserted.
         });
     }
 
