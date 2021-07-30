@@ -160,25 +160,6 @@ class PromiseTransformStream extends Duplex {
         trace("PTS.read result: " + JSON.stringify(result));
         this.push(result);
     }
-
-    /**
-     * Dummy generator used for tesing.
-     * TODO: Remove later
-     *
-     */
-    *getGenerator() {
-        const results = [1, 3, 5, 9, 11, 13, 15, 17, 19];
-        console.log("INSIDE GENERATOR");
-        let index = 0;
-        while (true) {
-            if (index === 9) throw new Error("Dummy Error");
-            yield new Promise((resolve) => {
-                setTimeout(() => {
-                    resolve(results[index++]);
-                }, 100);
-            });
-        }
-    }
 }
 
 module.exports = {
