@@ -12,8 +12,8 @@ export type TransformArray<S, T> = [TransformFunction<S, T>] | [
 ];
 
 const isAsync = (func: any[]) => func.length && (
-    func[0][Symbol.toStringTag] === 'AsyncFunction' || 
-    func[1][Symbol.toStringTag] === 'AsyncFunction'
+    func[0] && func[0][Symbol.toStringTag] === 'AsyncFunction' || 
+    func[1] && func[1][Symbol.toStringTag] === 'AsyncFunction'
 );
 
 export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
@@ -44,7 +44,7 @@ export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
     removeTransform(): I;
 }
 
-type TransformHandler<S,T> = [TransformFunction<S|null,T>, TransformErrorHandler<S,T>?] | [undefined, TransformErrorHandler<S,T>];
+type TransformHandler<S,T> = [TransformFunction<S,T>, TransformErrorHandler<S,T>?] | [undefined, TransformErrorHandler<S,T>];
 type ChunkResolver<S> = [TransformFunction<S|null,void>, TransformErrorHandler<S,void>?];
 type MaybePromise<S> = Promise<S> | S;
 type NullTerminatedArray<X extends any[]> = X | [...X, null]
@@ -53,7 +53,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     constructor(
         public maxParallel = 2 * cpus().length, 
-        initialTransform: TransformFunction<S | null,T>,
+        initialTransform: TransformFunction<S,T>,
         options: IFCAOptions = {}
     ) {
         this.transformHandlers.push([initialTransform])
@@ -232,7 +232,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         // Promise.resolve(1)
         //     .then(b => b+2)
         //     .then(a => a+1)
-        //     .then(x, y)
+        //     .then(fx, fy)
         //     .catch(z)
 
 
@@ -293,13 +293,13 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return this;
     }
 
-    addTransform<W>(_tr: TransformFunction<T, W>, _hd: TransformErrorHandler<T, W>): IFCA<S, W, this> {
-        (this.transformHandlers as any[]).push([_tr, _hd]);
+    addTransform<W>(transform: TransformFunction<T, W>, handler?: TransformErrorHandler<T, W>): IFCA<S, W, this> {
+        (this.transformHandlers as any[]).push([transform, handler]);
         return this as IFCA<S,unknown,any> as IFCA<S,W,this>;
     }
 
     // Remove transform (pop)
-    removeTransform(): I  {
+    removeTransform(): I {
         this.transformHandlers.shift();
         return this as IFCA<S,unknown,any> as I;
     }

@@ -7,7 +7,7 @@ import { defer } from "../utils"
  */
 const MAX_PARALLEL = 8;
 
-test("OaL", async (t) => {
+test("Acceptable latency test", async (t) => {
     let sum: bigint = BigInt(0);
     let cnt = BigInt(0);
 
@@ -22,22 +22,23 @@ test("OaL", async (t) => {
                 // console.log("write", {i}, ifca.status, ret instanceof Promise);
                 await Promise.all([ret, defer(1)]);
             }
-            ifca.end();
-        })(),
+            ifca.end(); // TODO: test for correct end operation
+        })().finally(() => console.log("Write done")),
         (async () => {
             await defer(10);
             let i = 0;
             while(++i) {
                 const data = await ifca.read();
                 if (data === null) {
+                    console.log("data done")
                     return;
                 }
-                if (data.i !== i) throw new Error(`i=${i} expected, got ${data.i} instread`);
+                if (data.i !== i) throw new Error(`i=${i} expected, got ${data.i} instead`);
 
                 cnt++;
                 sum += data.latency;
             }
-        })()
+        })().finally(() => console.log("Read done"))
     ]);
 
     const latency = Number(sum * BigInt(1e6) / cnt ) / 1e6;

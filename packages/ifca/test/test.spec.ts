@@ -1,5 +1,5 @@
 import test from "ava";
-import { IFCA } from "../lib/index";
+import { IFCA, TransformFunction } from "../lib/index";
 import { defer } from "../utils"
 
 type Dict = { [k: string]: number; };
@@ -33,7 +33,7 @@ test("PTS", async (t) => {
         return { a: a++ };
     });
 
-    const asyncPromiseTransform = async ({ a }: { a: number }) => {
+    const asyncPromiseTransform: TransformFunction<{a: number}, {[k: string]: number}> = async ({ a }: { a: number }) => {
         const out = { a, n: a % 2, x: x++ }
         if (a % 2) await defer(100, out);
         return out;
