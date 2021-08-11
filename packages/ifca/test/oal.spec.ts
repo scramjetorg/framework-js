@@ -23,14 +23,14 @@ test("Acceptable latency test", async (t) => {
                 await Promise.all([ret, defer(1)]);
             }
             ifca.end(); // TODO: test for correct end operation
-        })().finally(() => console.log("Write done")),
+        })().finally(() => t.log("Write done")),
         (async () => {
             await defer(10);
             let i = 0;
             while(++i) {
                 const data = await ifca.read();
                 if (data === null) {
-                    console.log("data done")
+                    t.log("data done")
                     return;
                 }
                 if (data.i !== i) throw new Error(`i=${i} expected, got ${data.i} instead`);
@@ -38,7 +38,7 @@ test("Acceptable latency test", async (t) => {
                 cnt++;
                 sum += data.latency;
             }
-        })().finally(() => console.log("Read done"))
+        })().finally(() => t.log("Read done"))
     ]);
 
     const latency = Number(sum * BigInt(1e6) / cnt ) / 1e6;

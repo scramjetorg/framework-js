@@ -235,7 +235,6 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         //     .then(fx, fy)
         //     .catch(z)
 
-
         return ret;
     }
 
@@ -244,6 +243,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         
         if (last) 
             return last.then(() => this.handleEnd());
+        this.handleEnd();
     }
 
     private handleEnd() {
