@@ -1,3 +1,5 @@
+const SCRAMJET_LOG = process.env.SCRAMJET_LOG;
+
 /**
  * Helper function that defers and optionaly returns given output after waiting.
  * 
@@ -15,19 +17,13 @@ function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void
  * @param {String} msg Debug message to be printed out 
  * @param {*} [array] Optional array of objects
  */
-function trace (msg:string, array: any[]|null = null) {
-    if (!process.env.SCRAMJET_LOG) return;
+function trace (msg:string, ...array: any[]) {
+    // TODO: make this into a const false on compile
+    if (!SCRAMJET_LOG) return;
 
     const date = new Date();
 
-    console.log(`${date.valueOf()}: ${msg}`);
-    if (array) {
-        for (let i = 0; i < array.length; i++) {
-            console.log(array[i]);
-        }
-        console.log('Length: ' + array.length);
-    }
-    console.log();
+    console.log(`${date.valueOf()}: ${msg}`, ...array);
 }
 
 export { defer, trace } ;

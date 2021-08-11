@@ -57,15 +57,15 @@ test("PTS", async (t) => {
     t.false(isPromise(item1), "Not a promise.");
 
     t.deepEqual(item1 as unknown as Dict, { a: 0, n: 0, x: 0, y: 0, z: 0 }, "Initial entry should be read immediately")
-    t.false(isPromise(writeNext()), "Asynchronous entry should resolve write immediately");
-    t.false(isPromise(writeNext()), "Asynchronous entry should resolve write immediately");
-    t.false(isPromise(writeNext()), "Asynchronous entry should resolve write immediately");
-    t.false(isPromise(writeNext()), "Asynchronous entry should resolve write immediately");
-    t.false(isPromise(writeNext()), "Asynchronous entry should resolve write immediately");
-    t.false(isPromise(writeNext()), "Asynchronous entry should resolve write immediately");
-    t.false(isPromise(writeNext()), "Asynchronous entry should resolve write immediately");
-    t.false(isPromise(writeNext()), "Asynchronous entry should resolve write immediately");
-    t.true(isPromise(writeNext()), "Entries should fill up when it reaches the end");
+    t.false(isPromise(writeNext()), "1st entry should resolve write immediately");
+    t.false(isPromise(writeNext()), "2nd entry should resolve write immediately");
+    t.false(isPromise(writeNext()), "3rd entry should resolve write immediately");
+    t.false(isPromise(writeNext()), "4th entry should resolve write immediately");
+    t.false(isPromise(writeNext()), "5th entry should resolve write immediately");
+    t.false(isPromise(writeNext()), "6th entry should resolve write immediately");
+    t.false(isPromise(writeNext()), "7th entry should resolve write immediately");
+    t.false(isPromise(writeNext()), "8th entry should resolve write immediately");
+    t.true(isPromise(writeNext()), "9th entry should fill up max parallel");
     
     // TODO: make this go 8 items beyond 
     const item2 = ifca.read();

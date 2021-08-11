@@ -26,8 +26,6 @@ export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
 
     transformHandlers: TransformHandler<S,T>[];
 
-    status?: string;
-
     /**
      * Write (add chunk)
      * 
@@ -79,6 +77,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         if (this.ended) throw new Error("Write after end");
 
         const pos = this.processing.length;
+        trace('IFCA WRITE pos: ', pos, _chunk)
         const drain: MaybePromise<any> = pos < this.maxParallel 
             ? undefined 
             : this.processing[pos - this.maxParallel].finally()
@@ -99,7 +98,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         if (this.ended) throw new Error("Write after end");
 
         const pos = this.processing.length;
-        trace('IFCA WRITE pos: ' + pos)
+        trace('IFCA WRITE pos:', pos, _chunks)
         const drain: MaybePromise<any> = pos < this.maxParallel 
             ? undefined 
             : this.processing[pos - this.maxParallel]
