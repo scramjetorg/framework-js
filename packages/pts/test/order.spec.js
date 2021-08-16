@@ -1,6 +1,6 @@
 const test = require("ava");
 const { Readable } = require("stream");
-const { defer } = require("../../ifca/utils");
+const { trace } = require("../../ifca/utils");
 
 /**
  * Push transform to PromiseTransformStream
@@ -22,8 +22,8 @@ function pushTransformToStreamPTS(str, promiseTransform) {
  * @returns {PromiseTransformStream}
  */
 function getStreamInOrderPTS(promiseTransform, maxParallel) {
-    console.log("FN getStreamInOrderPTS:");
-    console.log(promiseTransform);
+    trace("FN getStreamInOrderPTS:");
+    trace(promiseTransform);
     const { PromiseTransformStream } = require("../lib/promise-transform-stream-ifca");
 
     return new PromiseTransformStream({
@@ -62,11 +62,11 @@ test("PTS", async (t) => {
     const syncPromiseTransform = ({ a, n, x }) => ({ a, n, x, y: y++ });
     const syncPromiseTransform2 = ({ a, n, x, y }) => ({ a, n, x, y, z: z++ });
 
-    console.log("Running with: ", { MAX_PARALLEL, ELEMENTS });
+    trace("Running with: ", { MAX_PARALLEL, ELEMENTS });
 
     const str = new Readable.from(input).pipe(getStreamInOrderPTS(asyncPromiseTransform, MAX_PARALLEL));
-    console.log("PromiseTransformStream:");
-    console.log(str);
+    trace("PromiseTransformStream:");
+    trace(str);
 
     pushTransformToStreamPTS(str, syncPromiseTransform);
 

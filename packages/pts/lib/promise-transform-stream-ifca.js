@@ -3,6 +3,8 @@
 const { Duplex } = require("stream");
 const DefaultHighWaterMark = require("os").cpus().length * 2;
 const { IFCA } = require("../../ifca/lib/index");
+const { trace } = require("../../ifca/utils");
+const { Readable } = require("stream");
 
 let seq = 0;
 
@@ -25,6 +27,8 @@ const checkOptions = (options) => {
 
 class PromiseTransformStream extends Duplex {
     constructor(options = {}) {
+        // Deconstrucing. Remove read and write
+        const { read, write, ...rest } = options;
         const newOptions = Object.assign(
             {
                 objectMode: true,
@@ -35,7 +39,7 @@ class PromiseTransformStream extends Duplex {
                 beforeTransform: null,
                 afterTransform: null,
             },
-            options
+            rest
         );
         checkOptions(newOptions);
 
@@ -53,11 +57,15 @@ class PromiseTransformStream extends Duplex {
 
         this.setMaxListeners(DefaultHighWaterMark);
         this.setOptions(newOptions);
-        console.log("NEW OPTIONS BEFORE IF:");
-        console.log(newOptions);
+        trace("NEW OPTIONS BEFORE IF:");
+        trace(newOptions);
 
         // IFCA
         this.ifca = new IFCA(newOptions.maxParallel, newOptions.promiseTransform);
+
+        if (read) {
+            return new Readable.from(read()).pipe(this);
+        }
     }
 
     setOptions(...options) {
@@ -77,8 +85,8 @@ class PromiseTransformStream extends Duplex {
     }
 
     pushTransform(options) {
-        console.log("PTS.pushTransform... options:");
-        console.log(options);
+        trace("PTS.pushTransform... options:");
+        trace(JSON.stringify(options));
         if (typeof options.promiseTransform === "function") {
             this.ifca.addTransform(options.promiseTransform);
         }
@@ -94,14 +102,36 @@ class PromiseTransformStream extends Duplex {
         return this;
     }
 
+    /**
+     * Add TransformFunction to PromiseTransformStream
+     *
+     * @param {TransformFunction} transform
+     * @returns {PromiseTransformStream}
+     */
+    addTransform(transform) {
+        this.ifca.addTransform(transform);
+        return this;
+    }
+
+    /**
+     * Add TransformErrorHandler to PromiseTransformStream
+     *
+     * @param {TransformErrorHandler} handler
+     * @returns {PromiseTransformStream}
+     */
+    addErrorHandler(handler) {
+        this.ifca.addErrorHandler(handler);
+        return this;
+    }
+
     async _final(callback) {
-        console.log("PTS-IFCA FINAL");
+        trace("PTS-IFCA FINAL");
         await this.ifca.end();
         callback();
     }
 
     async _write(data, encoding, callback) {
-        console.log("PTS-IFCA WRITE data:" + JSON.stringify(data));
+        trace("PTS-IFCA WRITE data:" + JSON.stringify(data));
         await this.ifca.write(data);
         callback();
     }
@@ -113,7 +143,7 @@ class PromiseTransformStream extends Duplex {
      * @param {Function} callback
      */
     async _writev(chunks, callback) {
-        console.log("WRITEV chunks: " + JSON.stringify(chunks));
+        trace("WRITEV chunks: " + JSON.stringify(chunks));
 
         await this.ifca.writev(chunks.map((o) => o.chunk));
         callback();
@@ -124,11 +154,30 @@ class PromiseTransformStream extends Duplex {
      * @param {integer} size
      */
     async _read(size) {
-        console.log("PTS-IFCA _read size: " + size);
+        trace("PTS-IFCA _read size: " + size);
 
         const result = await this.ifca.read();
-        console.log("PTS.read result: " + JSON.stringify(result));
+        trace("PTS.read result: " + JSON.stringify(result));
         this.push(result);
+    }
+
+    /**
+     * Dummy generator used for tesing.
+     * TODO: Remove later
+     *
+     */
+    *getGenerator() {
+        const results = [1, 3, 5, 9, 11, 13, 15, 17, 19];
+        console.log("INSIDE GENERATOR");
+        let index = 0;
+        while (true) {
+            if (index === 9) throw new Error("Dummy Error");
+            yield new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve(results[index++]);
+                }, 100);
+            });
+        }
     }
 }
 
