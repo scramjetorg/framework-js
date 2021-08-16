@@ -23,7 +23,7 @@ const ELEMENTS = 16;
  */
 const isPromise = (x: any) => typeof x !== "undefined" && typeof x.then === "function";
 
-test("Identity function, input starting from 1", async (t) => {
+test("Identity function, numbers starting from 1", async (t) => {
     const ifca = new IFCA(4, (x: number) => {t.log('Processing', x); return x});
 
     for (let i = 1; i <= 4; i++) {
@@ -40,8 +40,26 @@ test("Identity function, input starting from 1", async (t) => {
     t.deepEqual(results, [1,2,3,4], "Should pass elements unchagned");
 });
 
-test("Identity function, input starting from 0", async (t) => {
-    const ifca = new IFCA(4, (x: number) => {t.log('Processing', x); return x});
+test("Identity function, objects starting from 0", async (t) => {
+    const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x; });
+
+    for (let i = 0; i < 4; i++) {
+        ifca.write({i});
+    }
+    ifca.end();
+
+    const read4 = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(),
+    ];
+    const results = await Promise.all(read4);
+    t.log('Output:', results)
+
+    t.deepEqual(results, [{i: 0},{i: 1},{i: 2},{i: 3}], "Should pass elements unchagned");
+});
+
+// TODO: skipped, 0 is skipped in IFCA.
+test("Identity function, numbers starting from 0", async (t) => {
+    const ifca = new IFCA(4, (x: number) => {t.log('Processing', x); return x; });
 
     for (let i = 0; i < 4; i++) {
         ifca.write(i);
@@ -58,27 +76,28 @@ test("Identity function, input starting from 0", async (t) => {
 });
 
 test("Identity function, 4x write, 8x read", async (t) => {
-    const ifca = new IFCA(4, (x: number) => {t.log('Processing', x); return x});
+    const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x});
 
     for (let i = 0; i < 4; i++) {
-        ifca.write(i);
+        ifca.write({i});
     }
     ifca.end();
 
     const read8 = [
-        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(), 
+        ifca.read(), ifca.read(), ifca.read(), ifca.read()
     ];
     const results = await Promise.all(read8);
     t.log('Output:', results)
 
-    t.deepEqual(results, [0,1,2,3,null,null,null,null], "Shoud first output chunks matching inputs, then nulls");
+    t.deepEqual(results, [{i: 0},{i: 1},{i: 2},{i: 3},null,null,null,null], "Should first output chunks matching inputs, then nulls");
 });
 
 test("Identity function, 8x write, 1x read + 4x read", async (t) => {
-    const ifca = new IFCA(4, (x: number) => {t.log('Processing', x); return x});
+    const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x});
 
     for (let i = 0; i < 8; i++) {
-        ifca.write(i);
+        ifca.write({i});
     }
     ifca.end();
 
@@ -91,7 +110,7 @@ test("Identity function, 8x write, 1x read + 4x read", async (t) => {
     t.log('Got:', next4)
 
     const results = [first, ...next4]
-    t.deepEqual(results, [0,1,2,3,4], "Should pass elements unchagned");
+    t.deepEqual(results, [{i: 0},{i: 1},{i: 2},{i: 3},{i: 4}], "Should pass elements unchagned");
 });
 
 test("PTS", async (t) => {

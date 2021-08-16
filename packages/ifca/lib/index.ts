@@ -256,19 +256,22 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         trace('IFCA-READ()')
         const ret = this.processing.shift();
         if (this.readable[0] === null) {
-            trace('IFCA-READ THIS.HANDLEEND()')
+            // TODO: this makes nulls precede data
+            trace('IFCA-READ READABLE-NULL')
             return this.handleEnd();
         }
-        else if (this.readable[0]) {
-            trace('IFCA-READ READABLE.SHIFT()');
+        else if (this.readable.length > 0) {
+            // TODO: this disallows falsy values
+            // inlcuding those with .valueOf() === false
+            trace('IFCA-READ READABLE-EXISTS');
             return this.readable.shift() as T;
         }
         else if (ret) {
-            trace('IFCA-READ THIS.READ()');
+            trace('IFCA-READ PROCESSING-AWAIT');
             return ret.then(() => this.read());
         }
         else if (this.ended) {
-            trace('IFCA-READ RETURN NULL');
+            trace('IFCA-READ ENDED');
             return null;
         }
 
