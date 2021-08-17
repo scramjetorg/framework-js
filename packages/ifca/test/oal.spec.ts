@@ -11,13 +11,13 @@ test("Acceptable latency test", async (t) => {
     let sum: bigint = BigInt(0);
     let cnt = BigInt(0);
 
-    const ifca = new IFCA(MAX_PARALLEL, ({i}: {i: number}) => ({i, ts: process.hrtime.bigint()}), {strict: true})
+    const ifca = new IFCA(MAX_PARALLEL, ({i}: {i: number}) => ({i, ts: process.hrtime.bigint()}))
         .addTransform(({i, ts}) => ({ i, latency: process.hrtime.bigint() - ts }))
     ;
 
     await Promise.all([
         (async () => {
-            for (let i = 0; i < 3000; i++) {
+            for (let i = 0; i < 4000; i++) {
                 const ret = ifca.write({i: i+1});
                 // console.log("write", {i}, ifca.status, ret instanceof Promise);
                 await Promise.all([ret, defer(1)]);
@@ -33,7 +33,8 @@ test("Acceptable latency test", async (t) => {
                     t.log("data done")
                     return;
                 }
-                if (data.i !== i) throw new Error(`i=${i} expected, got ${data.i} instead`);
+                t.is(data?.i, i, `Data is in correct order`);
+                if (i < 2000) continue;
 
                 cnt++;
                 sum += data.latency;

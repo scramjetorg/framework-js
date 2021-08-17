@@ -90,8 +90,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult, _chunk)
         );
         
-        trace('DRAIN WRITE:');
-        trace(drain);
+        trace('DRAIN WRITE:', drain);
         return drain;
     }
 
@@ -158,11 +157,19 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             currentSafeChunkResult
         ])
             .then(([, result]) => {
-                this.processing.shift();
-                if (result !== undefined)
-                    this.readers.length
-                        ? (this.readers.shift() as ChunkResolver<T>)[0](result)
-                        : this.readable.push(result);
+                // trace("IFCA-WRITE_PROCESSING_SHIFT")
+                if (result !== undefined) {
+                    if (this.readers.length) {
+                        this.processing.shift();
+                        (this.readers.shift() as ChunkResolver<T>)[0](result)
+                        trace("IFCA-WRITE_PROCESSING_SET_READER", this.readers.length)
+                    } else {
+                        this.readable.push(result);
+                        trace("IFCA-WRITE_PROCESSING_PUSH", this.readable.length)
+                    }
+                } else {
+                    trace("IFCA-WRITE_PROCESSING_UNDEFINED")
+                }
             })
             .catch(e => {
                 if (typeof e === "undefined") return;
@@ -254,6 +261,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     private handleEnd() {
+        trace("IFCA-HANDLE_END()")
         // this resolves all readers beyond those being processed.
         this.readers.slice(this.processing.length).forEach(([res]) => res(null));
         this.readable.push(null as unknown as T);
@@ -274,10 +282,13 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         }
         else if (ret) {
             trace('IFCA-READ PROCESSING-AWAIT');
-            return ret.then(() => this.readable.shift() as T);
+            return ret.then(() => {
+                trace('IFCA-READ PROCESSING-SHIFT');
+                return this.readable.shift() as T
+            });
         }
         else if (this.ended) {
-            trace('IFCA-READ ENDED');
+            trace('IFCA-READ ENDED', ret);
             return null;
         }
 
