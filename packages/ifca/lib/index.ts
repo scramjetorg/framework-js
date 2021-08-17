@@ -16,6 +16,8 @@ const isAsync = (func: any[]) => func.length && (
     func[1] && func[1][Symbol.toStringTag] === 'AsyncFunction'
 );
 
+const noop = () => { };
+
 export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
     // TODO: This may need a setter if maxParallel is increased so that chunks are not waiting for drain.
     maxParallel: number;
@@ -64,6 +66,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     // public handlers = [] as TransformErrorHandler<S,T>[];
 
     private processing: Promise<any>[] = []
+    // private processing_await?: Promise<any>;
     private readable: NullTerminatedArray<T[]> = [];
     private readers: ChunkResolver<T>[] = [];
     private ended: boolean = false;
@@ -159,14 +162,15 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             .then(([, result]) => {
                 // trace("IFCA-WRITE_PROCESSING_SHIFT")
                 if (result !== undefined) {
-                    if (this.readers.length) {
+                    if (this.readers.length === 0 || this.readers[0][0] === noop) {
+                        if (this.readers.length) this.readers.shift();
+                        this.readable.push(result);
+                        trace("IFCA-WRITE_PROCESSING_PUSH", this.readable.length, result)
+                    } else {
                         this.processing.shift();
                         (this.readers.shift() as ChunkResolver<T>)[0](result)
-                        trace("IFCA-WRITE_PROCESSING_SET_READER", this.readers.length)
-                    } else {
-                        this.readable.push(result);
-                        trace("IFCA-WRITE_PROCESSING_PUSH", this.readable.length)
-                    }
+                        trace("IFCA-WRITE_PROCESSING_SET_READER", this.readers.length, result)
+                    } 
                 } else {
                     trace("IFCA-WRITE_PROCESSING_UNDEFINED")
                 }
@@ -282,8 +286,9 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         }
         else if (ret) {
             trace('IFCA-READ PROCESSING-AWAIT');
+            this.readers.push([noop])
             return ret.then(() => {
-                trace('IFCA-READ PROCESSING-SHIFT');
+                trace('IFCA-READ PROCESSING-SHIFT', this.readable[0]);
                 return this.readable.shift() as T
             });
         }
@@ -292,10 +297,10 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             return null;
         }
 
-        trace('IFCA-READ RETURN NEW PROMISE');
+        trace('IFCA-READ CREATE_READER');
         // This gives Promise { <pending> }
         // In scribbe.spec.js this never resolves
-        return new Promise((...handlers) => { 
+        return new Promise((...handlers) => {
             trace('IFCA-READ INSIDE PROMISE');
             trace('READERS', this.readers);
             // push both [resolve, reject]

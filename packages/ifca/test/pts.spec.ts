@@ -52,7 +52,7 @@ test("PTS", async (t) => {
 
     t.false(isPromise(writeNext()), "Synchronous entry should resolve write immediately");
     await defer(10);
-    const item1 = ifca.read();
+    const item1 = ifca.read(); // {a: 0}
     t.false(isPromise(item1), "Not a promise.");
 
     t.deepEqual(item1 as unknown as Dict, { a: 0, n: 0, x: 0, y: 0, z: 0 }, "Initial entry should be read immediately")
@@ -65,29 +65,30 @@ test("PTS", async (t) => {
     t.false(isPromise(writeNext()), "7th entry should resolve write immediately");
     t.false(isPromise(writeNext()), "8th entry should resolve write immediately");
     t.true(isPromise(writeNext()), "9th entry should fill up max parallel");
-    
+
     // TODO: make this go 8 items beyond 
-    const item2 = ifca.read();
-    const item3 = ifca.read();
+    const item2 = ifca.read(); // {a: 1}
+    const item3 = ifca.read(); // {a: 2}
     t.true(isPromise(item2), "Is a promise.");
     t.true(isPromise(item3), "Is a promise.");
 
     await defer(20);
-    t.true(isPromise(ifca.read()), "Is a promise.");
+    t.true(isPromise(ifca.read()), "Is a promise."); // read {a: 3}.
 
     await defer(100);
-    t.false(isPromise(writeNext()), "After reading should allow to write immediately again");
+    t.false(isPromise(writeNext()), "After reading should allow to write immediately again"); // write {a: 10}
 
     const read8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
     ];
     
-    t.deepEqual(read8[0], { a:4, n: 0, x: 4, y: 2, z: 2 }, "Reads the 4th element");
-    t.deepEqual(read8[5], { a:9, n: 1, x: 9, y: 9, z: 9 }, "Reads the 9th element");
-    t.true(isPromise(read8[6]), "The 10th element is not resolved yet");
-    t.deepEqual(await read8[6], { a:10, n: 0, x: 10, y: 10, z: 10 }, "The 10th element resolves");
+    t.deepEqual(read8[0], { a:4, n: 0, x: 4, y: 2, z: 2 }, "Reads the 4 element");
+    t.deepEqual(read8[5], { a:9, n: 1, x: 9, y: 9, z: 9 }, "Reads the 9 element");
+    t.true(isPromise(read8[6]), "The 10 element is not resolved yet");
+    t.deepEqual(await read8[6], { a:10, n: 0, x: 10, y: 10, z: 10 }, "The 10 element resolves");
     
-    t.true(isPromise(read8[7]), "The 11th element is a promise");
+    
+    t.true(isPromise(read8[7]), "The 11 element is a promise");
 
     let wrote = false;
     defer(10).then(() => {
