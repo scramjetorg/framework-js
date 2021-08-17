@@ -29,7 +29,7 @@ test("Identity function, numbers starting from 1", async (t) => {
     for (let i = 1; i <= 4; i++) {
         ifca.write(i);
     }
-    ifca.end();
+    // ifca.end();
 
     const read4 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(),
@@ -46,7 +46,7 @@ test("Identity function, objects starting from 0", async (t) => {
     for (let i = 0; i < 4; i++) {
         ifca.write({i});
     }
-    ifca.end();
+    // ifca.end();
 
     const read4 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(),
@@ -64,7 +64,7 @@ test("Identity function, numbers starting from 0", async (t) => {
     for (let i = 0; i < 4; i++) {
         ifca.write(i);
     }
-    ifca.end();
+    // ifca.end();
 
     const read4 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(),
@@ -81,7 +81,7 @@ test("Identity function, 4x write, 8x read", async (t) => {
     for (let i = 0; i < 4; i++) {
         ifca.write({i});
     }
-    await ifca.end();
+    await ifca.end(); // Must await in order to get correct results
 
     const read8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), 
@@ -99,7 +99,7 @@ test("Identity function, 8x write, 1x read + 4x read", async (t) => {
     for (let i = 0; i < 8; i++) {
         ifca.write({i});
     }
-    ifca.end();
+    // ifca.end();
 
     const first = await ifca.read()
     t.log('Got', first)
@@ -183,7 +183,7 @@ test("PTS", async (t) => {
     let wrote = false;
     defer(10).then(() => {
         writeNext();
-        ifca.end();
+        ifca.end(); // without ifca.end() -> Error: Promise returned by test never resolved
         wrote = true;
     });
 
@@ -211,7 +211,7 @@ test("Overflow reads", async (t) => {
         ifca.write(i);
         t.log("w", ifca.status)
     }
-    ifca.end();
+    // ifca.end();
 
     const results: (null|number)[] = [];
     for (const x of read8) {
@@ -228,7 +228,7 @@ test("Overflow writes. Read 8 x 2", async (t) => {
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
     }
-    ifca.end();
+    ifca.end(); // without ifca.end() -> Error: Promise returned by test never resolved
     
     const read8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read() 
@@ -251,7 +251,7 @@ test("Overflow writes Write: 5x Read: 3x Max Parallel: 2", async(t) => {
     for (let i = 0; i < 5; i++) {
         ifca.write(i);
     }
-    ifca.end();
+    // ifca.end();
 
     const read3 = [ifca.read(), ifca.read(), ifca.read()];
     const first3 = await Promise.all(read3);
@@ -266,7 +266,7 @@ test("Overflow writes. Read 7x + read 9x", async (t) => {
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
     }
-    ifca.end();
+    ifca.end(); // without ifca.end() -> Error: Promise returned by test never resolved
 
     const read7 = [ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()];
     t.log(read7);
@@ -290,7 +290,7 @@ test("Overflow writes. Read 4x", async (t) => {
     for (let i = 0; i < 4; i++) {
         ifca.write(i);
     }
-    ifca.end();
+    // ifca.end();
 
     const read4 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read()
@@ -308,7 +308,7 @@ test("Overflow writes. Read 12x", async (t) => {
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
     }
-    ifca.end();
+    // ifca.end();
 
     const read12 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
@@ -330,7 +330,7 @@ test("Write. Read. Write. Read", async (t) => {
     for (let i = 4; i < 8; i++) {
         ifca.write(i);
     }
-    ifca.end();
+    // ifca.end();
 
     const another4 = [ ifca.read(), ifca.read(), ifca.read(), ifca.read() ];
 
@@ -350,7 +350,7 @@ test("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
     }
-    ifca.end();
+    // ifca.end();
 
     let results:any[] = [];
     
