@@ -81,7 +81,7 @@ test("Identity function, 4x write, 8x read", async (t) => {
     for (let i = 0; i < 4; i++) {
         ifca.write({i});
     }
-    ifca.end();
+    await ifca.end();
 
     const read8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), 
