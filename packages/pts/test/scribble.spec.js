@@ -16,7 +16,7 @@ const databaseSave = (x) => {
     return new Promise((res) => setTimeout(res(x.b), 100));
 };
 
-test("Error Handler", async (t) => {
+test.skip("Error Handler", async (t) => {
     const str = new PromiseTransformStream({
         read: gen,
         maxParallel: MAX_PARALLEL,
