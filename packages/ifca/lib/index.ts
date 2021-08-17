@@ -95,7 +95,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return drain;
     }
 
-    writev(_chunks: S[]):MaybePromise<void> {
+    writev(_chunks: (S|null)[]):MaybePromise<void> {
         if (this.ended) throw new Error("Write after end");
 
         const pos = this.processing.length;
@@ -105,9 +105,9 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             : this.processing[pos - this.maxParallel]
         ;
         const chunkBeforeThisOne = this.processing[pos - 1];
-        const currentChunksResult = _chunks.map(chunk => this.strict ? this.makeStrictTransformChain(chunk) : this.makeTransformChain(chunk));
-        const chunksToBeProcessed = (_chunks.indexOf(null) >= 0)
-            ? _chunks.slice(0, _chunks.indexOf(null)) : _chunks;
+        const chunksToBeProcessed = (_chunks.indexOf(null) >= 0
+            ? _chunks.slice(0, _chunks.indexOf(null)) : _chunks) as S[];
+        const currentChunksResult = chunksToBeProcessed.map(chunk => this.strict ? this.makeStrictTransformChain(chunk) : this.makeTransformChain(chunk));
 
         this.processing.push(
             ...this.makeProcessingItems(chunkBeforeThisOne, currentChunksResult, chunksToBeProcessed)
@@ -242,14 +242,14 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return ret;
     }
 
-    end(): MaybePromise<void|null> {
+    end(): MaybePromise<void> {
         if (this.ended) throw new Error("End called multiple times");
 
         this.ended = true;
         
         if (this.processing.length > 0) 
             return Promise.all(this.processing)
-                .then(() => this.handleEnd());
+                .then(() => { this.handleEnd() });
         this.handleEnd();
     }
 

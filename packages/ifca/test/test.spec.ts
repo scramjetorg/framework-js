@@ -29,7 +29,7 @@ test("Identity function, numbers starting from 1", async (t) => {
     for (let i = 1; i <= 4; i++) {
         ifca.write(i);
     }
-    // ifca.end();
+    // /* No end needed: */ ifca.end();
 
     const read4 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(),
@@ -46,7 +46,7 @@ test("Identity function, objects starting from 0", async (t) => {
     for (let i = 0; i < 4; i++) {
         ifca.write({i});
     }
-    // ifca.end();
+    // /* No end needed: */ ifca.end();
 
     const read4 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(),
@@ -64,7 +64,7 @@ test("Identity function, numbers starting from 0", async (t) => {
     for (let i = 0; i < 4; i++) {
         ifca.write(i);
     }
-    // ifca.end();
+    // /* No end needed: */ ifca.end();
 
     const read4 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(),
@@ -211,7 +211,7 @@ test("Overflow reads", async (t) => {
         ifca.write(i);
         t.log("w", ifca.status)
     }
-    // ifca.end();
+    ifca.end();
 
     const results: (null|number)[] = [];
     for (const x of read8) {
