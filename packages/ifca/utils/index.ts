@@ -17,7 +17,7 @@ function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void
  * @param {String} msg Debug message to be printed out 
  * @param {*} [array] Optional array of objects
  */
-function trace (msg:string, ...array: any[]) {
+function trace (msg:any, ...array: any[]) {
     // TODO: make this into a const false on compile
     if (!SCRAMJET_LOG) return;
 
