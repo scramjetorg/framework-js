@@ -55,6 +55,36 @@ test("Identity function, numbers starting from 0", async (t) => {
     t.deepEqual(results, [0,1,2,3], "Should pass elements unchagned");
 });
 
+test("Falsy values in results", async (t) => {
+    function makeSomeFalsyValues(x: number): any {
+        switch(x % 6) {
+            case 0: return null;
+            case 1: return 0;
+            case 2: return false;
+            case 3: return "";
+            case 4: return undefined;
+            case 5: return NaN;
+        }
+    }
+    const ifca = new IFCA(4, (x: number) => {t.log('Processing:', x); return makeSomeFalsyValues(x)});
+
+    // Use more input elems to make sure processing doesn't stop after 6th one
+    for (let i = 0; i < 8; i++) {
+        ifca.write(i);
+    }
+    // /* No end needed: */ ifca.end();
+
+    const read8 = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(),
+        ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+    const results = await Promise.all(read8)
+    t.log('Output:', results)
+    const expected = [null, 0, false, '', undefined, NaN, null, 0]
+
+    t.deepEqual(results, expected, "Falsy values in output shouldn't be treated specially");
+});
+
 test("Identity function, 4x write, 8x read", async (t) => {
     const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x});
 
