@@ -1,6 +1,8 @@
 const ignore = () => 0;
 const { StreamError } = require("./stream-errors");
 
+const { trace } = require("../../ifca/utils");
+
 /**
  * Generate transform methods on the stream class.
  *
@@ -11,8 +13,8 @@ const { StreamError } = require("./stream-errors");
  */
 module.exports = ({ filter }) =>
     function mkTransform(newOptions) {
-        console.log("mkTransform called!");
-        console.log(newOptions);
+        trace("mkTransform called!");
+        trace(newOptions);
         this.setOptions({
             transforms: [],
             beforeTransform: newOptions.beforeTransform,
@@ -28,22 +30,22 @@ module.exports = ({ filter }) =>
         ) {
             return true;
         }
-        console.log("mkTransform DONT RETURN TRUE");
+        trace("mkTransform DONT RETURN TRUE");
 
         process.nextTick(this.uncork.bind(this)); // https://nodejs.org/api/stream.html#stream_writable_uncork
-        console.log(
+        trace(
             "mkTransform this.pushTransform. before: this._scramjet_options.transforms.length: " +
                 this._scramjet_options.transforms.length
         );
         this.pushTransform(newOptions);
-        console.log("after push this._scramjet_options.transforms.length: " + this._scramjet_options.transforms.length);
+        trace("after push this._scramjet_options.transforms.length: " + this._scramjet_options.transforms.length);
 
         if (this._scramjet_options.transforms.length) {
             const processing = [];
             let last = Promise.resolve(); // Promise { undefined }
 
-            console.log("TRANSFORMS LENGTH > 0. LAST:");
-            console.log(last);
+            trace("TRANSFORMS LENGTH > 0. LAST:");
+            trace(last);
 
             /**
              * https://nodejs.org/api/stream.html#stream_transform_transform_chunk_encoding_callback
@@ -53,7 +55,7 @@ module.exports = ({ filter }) =>
              * @returns
              */
             this._transform = (chunk, encoding, callback) => {
-                console.log(
+                trace(
                     "TRANSFORM this._transform  chunk: " +
                         JSON.stringify(chunk) +
                         " length: " +
@@ -87,8 +89,8 @@ module.exports = ({ filter }) =>
                         }
                     }));
 
-                console.log("PROCESSING BEFORE PUSH:");
-                console.log(
+                trace("PROCESSING BEFORE PUSH:");
+                trace(
                     "processing.length >= this._options.maxParallel: " +
                         (processing.length >= this._options.maxParallel)
                 );
@@ -96,21 +98,21 @@ module.exports = ({ filter }) =>
                 if (processing.length >= this._options.maxParallel) {
                     processing[processing.length - this._options.maxParallel].then(() => callback()).catch(ignore);
                 } else {
-                    console.log("EXECUTE CALLBACK...");
+                    trace("EXECUTE CALLBACK...");
                     callback();
                 }
 
-                console.log("PROCESSING AFTER PUSH:");
-                console.log(processing);
+                trace("PROCESSING AFTER PUSH:");
+                trace(processing);
 
                 ref.then(() => {
-                    console.log("THEN...");
-                    console.log(processing);
+                    trace("THEN...");
+                    trace(processing);
                     const next = processing.shift(); // Take out the first element from processing obviously
 
-                    console.log("NEXT: ");
-                    console.log(next);
-                    console.log(JSON.stringify(next));
+                    trace("NEXT: ");
+                    trace(next);
+                    trace(JSON.stringify(next));
 
                     const result =
                         ref !== next &&
@@ -123,13 +125,13 @@ module.exports = ({ filter }) =>
                             ),
                             chunk
                         );
-                    console.log("RESULT: " + result);
+                    trace("RESULT: " + result);
                     return result;
                 });
             };
 
             this._flush = (callback) => {
-                console.log("FLUSH");
+                trace("FLUSH");
                 if (this._scramjet_options.runFlush) {
                     last.then(this._scramjet_options.runFlush)
                         .then(

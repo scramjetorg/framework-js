@@ -33,6 +33,7 @@ function getStreamInOrderPTS(promiseTransform, maxParallel) {
 }
 
 test("PTS", async (t) => {
+    console.time("PTS");
     let a = 0;
     let x = 0;
     let y = 0;
@@ -105,4 +106,5 @@ test("PTS", async (t) => {
         if (result.a > MAX_PARALLEL / 2 && result.a !== ELEMENTS - 1)
             t.not(result.a, result.x, `Should not be chained ${result.a}, ${result.x}`);
     }
+    console.timeEnd("PTS");
 });
