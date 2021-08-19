@@ -2,6 +2,13 @@ const test = require("ava");
 const { Readable } = require("stream");
 const { trace } = require("../../ifca/utils");
 
+const { performance } = require("perf_hooks");
+
+/**
+ * Memory snapshot interval in miliseconds defines how often we check memory usage.
+ */
+const MEM_SNAPSHOT_INTERVAL = 10;
+
 /**
  * Push transform to PromiseTransformStream
  *
@@ -32,8 +39,15 @@ function getStreamInOrderPTS(promiseTransform, maxParallel) {
     });
 }
 
+let rss = 0;
+
 test("PTS", async (t) => {
+    const executionStartTime = performance.now();
     console.time("PTS");
+    setInterval(() => {
+        const memoryUsage = process.memoryUsage();
+        if (rss < memoryUsage.rss) rss = memoryUsage.rss;
+    }, MEM_SNAPSHOT_INTERVAL);
     let a = 0;
     let x = 0;
     let y = 0;
@@ -106,5 +120,8 @@ test("PTS", async (t) => {
         if (result.a > MAX_PARALLEL / 2 && result.a !== ELEMENTS - 1)
             t.not(result.a, result.x, `Should not be chained ${result.a}, ${result.x}`);
     }
+    const executionEndTime = performance.now();
     console.timeEnd("PTS");
+
+    console.log(`Time taken: ${(executionEndTime - executionStartTime) / 1000}s Memory: ${rss / 1024 / 1024}MB`);
 });
