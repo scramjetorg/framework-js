@@ -43,13 +43,25 @@ function getStreamInOrderPTS(PromiseTransformStream, promiseTransform, maxParall
 }
 
 /**
- * Test
+ * Sleep helper function
+ *
+ * @param {number} ms
+ * @returns {Promise}
+ */
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Common test code that allows injecting PTS algorithm and mesaures execution time.
  *
  * @param {PromiseTransformStream} pts PromiseTransformStream
  * @param {String} name Test Name
  * @param {ExecutionContext} t Ava ExecutionContext
  */
 async function code(pts, name, t) {
+    await sleep(1000);
+
     let rss = 0;
     const executionStartTime = performance.now();
     console.time(name);
@@ -137,6 +149,14 @@ async function code(pts, name, t) {
     );
 }
 
-// Run tests serially and not concurrently
-test.serial("IFCA", code.bind(null, PromiseTransformStreamIFCA, "IFCA"));
-test.serial("MK-TRANSFORM", code.bind(null, PromiseTransformStream, "MK-TRANSFORM"));
+// Run tests serially and not concurrently. 5x in order to measure average execution time
+test.serial("IFCA-1", code.bind(null, PromiseTransformStreamIFCA, "IFCA-1"));
+test.serial("IFCA-2", code.bind(null, PromiseTransformStreamIFCA, "IFCA-2"));
+test.serial("IFCA-3", code.bind(null, PromiseTransformStreamIFCA, "IFCA-3"));
+test.serial("IFCA-4", code.bind(null, PromiseTransformStreamIFCA, "IFCA-4"));
+test.serial("IFCA-5", code.bind(null, PromiseTransformStreamIFCA, "IFCA-5"));
+test.serial("MK-TRANSFORM-1", code.bind(null, PromiseTransformStream, "MK-TRANSFORM-1"));
+test.serial("MK-TRANSFORM-2", code.bind(null, PromiseTransformStream, "MK-TRANSFORM-2"));
+test.serial("MK-TRANSFORM-3", code.bind(null, PromiseTransformStream, "MK-TRANSFORM-3"));
+test.serial("MK-TRANSFORM-4", code.bind(null, PromiseTransformStream, "MK-TRANSFORM-4"));
+test.serial("MK-TRANSFORM-5", code.bind(null, PromiseTransformStream, "MK-TRANSFORM-5"));
