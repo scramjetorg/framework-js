@@ -17,7 +17,7 @@ test("Identity function, numbers starting from 1", async (t) => {
     const results = await Promise.all(read4);
     t.log('Output:', results)
 
-    t.deepEqual(results, [1,2,3,4], "Should pass elements unchagned");
+    t.deepEqual(results, [1,2,3,4], "Should pass elements unchanged");
 });
 
 test("Identity function, objects starting from 0", async (t) => {
@@ -34,7 +34,7 @@ test("Identity function, objects starting from 0", async (t) => {
     const results = await Promise.all(read4);
     t.log('Output:', results)
 
-    t.deepEqual(results, [{i: 0},{i: 1},{i: 2},{i: 3}], "Should pass elements unchagned");
+    t.deepEqual(results, [{i: 0},{i: 1},{i: 2},{i: 3}], "Should pass elements unchanged");
 });
 
 // TODO: skipped, 0 is skipped in IFCA.
@@ -52,7 +52,7 @@ test("Identity function, numbers starting from 0", async (t) => {
     const results = await Promise.all(read4);
     t.log('Output:', results)
 
-    t.deepEqual(results, [0,1,2,3], "Should pass elements unchagned");
+    t.deepEqual(results, [0,1,2,3], "Should pass elements unchanged");
 });
 
 test("Identity function, 4x write, 8x read", async (t) => {
@@ -90,7 +90,7 @@ test("Identity function, 8x write, 1x read + 4x read", async (t) => {
     t.log('Got:', next4)
 
     const results = [first, ...next4]
-    t.deepEqual(results, [{i: 0},{i: 1},{i: 2},{i: 3},{i: 4}], "Should pass elements unchagned");
+    t.deepEqual(results, [{i: 0},{i: 1},{i: 2},{i: 3},{i: 4}], "Should pass elements unchanged");
 });
 
 test("Overflow reads", async (t) => {
