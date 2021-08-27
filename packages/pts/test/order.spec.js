@@ -64,7 +64,6 @@ async function code(pts, name, t) {
 
     let rss = 0;
     const executionStartTime = performance.now();
-    console.time(name);
     setInterval(() => {
         const memoryUsage = process.memoryUsage();
         if (rss < memoryUsage.rss) rss = memoryUsage.rss;
@@ -142,7 +141,6 @@ async function code(pts, name, t) {
             t.not(result.a, result.x, `Should not be chained ${result.a}, ${result.x}`);
     }
     const executionEndTime = performance.now();
-    console.timeEnd(name);
 
     console.log(
         `${name} Time taken: ${(executionEndTime - executionStartTime) / 1000}s Memory: ${rss / 1024 / 1024}MB`
