@@ -149,14 +149,14 @@ async function code(pts, name, t) {
     );
 }
 
-// Run tests serially and not concurrently. 5x in order to measure average execution time
-test.serial("KM1.3 IFCA run: 1", code.bind(null, PromiseTransformStreamIFCA, "IFCA-1"));
-test.serial("KM1.3 IFCA run: 2", code.bind(null, PromiseTransformStreamIFCA, "IFCA-2"));
-test.serial("KM1.3 IFCA run: 3", code.bind(null, PromiseTransformStreamIFCA, "IFCA-3"));
-test.serial("KM1.3 IFCA run: 4", code.bind(null, PromiseTransformStreamIFCA, "IFCA-4"));
-test.serial("KM1.3 IFCA run: 5", code.bind(null, PromiseTransformStreamIFCA, "IFCA-5"));
-test.serial("KM1.3 MK-TRANSFORM run: 1", code.bind(null, PromiseTransformStream, "MK-TRANSFORM-1"));
-test.serial("KM1.3 MK-TRANSFORM run: 2", code.bind(null, PromiseTransformStream, "MK-TRANSFORM-2"));
-test.serial("KM1.3 MK-TRANSFORM run: 3", code.bind(null, PromiseTransformStream, "MK-TRANSFORM-3"));
-test.serial("KM1.3 MK-TRANSFORM run: 4", code.bind(null, PromiseTransformStream, "MK-TRANSFORM-4"));
-test.serial("KM1.3 MK-TRANSFORM run: 5", code.bind(null, PromiseTransformStream, "MK-TRANSFORM-5"));
+// Run tests serially and not concurrently. Repeat 5x in order to measure average execution time.
+const algorithms = [
+    { name: "IFCA", class: PromiseTransformStreamIFCA, repeat: 5 },
+    { name: "MK-TRANSFORM", class: PromiseTransformStream, repeat: 5 },
+];
+
+for (let algo of algorithms) {
+    for (let count = 1; count <= algo.repeat; count++) {
+        test.serial(`KM1.3 ${algo.name} run: ${count}`, code.bind(null, algo.class, `IFCA-${count}`));
+    }
+}
