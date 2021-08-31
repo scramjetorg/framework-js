@@ -13,6 +13,7 @@ const mkTransform = require("./mk-transform")(shared);
 // const mkRead = require("./mk-read")(shared);
 // const mkWrite = require("./mk-write")(shared);
 const { StreamError } = require("./stream-errors");
+const { trace } = require("../../ifca/utils");
 
 const rename = (ob, fr, to) => {
     if (ob[fr]) {
@@ -69,11 +70,11 @@ class PromiseTransformStream extends Transform {
 
         this.setMaxListeners(DefaultHighWaterMark);
         this.setOptions(newOptions);
-        console.log("NEW OPTIONS BEFORE IF:");
-        console.log(newOptions);
+        trace("NEW OPTIONS BEFORE IF:");
+        trace(newOptions);
         //
         // if (newOptions.promiseRead) {
-        //     console.log("PTS constructor READ");
+        //     trace("PTS constructor READ");
         //     this.type = "Read";
         //     mkRead.call(this, newOptions);
         //     this.tap();
@@ -85,11 +86,11 @@ class PromiseTransformStream extends Transform {
         //     this.tap();
         // } else {
         this.type = "Transform";
-        console.log("TRANSFORM...");
+        trace("TRANSFORM...");
         // It's always false
         if (newOptions.promiseTransform && mkTransform.call(this, newOptions)) {
             // returns true if transform can be pushed to referring stream
-            console.log("RETURN AND PUSH TRANSFORM"); // Never executed
+            trace("RETURN AND PUSH TRANSFORM"); // Never executed
             return options.referrer.pushTransform(options);
         }
         // }
@@ -158,7 +159,7 @@ class PromiseTransformStream extends Transform {
     }
 
     // async whenRead(count) {
-    //     console.log("PTS.whenRead count: " + count);
+    //     trace("PTS.whenRead count: " + count);
     //     return Promise.race([
     //         new Promise((res) => {
     //             const read = () => {
@@ -256,7 +257,7 @@ class PromiseTransformStream extends Transform {
     }
 
     // pipe(to, options) {
-    //     console.log("PTS.pipe()");
+    //     trace("PTS.pipe()");
     //     if (to === this) {
     //         return this;
     //     }
@@ -287,7 +288,7 @@ class PromiseTransformStream extends Transform {
     }
 
     tap() {
-        console.log("PTS.tap()");
+        trace("PTS.tap()");
         this._tapped = true;
         return this;
     }
@@ -312,8 +313,8 @@ class PromiseTransformStream extends Transform {
     }
 
     pushTransform(options) {
-        console.log("PTS.pushTransform... options:");
-        console.log(options);
+        trace("PTS.pushTransform... options:");
+        trace(options);
         if (typeof options.promiseTransform === "function") {
             if (!this._scramjet_options.transforms) {
                 this._pushedTransform = options.promiseTransform;
@@ -355,8 +356,8 @@ class PromiseTransformStream extends Transform {
     }
 
     // async _transform(chunk, encoding, callback) {
-    //     console.log("PTS._transform. chunk: " + JSON.stringify(chunk));
-    //     console.log(callback);
+    //     trace("PTS._transform. chunk: " + JSON.stringify(chunk));
+    //     trace(callback);
     //     if (!this._delayed_first) {
     //         await new Promise((res) => res());
     //         this._delayed_first = 1;
@@ -371,7 +372,7 @@ class PromiseTransformStream extends Transform {
     // }
 
     _flush(callback) {
-        console.log("PTS._flush");
+        trace("PTS._flush");
         const last = Promise.resolve();
 
         if (this._scramjet_options.runFlush) {

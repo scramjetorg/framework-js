@@ -2,6 +2,16 @@ const test = require("ava");
 const { Readable } = require("stream");
 const { trace } = require("../../ifca/utils");
 
+const { performance } = require("perf_hooks");
+
+const { PromiseTransformStream: PromiseTransformStreamIFCA } = require("../lib/promise-transform-stream-ifca");
+const { PromiseTransformStream } = require("../lib/promise-transform-stream");
+
+/**
+ * Memory snapshot interval in miliseconds defines how often we check memory usage.
+ */
+const MEM_SNAPSHOT_INTERVAL = 10;
+
 /**
  * Push transform to PromiseTransformStream
  *
@@ -17,14 +27,14 @@ function pushTransformToStreamPTS(str, promiseTransform) {
 /**
  * Get stream
  *
+ * @param {PromiseTransformStream} PromiseTransformStream PromiseTransformStream dependency injection
  * @param {Function} promiseTransform
  * @param {integer} maxParallel
  * @returns {PromiseTransformStream}
  */
-function getStreamInOrderPTS(promiseTransform, maxParallel) {
+function getStreamInOrderPTS(PromiseTransformStream, promiseTransform, maxParallel) {
     trace("FN getStreamInOrderPTS:");
     trace(promiseTransform);
-    const { PromiseTransformStream } = require("../lib/promise-transform-stream-ifca");
 
     return new PromiseTransformStream({
         maxParallel,
@@ -32,7 +42,32 @@ function getStreamInOrderPTS(promiseTransform, maxParallel) {
     });
 }
 
-test("PTS", async (t) => {
+/**
+ * Sleep helper function
+ *
+ * @param {number} ms
+ * @returns {Promise}
+ */
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Common test code that allows injecting PTS algorithm and mesaures execution time.
+ *
+ * @param {PromiseTransformStream} pts PromiseTransformStream
+ * @param {String} name Test Name
+ * @param {ExecutionContext} t Ava ExecutionContext
+ */
+async function code(pts, name, t) {
+    await sleep(1000);
+
+    let rss = 0;
+    const executionStartTime = performance.now();
+    setInterval(() => {
+        const memoryUsage = process.memoryUsage();
+        if (rss < memoryUsage.rss) rss = memoryUsage.rss;
+    }, MEM_SNAPSHOT_INTERVAL);
     let a = 0;
     let x = 0;
     let y = 0;
@@ -64,7 +99,7 @@ test("PTS", async (t) => {
 
     trace("Running with: ", { MAX_PARALLEL, ELEMENTS });
 
-    const str = new Readable.from(input).pipe(getStreamInOrderPTS(asyncPromiseTransform, MAX_PARALLEL));
+    const str = new Readable.from(input).pipe(getStreamInOrderPTS(pts, asyncPromiseTransform, MAX_PARALLEL));
     trace("PromiseTransformStream:");
     trace(str);
 
@@ -105,4 +140,21 @@ test("PTS", async (t) => {
         if (result.a > MAX_PARALLEL / 2 && result.a !== ELEMENTS - 1)
             t.not(result.a, result.x, `Should not be chained ${result.a}, ${result.x}`);
     }
-});
+    const executionEndTime = performance.now();
+
+    console.log(
+        `${name} Time taken: ${(executionEndTime - executionStartTime) / 1000}s Memory: ${rss / 1024 / 1024}MB`
+    );
+}
+
+// Run tests serially and not concurrently. Repeat 5x in order to measure average execution time.
+const algorithms = [
+    { name: "IFCA", class: PromiseTransformStreamIFCA, repeat: 5 },
+    { name: "MK-TRANSFORM", class: PromiseTransformStream, repeat: 5 },
+];
+
+for (let algo of algorithms) {
+    for (let count = 1; count <= algo.repeat; count++) {
+        test.serial(`KM1.3 ${algo.name} run: ${count}`, code.bind(null, algo.class, `IFCA-${count}`));
+    }
+}
