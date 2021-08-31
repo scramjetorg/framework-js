@@ -5,16 +5,6 @@ import { defer } from "../utils"
 type Dict = { [k: string]: number; };
 
 /**
- * How many items can be waiting to be flushed
- */
-const MAX_PARALLEL = 8;
-
-/**
- * How many elements should be tested
- */
-const ELEMENTS = 16;
-
-/**
  * Helper function that checks if passed argument is a promise.
  * 
  * @param {Object} x Obejct to be checked
@@ -23,6 +13,17 @@ const ELEMENTS = 16;
 const isPromise = (x: any) => typeof x !== "undefined" && typeof x.then === "function";
 
 test("PTS", async (t) => {
+
+    /**
+     * How many items can be waiting to be flushed
+     */
+    const MAX_PARALLEL = 8;
+
+    /**
+     * How many elements should be tested
+     */
+    const ELEMENTS = 16;
+
     let a = 0;
     let x = 0;
     let y = 0;
@@ -42,8 +43,8 @@ test("PTS", async (t) => {
 
     const ifca = new IFCA(MAX_PARALLEL, asyncPromiseTransform, {strict: true})
         .addTransform(syncPromiseTransform)
-        .addTransform(syncPromiseTransform2)
-        ;
+        .addTransform(syncPromiseTransform2);
+
     const writeNext = () => {
         const ref = input.shift();
         if (!ref) throw new Error("End of input");
@@ -52,7 +53,7 @@ test("PTS", async (t) => {
 
     t.false(isPromise(writeNext()), "Synchronous entry should resolve write immediately");
     await defer(10);
-    const item1 = ifca.read(); // {a: 0}
+    const item1 = ifca.read(); // {"a":0,"n":0,"x":0,"y":0,"z":0}
     t.false(isPromise(item1), "Not a promise.");
 
     t.deepEqual(item1 as unknown as Dict, { a: 0, n: 0, x: 0, y: 0, z: 0 }, "Initial entry should be read immediately")
@@ -105,4 +106,76 @@ test("PTS", async (t) => {
 
     t.pass();
 
+});
+
+test("Simple order check", async (t) => {
+
+    /**
+     * How many items can be waiting to be flushed
+     */
+     const MAX_PARALLEL = 4;
+
+     /**
+      * How many elements should be tested
+      */
+     const ELEMENTS = 6;
+
+     let a = 0;
+     let x = 0;
+     let y = 0;
+     let z = 0;
+
+     const input = Array.from(Array(ELEMENTS).keys()).map(() => {
+        return { a: a++ };
+    });
+
+    const asyncPromiseTransform: TransformFunction<{a: number}, {[k: string]: number}> = async ({ a }: { a: number }) => {
+        const out = { a, n: a % 2, x: x++ }
+        if (a % 2) await defer(100, out);
+        return out;
+    };
+    const syncPromiseTransform = ({ a, n, x }: Dict) => ({ a, n, x, y: y++ });
+    const syncPromiseTransform2 = ({ a, n, x, y }: Dict) => ({ a, n, x, y, z: z++ });
+
+    const ifca = new IFCA(MAX_PARALLEL, asyncPromiseTransform, {strict: true})
+        .addTransform(syncPromiseTransform)
+        .addTransform(syncPromiseTransform2);
+
+    const writeNext = () => {
+        const ref = input.shift();
+        if (!ref) throw new Error("End of input");
+        return ifca.write(ref);
+    };
+
+    t.false(isPromise(writeNext()), "Synchronous entry should resolve write immediately");
+    await defer(10);
+    const item1 = ifca.read(); // {"a":0,"n":0,"x":0,"y":0,"z":0}
+
+    t.false(isPromise(item1), "Not a promise.");
+    t.deepEqual(item1 as unknown as Dict, { a: 0, n: 0, x: 0, y: 0, z: 0 }, "Initial entry should be read immediately");
+
+    t.false(isPromise(writeNext()), "1st entry should resolve write immediately");
+    t.false(isPromise(writeNext()), "2nd entry should resolve write immediately");
+    t.false(isPromise(writeNext()), "3rd entry should resolve write immediately");
+    t.false(isPromise(writeNext()), "4th entry should resolve write immediately");
+    t.true(isPromise(writeNext()), "5th entry should fill up max parallel"); // As MAX_PARALLEL = 4 and we have 4 items in the queue.
+
+    const item2 = ifca.read(); // {"a":1,"n":1,"x":1,"y":3,"z":3}
+    const item3 = ifca.read(); // {"a":2,"n":0,"x":2,"y":1,"z":1}
+    const item4 = ifca.read(); // {"a":3,"n":1,"x":3,"y":4,"z":4}
+    const item5 = ifca.read(); // {"a":4,"n":0,"x":4,"y":2,"z":2}
+    const item6 = ifca.read(); // {"a":5,"n":1,"x":5,"y":5,"z":5} 
+
+    t.true(isPromise(item2), "Is a promise.");
+    t.true(isPromise(item3), "Is a promise.");
+    t.true(isPromise(item4), "Is a promise.");
+    t.true(isPromise(item5), "Is a promise.");
+    t.true(isPromise(item6), "Is a promise.");
+
+    // We need to add a .md description of the following occurences where chained functions are called on items immediately, not waiting for previous resolutions of the same function.
+    t.deepEqual(await item2 as unknown as Dict, { a: 1, n: 1, x: 1, y: 3, z: 3 }, "Queueing does not occur on async element");
+    t.deepEqual(await item3 as unknown as Dict, { a: 2, n: 0, x: 2, y: 1, z: 1 }, "Queueing does not occur on sync element");
+    t.deepEqual(await item4 as unknown as Dict, { a: 3, n: 1, x: 3, y: 4, z: 4 }, "Queueing does not occur on async element");
+    t.deepEqual(await item5 as unknown as Dict, { a: 4, n: 0, x: 4, y: 2, z: 2 }, "Queueing does not occur on sync element");
+    t.deepEqual(await item6 as unknown as Dict, { a: 5, n: 1, x: 5, y: 5, z: 5 }, "Queueing does not occur on sync element");
 });
