@@ -75,21 +75,21 @@ https://github.com/avajs/ava/blob/main/docs/recipes/debugging-with-vscode.md
 ### Simple Order Check
 
 The transformation consists of three functions:
-- the first one returns immediately for inputs with even `a` but has a delay  for inputs with odd `a`,
-- the second and the third ones are synchronous and return the data immediately.
 
-The transform is run over a list of consecuitve items containing an integer property `a` with sequential value.
+-   the first one `asyncPromiseTransform` returns immediately for inputs with even `a` but has a delay for inputs with odd `a`,
+-   the second `syncPromiseTransform` and the third `syncPromiseTransform2` ones are synchronous and return the data immediately.
+
+The transform is run over a list of consecuitve items containing an integer property `a` with sequential value starting with `0`. The total number of items is defined as `ELEMENTS`.
 
 #### Meaning of output data properties
 
 The output data type indicates the order of execution of specific operations within the `IFCA` transform chain. The properties are as follows:
 
-* `a` - the order in which the data is generated
-* `n` - parity information (even items have `n=0`) - a visual helper to see which data points were delayed.
-* `x` - the order of executions of the first, asynchronous method and delays all odd items.
-* `y` - the order of executions of the second, synchronous method which is executed after results from the first are delivered.
-* `z` - the order of executions of the third method, also synchronous, executed immediately after the second in the same order.
-
+-   `a` - the order in which the data is generated
+-   `n` - parity information (even items have `n=0`) - a visual helper to see which data points were delayed (`n=1`)
+-   `x` - the order of executions of the first, asynchronous method and delays all odd items.
+-   `y` - the order of executions of the second, synchronous method which is executed after results from the first are delivered.
+-   `z` - the order of executions of the third method, also synchronous, executed immediately after the second in the same order.
 
 The test indicates that no queueing occurs between items being processed while not exceeding `MAX_PARALLEL` during execution of chained methods `y` and `z`, whilst the read order exactly follows the write order.
 
