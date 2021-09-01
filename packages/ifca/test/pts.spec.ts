@@ -177,5 +177,5 @@ test("Simple order check", async (t) => {
     t.deepEqual(await item3 as unknown as Dict, { a: 2, n: 0, x: 2, y: 1, z: 1 }, "Queueing does not occur on sync element");
     t.deepEqual(await item4 as unknown as Dict, { a: 3, n: 1, x: 3, y: 4, z: 4 }, "Queueing does not occur on async element");
     t.deepEqual(await item5 as unknown as Dict, { a: 4, n: 0, x: 4, y: 2, z: 2 }, "Queueing does not occur on sync element");
-    t.deepEqual(await item6 as unknown as Dict, { a: 5, n: 1, x: 5, y: 5, z: 5 }, "Queueing does not occur on sync element");
+    t.deepEqual(await item6 as unknown as Dict, { a: 5, n: 1, x: 5, y: 5, z: 5 }, "Overflowing element is in sync again");
 });
