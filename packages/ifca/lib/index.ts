@@ -31,16 +31,44 @@ export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
     /**
      * Write (add chunk)
      * 
-     * @param chunk Chunk to be processed
+     * https://nodejs.org/api/stream.html#stream_writable_write_chunk_encoding_callback_1
+     * All Writable stream implementations must provide a writable._write() and/or writable._writev() method to send data to the underlying resource.
+     * 
+     * @param {Object|null} _chunk The data to be written
+     * @returns {MaybePromise}
      */
     write(chunk: S): MaybePromise<void>;
+
+    /**
+     * End
+     * 
+     * @returns {MaybePromise}
+     */
     end(): MaybePromise<void|null>;
 
+    /**
+     * Read
+     * 
+     * @returns {MaybePromise}
+     */
     read(): MaybePromise<T|null>;
     
     // TODO: destroy(e: Error): void;
 
+    /**
+     * Add transform
+     * 
+     * @param {TransformFunction} transform Transform function
+     * @param {TransformErrorHandler} [handler] Optional transform error handler
+     * @returns {IFCA}
+     */
     addTransform<W>(tr: TransformFunction<T,W>, err?: TransformErrorHandler<T,W>): IIFCA<S,W,this>;
+
+    /**
+     * Remove transform (pop)
+     * 
+     * @returns {IFCA}
+     */
     removeTransform(): I;
 }
 
@@ -76,6 +104,16 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return "R,".repeat(this.readers.length) + this.processing.slice(this.readers.length).map((x,i) => this.readable[this.readers.length + i] ? 'd,' : 'p,')
     }
 
+
+    /**
+     * Write (add chunk)
+     * 
+     * https://nodejs.org/api/stream.html#stream_writable_write_chunk_encoding_callback_1
+     * All Writable stream implementations must provide a writable._write() and/or writable._writev() method to send data to the underlying resource.
+     * 
+     * @param {Object|null} _chunk The data to be written
+     * @returns {MaybePromise}
+     */
     write(_chunk: S|null): MaybePromise<void> {
         if (this.ended) throw new Error("Write after end");
         if (_chunk === null) return this.end();
@@ -97,6 +135,15 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return drain;
     }
 
+    /**
+     * Write array of chunks
+     * 
+     * https://nodejs.org/api/stream.html#stream_writable_writev_chunks_callback
+     * All Writable stream implementations must provide a writable._write() and/or writable._writev() method to send data to the underlying resource.
+     * 
+     * @param {Object[]|null}_chunks The data to be written. The value is an array of <Object> that each represent a discrete chunk of data to write.
+     * @returns {MaybePromise} 
+     */
     writev(_chunks: (S|null)[]):MaybePromise<void> {
         if (this.ended) throw new Error("Write after end");
 
@@ -253,6 +300,11 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return ret;
     }
 
+    /**
+     * End
+     * 
+     * @returns {MaybePromise}
+     */
     end(): MaybePromise<void> {
         if (this.ended) throw new Error("End called multiple times");
 
@@ -272,6 +324,11 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return null;
     }
 
+    /**
+     * Read
+     * 
+     * @returns {MaybePromise}
+     */
     read(): MaybePromise<T|null> {
         trace('IFCA-READ()')
         const ret = this.processing.shift();
@@ -308,22 +365,44 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         });
     }
 
+    /**
+     * Return last processing item
+     * 
+     * @returns {PromiseLike}
+     */
     last(): PromiseLike<T> { 
         return this.processing[this.processing.length - 1];
     }
 
+    /**
+     * Add error handler
+     * 
+     * @param {TransformErrorHandler} handler Transform error handler
+     * @returns {IFCA}
+     */
     addErrorHandler(handler: TransformErrorHandler<S,T>): this {
         this.transformHandlers.push([, handler]);
 
         return this;
     }
 
+    /**
+     * Add transform
+     * 
+     * @param {TransformFunction} transform Transform function
+     * @param {TransformErrorHandler} [handler] Optional transform error handler
+     * @returns {IFCA}
+     */
     addTransform<W>(transform: TransformFunction<T, W>, handler?: TransformErrorHandler<T, W>): IFCA<S, W, this> {
         (this.transformHandlers as any[]).push([transform, handler]);
         return this as IFCA<S,unknown,any> as IFCA<S,W,this>;
     }
 
-    // Remove transform (pop)
+    /**
+     * Remove transform (pop)
+     * 
+     * @returns {IFCA}
+     */
     removeTransform(): I {
         this.transformHandlers.shift();
         return this as IFCA<S,unknown,any> as I;
