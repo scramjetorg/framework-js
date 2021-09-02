@@ -135,8 +135,6 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      * @returns {MaybePromise|undefined}
      */
     write(_chunk: S|null): MaybePromise<void> {
-        console.log('this.strict: ' + this.strict);
-
         if (this.ended) throw new Error("Write after end");
         if (_chunk === null) return this.end();
 
