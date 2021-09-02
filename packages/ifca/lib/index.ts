@@ -124,9 +124,9 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
 
     /**
-     * Write (add chunk) immediately until we reach maxParallel.
+     * Write (add chunk)
      * 
-     * Once processing reaches maxParallel then write method returns drain (pending promise)
+     * Once processing reaches maxParallel then write method returns drain (pending promise). Otherwise undefined is returned
      * 
      * https://nodejs.org/api/stream.html#stream_writable_write_chunk_encoding_callback_1
      * All Writable stream implementations must provide a writable._write() and/or writable._writev() method to send data to the underlying resource.
@@ -301,12 +301,22 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     /**
      * Takes chunk and applies transformations
      * 
-     * @param _chunk 
+     * @param {Object} _chunk 
      * @returns {Promise}
      */
     private makeTransformChain(_chunk: S): Promise<T> {
         let ret: Promise<T> = (this.transformHandlers as TransformHandler<any, any>[])
             .reduce(
+                /**
+                 * Reducer function that executes all transformations
+                 * 
+                 * @param {Promise} prev Chunk resolved as promise
+                 * @param {Array} param
+                 * @param {TransformationFunction} param._executor - Transformation Function
+                 * @param {TransformErrorHandler} param._handler - Transformation Error Handler
+                 * 
+                 * @returns {Promise} 
+                 */
                 // TODO: maybe here we should have the argument to prev
                 (prev, [_executor, _handler]) => {
                     if (!_handler) return prev.then(_executor?.bind(this));
@@ -334,6 +344,9 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     /**
      * End
      * 
+     * Sets `this.ended` as `true`. Resolves all promises pending in processing and calls `handleEnd` method.
+     * 
+     * @throws {Error} Throws error if called multiple times
      * @returns {MaybePromise}
      */
     end(): MaybePromise<void> {
@@ -347,9 +360,13 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         this.handleEnd();
     }
 
+    /**
+     * This resolves all readers beyond those being processed.
+     * 
+     * @returns {null}
+     */
     private handleEnd() {
         trace("IFCA-HANDLE_END()")
-        // this resolves all readers beyond those being processed.
         this.readers.slice(this.processing.length).forEach(([res]) => res(null));
         this.readable.push(null as unknown as T);
         return null;
