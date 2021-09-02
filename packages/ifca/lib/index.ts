@@ -79,6 +79,21 @@ type NullTerminatedArray<X extends any[]> = X | [...X, null]
 
 export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
+    /**
+     * Create IFCA.
+     * 
+     * ```javascript
+     * const MAX_PARALLEL = 4;
+     * 
+     * const fn = (x: {i: number}) => {t.log('Processing', x); return x};
+     * 
+     * const ifca = new IFCA(MAX_PARALLEL, fn, { strict: false });
+     * ```
+     * 
+     * @param {number} maxParallel Max Parallel defines how many items we can process parallel
+     * @param {TransformFunction} initialTransform Initial Transformation 
+     * @param {IFCAOptions} [options] Options
+     */
     constructor(
         public maxParallel = 2 * cpus().length, 
         initialTransform: TransformFunction<S,T>,
@@ -88,6 +103,9 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         this.strict = !!options.strict;
     }
 
+    /**
+     * Transformation Handlers Array
+     */
     transformHandlers: TransformHandler<S,T>[] = [];
     
     // transforms: TransformArray<S, T>;
@@ -106,15 +124,19 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
 
     /**
-     * Write (add chunk)
+     * Write (add chunk) immediately until we reach maxParallel.
+     * 
+     * Once processing reaches maxParallel then write method returns drain (pending promise)
      * 
      * https://nodejs.org/api/stream.html#stream_writable_write_chunk_encoding_callback_1
      * All Writable stream implementations must provide a writable._write() and/or writable._writev() method to send data to the underlying resource.
      * 
      * @param {Object|null} _chunk The data to be written
-     * @returns {MaybePromise}
+     * @returns {MaybePromise|undefined}
      */
     write(_chunk: S|null): MaybePromise<void> {
+        console.log('this.strict: ' + this.strict);
+
         if (this.ended) throw new Error("Write after end");
         if (_chunk === null) return this.end();
 
@@ -124,9 +146,12 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             ? undefined 
             : this.processing[pos - this.maxParallel].finally()
         ;
-        const chunkBeforeThisOne = this.processing[pos - 1];
+        const chunkBeforeThisOne = this.processing[pos - 1]; // First one is undefined obviously. Rest are Promise { <pending> } 
         const currentChunkResult = this.strict ? this.makeStrictTransformChain(_chunk) : this.makeTransformChain(_chunk);
         
+        /**
+         * Make processing item and push to processing array in order to start processing transformations.
+         */
         this.processing.push(
             this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult, _chunk)
         );
@@ -138,6 +163,8 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     /**
      * Write array of chunks
      * 
+     * Basically copy of write method that instead of one chunk can process array of chunks.
+     * 
      * https://nodejs.org/api/stream.html#stream_writable_writev_chunks_callback
      * All Writable stream implementations must provide a writable._write() and/or writable._writev() method to send data to the underlying resource.
      * 
@@ -148,7 +175,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         if (this.ended) throw new Error("Write after end");
 
         const pos = this.processing.length;
-        trace('IFCA WRITE pos:', pos, _chunks)
+        trace('IFCA WRITEV pos:', pos, _chunks)
         const drain: MaybePromise<void> = pos < this.maxParallel 
             ? undefined 
             : this.processing[pos - this.maxParallel]
@@ -207,8 +234,8 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             currentSafeChunkResult
         ])
             .then(([, result]) => {
-                // trace("IFCA-WRITE_PROCESSING_SHIFT")
                 if (result !== undefined) {
+                    trace('IFCA-WRITE_RESULT', result);
                     if (this.readers.length === 0 || this.readers[0][0] === noop) {
                         if (this.readers.length) this.readers.shift();
                         this.readable.push(result);
@@ -272,7 +299,13 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             }
         }) as (a: X) => Y;
     }
-        
+    
+    /**
+     * Takes chunk and applies transformations
+     * 
+     * @param _chunk 
+     * @returns {Promise}
+     */
     private makeTransformChain(_chunk: S): Promise<T> {
         let ret: Promise<T> = (this.transformHandlers as TransformHandler<any, any>[])
             .reduce(
