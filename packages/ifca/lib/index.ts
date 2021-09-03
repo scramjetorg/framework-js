@@ -151,7 +151,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
          * Make processing item and push to processing array in order to start processing transformations.
          */
         this.processing.push(
-            this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult, _chunk)
+            this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult)
         );
         
         trace('DRAIN WRITE:', drain);
@@ -184,7 +184,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         const currentChunksResult = chunksToBeProcessed.map(chunk => this.strict ? this.makeStrictTransformChain(chunk) : this.makeTransformChain(chunk));
 
         this.processing.push(
-            ...this.makeProcessingItems(chunkBeforeThisOne, currentChunksResult, chunksToBeProcessed)
+            ...this.makeProcessingItems(chunkBeforeThisOne, currentChunksResult)
         );
         trace('DRAIN WRITEV:');
         trace(drain);
@@ -194,19 +194,31 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return drain;
     }
 
-    // TODO: add chunks
-    private makeProcessingItems(chunkBeforeThisOne: Promise<any>, currentChunksResult: MaybePromise<T>[], _chunks: S[]): Promise<any>[] {
+    /**
+     * Same as `makeProcessingItem` but accepts array of chunks
+     * 
+     * @param chunkBeforeThisOne 
+     * @param currentChunksResult 
+     * @returns 
+     */
+    private makeProcessingItems(chunkBeforeThisOne: Promise<any>, currentChunksResult: MaybePromise<T>[]): Promise<any>[] {
         const result:MaybePromise<any>[] = [];
-        result.push(this.makeProcessingItem(chunkBeforeThisOne, currentChunksResult[0], _chunks[0]));
+        result.push(this.makeProcessingItem(chunkBeforeThisOne, currentChunksResult[0]));
         for (let i = 1; i < currentChunksResult.length; i++) {
-            result.push(this.makeProcessingItem(currentChunksResult[i - 1] as Promise<T>, currentChunksResult[i], _chunks[i]))
+            result.push(this.makeProcessingItem(currentChunksResult[i - 1] as Promise<T>, currentChunksResult[i]))
         }
 
         return result;
     } 
 
     // TODO: here's a low hanging fruit for implementing non-ordered processing
-    private makeProcessingItem(chunkBeforeThisOne: Promise<any>, currentChunkResult: MaybePromise<T>, processingChunk: S): Promise<any> {
+    /**
+     * 
+     * @param {Promise} chunkBeforeThisOne 
+     * @param {MaybePromise} currentChunkResult 
+     * @returns {Promise}
+     */
+    private makeProcessingItem(chunkBeforeThisOne: Promise<any>, currentChunkResult: MaybePromise<T>): Promise<any> {
         const currentSafeChunkResult = 
             "catch" in currentChunkResult
                 ? currentChunkResult.catch(
