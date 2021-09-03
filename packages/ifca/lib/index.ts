@@ -195,11 +195,11 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     /**
-     * Same as `makeProcessingItem` but accepts array of chunks
+     * Same as `makeProcessingItem` but accepts array of chunks. Processes many items.
      * 
-     * @param chunkBeforeThisOne 
-     * @param currentChunksResult 
-     * @returns 
+     * @param {Promise} chunkBeforeThisOne 
+     * @param {MaybePromise[]} currentChunksResult 
+     * @returns {Promise[]} 
      */
     private makeProcessingItems(chunkBeforeThisOne: Promise<any>, currentChunksResult: MaybePromise<T>[]): Promise<any>[] {
         const result:MaybePromise<any>[] = [];
@@ -385,12 +385,12 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     /**
-     * Read
+     * Read result from readable NullTerminatedArray.
      * 
-     * @returns {MaybePromise}
+     * @returns {MaybePromise|null}
      */
     read(): MaybePromise<T|null> {
-        trace('IFCA-READ()')
+        trace('IFCA-READ() processing', this.processing)
         const ret = this.processing.shift();
         if (this.readable.length > 0) {
             if (this.readable[0] === null) {
@@ -398,7 +398,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
                 trace('IFCA-READ READABLE-NULL')
                 return null;
             }
-            trace('IFCA-READ READABLE-EXISTS');
+            trace('IFCA-READ READABLE-EXISTS', this.readable);
             return this.readable.shift() as T;
         }
         else if (ret) {
