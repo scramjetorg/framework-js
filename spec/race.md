@@ -1,4 +1,4 @@
-# DataStream\<T>.race( functions )
+# DataStream\<T>.race<U>( functions )
 
 Processes all provided functions in parallel and returns the first resolved, for each stream chunk.
 
@@ -10,7 +10,7 @@ Parameters:
 
 - functions: Array of asynchronus functions to be executed in parallel. Each function will receive current chunk as a first argument when called. The resulting value of the fastest function becomes a new chunk.
 
-Returns `this` stream.
+Returns new `DataStream` instance with the type `U`.
 
 **Generic signature**:
 

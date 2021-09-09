@@ -11,7 +11,7 @@ Parameters:
 - input: Input data from which new stream will be created. It should be `Iterable` or `Stream` of type `T`.
 - options: Options object providing values for predefined configuration options.
 
-Returns `DataStream` of type `T`.
+Returns new `DataStream` instance of the type `T`.
 
 **Generic signature**:
 
