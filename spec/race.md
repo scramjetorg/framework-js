@@ -22,6 +22,7 @@ future( chunk: T ): Promise<T>
 Examples:
 
 ```js
+// TypeScript
 // Fetch football matches results for each match from the provider which retruns results the fastest.
 const urls = [ 'https://scores.com/result/_match_', 'https://goals.com/results/_match_', , 'https://football.com/results/_match_' ];
 

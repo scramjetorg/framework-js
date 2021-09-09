@@ -25,17 +25,17 @@ callbackFn( into: U, chunk: T ): Promise<void> | void
 The `.into()` method may be used to write chunks from `this` stream to any other stream:
 
 ```js
+// TypeScript
 const numberStream = DataStream.from<Number>( [ 1, 2, 3, 4 ] );
 const stringStream = new DataStream<String>();
 
-numberStream.into( ( into, chunk ) => { into.write( `${ chunk }` ) }, stringStream );
-
-// stringStream now contains [ '1', '2', '3', '4' ]
+numberStream.into( ( into, chunk ) => { into.write( `${ chunk }` ) }, stringStream ); // stringStream now contains [ '1', '2', '3', '4' ]
 ```
 
 Or to copy `this` stream chunks into another object or structure (e.g. array):
 
 ```js
+// TypeScript
 const stringStream = DataStream.from<String>( [ 'foo', 'bar', 'baz' ] );
 
 const textParts = dataStream.into<String[]>( ( into, chunk ) => { into.push( chunk ) }, [] );
