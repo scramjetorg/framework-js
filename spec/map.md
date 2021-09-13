@@ -19,7 +19,11 @@ DataStream<T>.map<U>(func: T => U): DataStream<U>
 ### Typescript
 
 ```js
-// TypeScript
+declare class DataStream<T> {
+    map<U>(func: Callback<T, U>): DataStream<U>;
+}
+declare type Callback<X, Y> = (chunk: X) => Promise<Y>;
+
 DataStream.from<Number>([ 1, 2, 3, 4 ])
   .map(chunk => chunk * 2)  // result: 2, 4, 6, 8
 ```

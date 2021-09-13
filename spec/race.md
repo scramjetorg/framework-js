@@ -15,8 +15,8 @@ Returns new `DataStream` instance with the type `U`.
 **Generic signature**:
 
 ```
-DataStream<T>.race<U>( futures: Function[] ): DataStream<T>;
-future( chunk: T ): Promise<T>
+DataStream<T>.race<U>( futures: Function[] ): DataStream<U>;
+future( chunk: T ): Promise<U>
 ```
 
 ## Examples
@@ -24,7 +24,11 @@ future( chunk: T ): Promise<T>
 ### Typescript
 
 ```js
-// TypeScript
+declare class DataStream<T> {
+    race<U>(funcs: Callback<T, U>[]): DataStream<U>;
+}
+declare type Callback<X, Y> = (chunk: X) => Promise<Y>;
+
 // Fetch football matches results for each match from the provider which retruns results the fastest.
 const urls = [ 'https://scores.com/result/_match_', 'https://goals.com/results/_match_', , 'https://football.com/results/_match_' ];
 

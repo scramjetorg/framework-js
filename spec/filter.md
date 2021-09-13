@@ -18,10 +18,11 @@ DataStream<T>.filter(func: T => Boolean): DataStream<T>
 
 ### Typescript
 
-```js
+```ts
 declare class DataStream<T> {
-    filter(func: Function<T> => Boolean): DataStream<T>;
+    filter(func: Callback<T>): DataStream<T>;
 }
+declare type Callback<X> = (chunk: X) => Boolean;
 
 const numbers = DataStream.from<Number>([ 1, 2, 3, 4, 5, 6 ]);
 const odd = numbers.filter(chunk => chunk % 2)  // result: 1, 3, 5

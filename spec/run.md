@@ -22,7 +22,11 @@ DataStream<T>.run(): Promise<void>
 ### Typescript
 
 ```js
-// TypeScript
+declare class DataStream<T> {
+    run(): Promise<void>;
+}
+declare type Callback<X, Y> = (initial: Y, chunk: X) => Promise<Y>;
+
 DataStream.from<String>([ "foo", "bar" ])
   .each(x => saveToTheDatabase(x))
   .run()

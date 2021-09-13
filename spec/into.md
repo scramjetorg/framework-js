@@ -26,8 +26,9 @@ callbackFn( into: U, chunk: T ): Promise<void> | void
 
 ```js
 declare class DataStream<T> {
-    into<U>(func: Function<U, T> => Promise<void>): U;
+    into<U>(func: Callback<T, U>): U;
 }
+declare type Callback<X, Y> = (into: Y, chunk: X) => Promise<void>;
 ```
 
 The `.into()` method may be used to write chunks from `this` stream to any other stream:

@@ -28,13 +28,18 @@ DataStream<T>.reduce<U>(func: (U, T) => U, [initial: U]): U
 ### Typescript
 
 ```js
-// TypeScript
+declare class DataStream<T> {
+    reduce<U>(func: Callback<T, U>, initial: U): U;
+}
+declare type Callback<X, Y> = (initial: Y, chunk: X) => Promise<Y>;
+```
+
+```js
 DataStream.from<Number>([ 1, 2, 3, 4 ])
   .reduce<Number>((a: Number, b: Number) => a + b)  // result: 10
 ```
 
 ```js
-// TypeScript
 DataStream.from<Number>([ 1, 2, 3, 4 ])
   .reduce<String>((s: String, n: Number) => s + String(n), "")  // result: "1234"
 ```
