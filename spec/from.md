@@ -72,6 +72,7 @@ int main() {
 
 ## Remarks
 
+1. Generator needs to be called (so `Iterable` can be passed to `from`). It would be `.from( generatorFn() )` instead of what we have now - `.from( generatorFn )` so it practically the same case as regular function returning `Iterable`.
 1. If we would like to have more fancy methods, we could go with `fromModule()`, `fromFile()`, `fromUrl()` variations in JS and in languages which supports methods overloading just overload `from()`. So instead of "bulking" `from()`, make is simpler but provide other "convienience creators". Apart from that:
     * Also giving up intermediate types, like functions, async functions, promises which need to retrun iterable/streams makes API simpler (kind of simplicity vs user convenience as it saves some keystrokes).
     * Maybe we could also support `EventEmitters` (Streams/Readables also implements EE)?
