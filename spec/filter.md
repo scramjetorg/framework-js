@@ -16,8 +16,14 @@ DataStream<T>.filter(func: T => Boolean): DataStream<T>
 
 ## Examples
 
+### Typescript
+
 ```js
 // TypeScript
 const numbers = DataStream.from<Number>([ 1, 2, 3, 4, 5, 6 ]);
 const odd = numbers.filter(chunk => chunk % 2)  // result: 1, 3, 5
 ```
+
+### Python
+
+### C++

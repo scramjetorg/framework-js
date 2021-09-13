@@ -19,9 +19,15 @@ DataStream<T>.run(): Promise<void>
 
 ## Examples
 
+### Typescript
+
 ```js
 // TypeScript
 DataStream.from<Number>([ "foo", "bar" ])
   .each(x => saveToTheDatabase(x))
   .run()
 ```
+
+### Python
+
+### C++

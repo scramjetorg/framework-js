@@ -20,13 +20,19 @@ DataStream.from<T>( Iterable<T> input, options?: Object ): DataStream<T>
 DataStream.from<T>( Stream<T> input, options?: Object ): DataStream<T>
 ```
 
-**Examples**:
+## Examples
+
+### Typescript
 
 ```ts
 const stringStream = DataStream.from<String>( input ); // input is of type Iterable<String>
 const stringStreamCopy = DataStream.from<String>( stringStream );
 const numberStream = DataStream.from<Number>( stringStream.map( parseInt ) )
 ```
+
+### Python
+
+### C++
 
 ---
 

@@ -20,7 +20,9 @@ DataStream<T>.into<U>( callbackFn: Function, into: U ): U;
 callbackFn( into: U, chunk: T ): Promise<void> | void
 ```
 
-**Examples**:
+## Examples
+
+### Typescript
 
 The `.into()` method may be used to write chunks from `this` stream to any other stream:
 
@@ -42,6 +44,10 @@ const textParts = dataStream.into<String[]>( ( into, chunk ) => { into.push( chu
 
 console.log( textParts ); // [ 'foo', 'bar', 'baz' ]
 ```
+
+### Python
+
+### C++
 
 ---
 

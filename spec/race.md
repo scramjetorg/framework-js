@@ -19,7 +19,9 @@ DataStream<T>.race<U>( futures: Function[] ): DataStream<T>;
 future( chunk: T ): Promise<T>
 ```
 
-Examples:
+## Examples
+
+### Typescript
 
 ```js
 // TypeScript
@@ -36,6 +38,10 @@ const fetchFunctions = urls.map( url => {
 
 resultsStream.race( fetchFunctions ); // The result should be something like [ '1:0', '2:2', '3:1' ]
 ```
+
+### Python
+
+### C++
 
 ---
 

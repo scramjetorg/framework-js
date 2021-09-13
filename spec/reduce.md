@@ -25,6 +25,8 @@ DataStream<T>.reduce<U>(func: (U, T) => U, [initial: U]): U
 
 ## Examples
 
+### Typescript
+
 ```js
 // TypeScript
 DataStream.from<Number>([ 1, 2, 3, 4 ])
@@ -36,3 +38,7 @@ DataStream.from<Number>([ 1, 2, 3, 4 ])
 DataStream.from<Number>([ 1, 2, 3, 4 ])
   .reduce<String>((s: String, n: Number) => s + String(n), "")  // result: "1234"
 ```
+
+### Python
+
+### C++
