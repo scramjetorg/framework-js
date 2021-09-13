@@ -74,6 +74,27 @@ print(textParts)  # [ 'foo', 'bar', 'baz' ]
 
 ### C++
 
+```c++
+template <typename T>
+class DataStream {
+    public:
+
+    template <typename U>
+    U into(std::function<void(T, U)>, U into);
+};
+
+int main() {
+    int x[] = { 1, 2, 3, 4 };
+
+    auto z = DataStream<int>::from(x);
+    auto s = new DataStream<string>();
+
+    z->into<DataStream<string>>([](int chunk, DataStream<string> into) { return into.wrtie( std::to_string(chunk) ); }, s );
+
+    return 0;
+}
+```
+
 ---
 
 ## Remarks
