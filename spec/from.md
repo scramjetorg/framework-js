@@ -24,7 +24,11 @@ DataStream.from<T>( Stream<T> input, options?: Object ): DataStream<T>
 
 ### Typescript
 
-```ts
+```js
+declare class DataStream<T> {
+    static from<U>(input: Iterable<U> | Readable<U>, options?: Object): DataStream<U>;
+}
+
 const stringStream = DataStream.from<String>( input ); // input is of type Iterable<String>
 const stringStreamCopy = DataStream.from<String>( stringStream );
 const numberStream = DataStream.from<Number>( stringStream.map( parseInt ) )

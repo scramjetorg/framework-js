@@ -21,7 +21,10 @@ DataStream<T>.each<U>(func: T => U): DataStream<T>
 ### Typescript
 
 ```js
-// TypeScript
+declare class DataStream<T> {
+    each<U>(func: Function<T> => U): DataStream<T>;
+}
+
 DataStream.from<Number>([ 1, 2, 3, 4 ])
   .each(chunk => {console.log("got", chunk)})  // result: 1, 2, 3, 4 in returned stream,
                                                // "got 1", "got 2", "got 3", "got 4" in console
