@@ -27,7 +27,7 @@ declare class DataStream<T> {
 declare type Callback<X, Y> = (chunk: X) => Promise<Y>;
 
 DataStream.from<Number>([ 1, 2, 3, 4 ])
-  .each(chunk => {console.log("got", chunk)})  // result: 1, 2, 3, 4 in returned stream,
+  .each<void>(chunk => {console.log("got", chunk)})  // result: 1, 2, 3, 4 in returned stream,
                                                // "got 1", "got 2", "got 3", "got 4" in console
 ```
 
@@ -41,3 +41,24 @@ DataStream.from_from([1, 2, 3, 4])
 ```
 
 ### C++
+
+```c++
+template <typename T>
+class DataStream {
+    public:
+
+    template <typename U>
+    DataStream<T>* each(std::function<U(T)>);
+};
+
+int main() {
+    int x[] = { 1, 2, 3, 4 };
+
+    auto z = DataStream<int>::from(x);
+
+    z->each<void>([](int chunk) { cout << "got " << chunk; });
+    // prints "got 1", "got 2", "got 3", "got 4" in console
+
+    return 0;
+}
+```

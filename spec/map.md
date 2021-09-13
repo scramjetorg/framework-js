@@ -36,3 +36,23 @@ DataStream.from_from([1, 2, 3, 4])
 ```
 
 ### C++
+
+```c++
+template <typename T>
+class DataStream {
+    public:
+
+    template <typename U>
+    DataStream<U>* map(std::function<U(T)>);
+};
+
+int main() {
+    int x[] = { 1, 2, 3, 4 };
+
+    auto z = DataStream<int>::from(x);
+
+    z->map<int>([](int chunk) { return chunk * 2; }); // result: 2, 4, 6, 8
+
+    return 0;
+}
+```

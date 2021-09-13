@@ -44,6 +44,30 @@ numberStream = DataStream.from_from(stringStream.map(int))
 
 ### C++
 
+```c++
+struct DataStreamOpts {
+    int maxParallel = 0;
+};
+
+template <typename T>
+class DataStream {
+    public:
+
+    template <typename U>
+    static DataStream<U>* from(U[] input, DataStreamOpts opts = NULL);
+};
+
+int main() {
+    int x[] = { 1, 2, 3, 4 };
+    string s[] = { "foo", "bar", "baz" };
+
+    auto stringStream = DataStream<int>::from(x);
+    auto numberStream = DataStream<string>::from(s);
+
+    return 0;
+}
+```
+
 ---
 
 ## Remarks

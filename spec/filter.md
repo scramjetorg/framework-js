@@ -35,3 +35,22 @@ numbers = DataStream.from_from([1, 2, 3, 4, 5, 6])
 odd = numbers.filter(lambda x: x % 2)  # result: 1, 3, 5
 ```
 ### C++
+
+```c++
+template <typename T>
+class DataStream {
+    public:
+
+    DataStream<T>* filter(std::function<bool(T)>);
+};
+
+int main() {
+    int x[] = { 1, 2, 3, 4, 5, 6 };
+
+    auto z = DataStream<int>::from(x);
+
+    z->filter([](int chunk) { return (bool)(chunk % 2); }); // result: 1, 3, 5
+
+    return 0;
+}
+```

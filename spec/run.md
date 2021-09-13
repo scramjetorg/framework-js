@@ -40,3 +40,22 @@ DataStream.from_from(["foo", "bar"])
   .run()
 ```
 ### C++
+
+```c++
+template <typename T>
+class DataStream {
+    public:
+
+    future<void> run();
+};
+
+int main() {
+    int x[] = { 1, 2, 3, 4 };
+
+    auto z = DataStream<int>::from(x)
+        ->each<void>([](int chunk) { saveToTheDatabase(chunk); })
+        ->run();
+
+    return 0;
+}
+```

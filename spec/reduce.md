@@ -36,7 +36,7 @@ declare type Callback<X, Y> = (initial: Y, chunk: X) => Promise<Y>;
 
 ```js
 DataStream.from<Number>([ 1, 2, 3, 4 ])
-  .reduce<Number>((a: Number, b: Number) => a + b)  // result: 10
+  .reduce<Number>((a: Number, b: Number) => a + b, 0)  // result: 10
 ```
 
 ```js
@@ -48,7 +48,7 @@ DataStream.from<Number>([ 1, 2, 3, 4 ])
 
 ```python
 DataStream.from_from([1, 2, 3, 4])
-  .reduce(lambda a, b => a + b)  # result: 10
+  .reduce(lambda a, b => a + b, 0)  # result: 10
 ```
 
 ```python
@@ -57,3 +57,23 @@ DataStream.from_from([1, 2, 3, 4])
 ```
 
 ### C++
+
+```c++
+template <typename T>
+class DataStream {
+    public:
+
+    template <typename U>
+    U reduce(std::function<U(T, U)>, U initial);
+};
+
+int main() {
+    int x[] = { 1, 2, 3, 4 };
+
+    auto z = DataStream<int>::from(x);
+
+    z->reduce<int>([](int chunk, int prev) { return prev + chunk; }, 0); // result: 10
+
+    return 0;
+}
+```

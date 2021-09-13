@@ -63,6 +63,20 @@ results.race(fetchFunctions);  # The result should be something like [ '1:0', '2
 
 ### C++
 
+```c++
+template <typename T>
+class DataStream {
+    public:
+
+    template <typename U>
+    DataStream<U>* race(std::function<U(T)>[]);
+};
+
+int main() {
+    // TBD
+}
+```
+
 ---
 
 ## Remarks:
