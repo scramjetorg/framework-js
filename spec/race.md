@@ -1,4 +1,4 @@
-# DataStream\<T>.race<U>( functions )
+# DataStream\<T>.race\<U>( functions )
 
 Processes all provided functions in parallel and returns the first resolved, for each stream chunk.
 

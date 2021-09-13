@@ -23,7 +23,7 @@ DataStream<T>.run(): Promise<void>
 
 ```js
 // TypeScript
-DataStream.from<Number>([ "foo", "bar" ])
+DataStream.from<String>([ "foo", "bar" ])
   .each(x => saveToTheDatabase(x))
   .run()
 ```

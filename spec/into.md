@@ -44,7 +44,7 @@ Or to copy `this` stream chunks into another object or structure (e.g. array):
 ```js
 const stringStream = DataStream.from<String>( [ 'foo', 'bar', 'baz' ] );
 
-const textParts = dataStream.into<String[]>( ( into, chunk ) => { into.push( chunk ) }, [] );
+const textParts = stringStream.into<String[]>( ( into, chunk ) => { into.push( chunk ) }, [] );
 
 console.log( textParts ); // [ 'foo', 'bar', 'baz' ]
 ```
