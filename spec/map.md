@@ -26,4 +26,9 @@ DataStream.from<Number>([ 1, 2, 3, 4 ])
 
 ### Python
 
+```python
+DataStream.from_from([1, 2, 3, 4])
+  .map(lambda chunk: chunk * 2)  # result: 2, 4, 6, 8
+```
+
 ### C++

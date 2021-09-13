@@ -41,4 +41,14 @@ DataStream.from<Number>([ 1, 2, 3, 4 ])
 
 ### Python
 
+```python
+DataStream.from_from([1, 2, 3, 4])
+  .reduce(lambda a, b => a + b)  # result: 10
+```
+
+```python
+DataStream.from_from([1, 2, 3, 4])
+  .reduce(lambda s, n: s + str(n), "")  # result: "1234"
+```
+
 ### C++

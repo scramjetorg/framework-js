@@ -30,4 +30,9 @@ DataStream.from<Number>([ "foo", "bar" ])
 
 ### Python
 
+```python
+DataStream.from_from(["foo", "bar"])
+  .each(lambda x: saveToTheDatabase(x))
+  .run()
+```
 ### C++

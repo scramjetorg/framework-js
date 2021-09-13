@@ -32,4 +32,11 @@ DataStream.from<Number>([ 1, 2, 3, 4 ])
 
 ### Python
 
+```python
+DataStream.from_from([1, 2, 3, 4])
+  .each(lambda chunk: print("got", chunk))
+  # result: 1, 2, 3, 4 in returned stream,
+  # "got 1", "got 2", "got 3", "got 4" in console
+```
+
 ### C++

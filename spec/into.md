@@ -51,6 +51,26 @@ console.log( textParts ); // [ 'foo', 'bar', 'baz' ]
 
 ### Python
 
+The `.into()` method may be used to write chunks from `this` stream to any other stream:
+
+```python
+numberStream = DataStream.from_from([1, 2, 3, 4])
+const stringStream = new DataStream()
+
+numberStream.into(lambda dest, chunk: dest.write(f'{chunk}'), stringStream)
+# stringStream now contains [ '1', '2', '3', '4' ]
+```
+
+Or to copy `this` stream chunks into another object or structure (e.g. array):
+
+```python
+stringStream = DataStream.from_from(['foo', 'bar', 'baz'])
+
+textParts = stringStream.into(lambda dest, chunk: dest.append(chunk), [])
+
+print(textParts)  # [ 'foo', 'bar', 'baz' ]
+```
+
 ### C++
 
 ---

@@ -29,4 +29,8 @@ const odd = numbers.filter(chunk => chunk % 2)  // result: 1, 3, 5
 
 ### Python
 
+```python
+numbers = DataStream.from_from([1, 2, 3, 4, 5, 6])
+odd = numbers.filter(lambda x: x % 2)  # result: 1, 3, 5
+```
 ### C++

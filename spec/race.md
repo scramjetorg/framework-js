@@ -41,6 +41,22 @@ resultsStream.race( fetchFunctions ); // The result should be something like [ '
 
 ### Python
 
+```python
+# Fetch football matches results for each match from the provider which retruns results the fastest.
+import asyncio
+
+const urls = ['https://scores.com/result/_match_', 'https://goals.com/results/_match_', 'https://football.com/results/_match_']
+
+const results = DataStream.from_from(['pl-en', 'en-us', 'cz-sk'])
+
+const fetchFunctions = map(
+    lambda url: (lambda chunk: fetch( url.replace( '_match_', chunk ))),
+    urls
+)
+
+results.race(fetchFunctions);  # The result should be something like [ '1:0', '2:2', '3:1' ]
+```
+
 ### C++
 
 ---

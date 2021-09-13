@@ -36,6 +36,12 @@ const numberStream = DataStream.from<Number>( stringStream.map( parseInt ) )
 
 ### Python
 
+```python
+stringStream = DataStream.from_from(input)
+stringStreamCopy = DataStream.from_from(stringStream)
+numberStream = DataStream.from_from(stringStream.map(int))
+```
+
 ### C++
 
 ---
