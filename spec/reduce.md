@@ -1,4 +1,4 @@
-# DataStream.reduce(func, initial)
+# DataStream.reduce
 
 Combines all stream chunks into a single value.
 
@@ -7,9 +7,11 @@ Combines all stream chunks into a single value.
   - `accumulator` of type `U`
   - `current` of type `T` (`T` must match DataStream type). Returns value of
      type `U`.
+  - `args` additional arguments which were passed to initial `reduce()` call.
 - (optional) initial: value of type `U` used as the first argument of first
   `func` call.  If omitted, first `func` call will use first two chunks as
   arguments.
+- args: additional optional arguments of type `W` which will be passed to each `func` call.
 
 Note that `func` will be called sequentially on stream chunks - processing next chunk
 will start only after the result of processing the previous one will be available.
@@ -20,8 +22,13 @@ will start only after the result of processing the previous one will be availabl
 ## Generic signature
 
 ```
-DataStream<T>.reduce<U>(func: (U, T) => U, [initial: U]): U
+DataStream<T>.reduce<U,W>(func: (U, T, ...W) => Promise<U>, [initial: U], ...args: W[]): U
 ```
+
+### Language specific notes
+
+1. In Typesript `func` should return `Promise<U> | U` since we need synchronous execution for synchronous values.
+1. In Python and C++, promises/futures could be resolved synchronously so `Promise<U>` is enough.
 
 ## Examples
 

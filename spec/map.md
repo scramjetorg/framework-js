@@ -1,18 +1,24 @@
-# DataStream.map(func)
+# DataStream.map
 
 Transforms each chunk in the stream using `func`.
 
 **Parameters:**
-- func: function accepting a single argument of type `T` (matching DataStream
-  type) and returning value of type `U`.
+- func: function returning value of type `U` accepting a single argument of type `T` (matching DataStream
+  type) and optional additional arguments of type `W`.
+- args: additional optional arguments of type `W` which will be passed to `func` call.
 
 **Returns** new DataStream instance with type `U`.
 
 ## Generic signature
 
 ```
-DataStream<T>.map<U>(func: T => U): DataStream<U>
+DataStream<T>.map<U,W>(func: (T, ...W) => Promise<U>, ...args: W[]): DataStream<U>
 ```
+
+### Language specific notes
+
+1. In Typesript `func` should return `Promise<U> | U` since we need synchronous execution for synchronous values.
+1. In Python and C++, promises/futures could be resolved synchronously so `Promise<U>` is enough.
 
 ## Examples
 

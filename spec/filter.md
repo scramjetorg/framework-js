@@ -1,18 +1,24 @@
-# DataStream.filter(func)
+# DataStream.filter
 
 Filters the stream, keeping only chunks for which `func` returns true.
 
 **Parameters:**
-- func: function accepting a single argument of type `T` (matching DataStream
-  type) and returning boolean.
+- func: function returning boolean value accepting a single argument of type `T` (matching DataStream
+  type) and optional additional arguments of type `U`.
+- args: additional optional arguments of type `U` which will be passed to `func` call.
 
 **Returns** new DataStream instance with the same type `T`.
 
 ## Generic signature
 
 ```
-DataStream<T>.filter(func: T => Boolean): DataStream<T>
+DataStream<T>.filter<U>(func: (T, ...U) => Promise<Boolean>, ...args: U[]): DataStream<T>
 ```
+
+### Language specific notes
+
+1. In Typesript `func` should return `Promise<Boolean> | Boolean` since we need synchronous execution for synchronous values.
+1. In Python and C++, promises/futures could be resolved synchronously so `Promise<Boolean>` is enough.
 
 ## Examples
 

@@ -1,4 +1,4 @@
-# DataStream\<T>.race\<U>( functions )
+# DataStream.race
 
 Processes all provided functions in parallel and returns the first resolved, for each stream chunk.
 
@@ -8,16 +8,22 @@ Keep in mind that if one of provided functions is rejected, `race` will only rai
 
 Parameters:
 
-- functions: Array of asynchronus functions to be executed in parallel. Each function will receive current chunk as a first argument when called. The resulting value of the fastest function becomes a new chunk.
+- functions: Array of asynchronus functions to be executed in parallel. Each function will receive current chunk as a first argument when called and additionals `args` if any were passed to `.race()` call. The resulting value of the fastest function becomes a new chunk.
+- args: additional optional arguments of type `W` which will be passed to each async function call.
 
 Returns new `DataStream` instance with the type `U`.
 
 **Generic signature**:
 
 ```
-DataStream<T>.race<U>( futures: Function[] ): DataStream<U>;
-future( chunk: T ): Promise<U>
+DataStream<T>.race<U,W>(futures: Function[], ...args: W[]): DataStream<U>;
+future(chunk: T, ...args: W[]): Promise<U>
 ```
+
+### Language specific notes
+
+1. In Typesript `func` should return `Promise<U> | U` since we need synchronous execution for synchronous values.
+1. In Python and C++, promises/futures could be resolved synchronously so `Promise<U>` is enough.
 
 ## Examples
 

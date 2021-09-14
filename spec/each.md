@@ -1,4 +1,4 @@
-# DataStream.each(func)
+# DataStream.each
 
 Run `func` on each chunk in the stream and return original chunks. This is
 useful when you want to run a function for its side-effects, not the return
@@ -6,15 +6,21 @@ value.
 
 **Parameters:**
 - func: function accepting a single argument of type `T` (matching DataStream
-  type).
+  type) and optional additional arguments of type `W`.
+- args: additional optional arguments of type `W` which will be passed to `func` call.
 
 **Returns** the same DataStream instance.
 
 ## Generic signature
 
 ```
-DataStream<T>.each<U>(func: T => U): DataStream<T>
+DataStream<T>.each<U,W>(func: (T, ...W) => Promise<U>, ...args: W[]): DataStream<T>
 ```
+
+### Language specific notes
+
+1. In Typesript `func` should return `Promise<U> | U` since we need synchronous execution for synchronous values.
+1. In Python and C++, promises/futures could be resolved synchronously so `Promise<U>` is enough.
 
 ## Examples
 

@@ -1,4 +1,4 @@
-# DataStream.run()
+# DataStream.run
 
 Consumes all chunks from the stream doing nothing.
 

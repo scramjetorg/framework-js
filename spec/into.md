@@ -1,4 +1,4 @@
-# DataStream\<T>.into\<U>( func, into )
+# DataStream.into
 
 Allows own implementation of stream chaining or writing/copying stream chunks into custom object or structure.
 
@@ -6,19 +6,25 @@ This method provides a way to copy stream chunks into another stream or any othe
 
 Parameters:
 
-- callbackFn: function that is called on every stream chunk. If the callback is asynchronous it should return a promise.
+- func: function that is called on every stream chunk. If the callback is asynchronous it should return a promise.
     - into: `into` object passed as a second argument to the initial `.into()` call.
     - chunk: current `chunk`.
-- into: stream or any object which will be passed to `callbackFn` on every call.
+    - args: optional argumetns which were passed to initial `into()` call.
+- into: stream or any object which will be passed to `func` on every call.
+- args: additional optional arguments of type `U` which will be passed to `func` call.
 
 Returns `into` passed as the second argument to the initial `.into()` call. If it's a stream, this method can be chained.
 
-**Generic signature**:
+## Generic signature
 
 ```
-DataStream<T>.into<U>( callbackFn: Function, into: U ): U;
-callbackFn( into: U, chunk: T ): Promise<void> | void
+DataStream<T>.into<U,W>(func: Function, into: U, ...args: W[]): U;
+callbackFn(into: U, chunk: T, ...args: W[]): Promise<void>
 ```
+### Language specific notes
+
+1. In Typesript `func` should return `Promise<void> | void` since we need synchronous execution for synchronous values.
+1. In Python and C++, promises/futures could be resolved synchronously so `Promise<void>` is enough.
 
 ## Examples
 

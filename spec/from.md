@@ -1,4 +1,4 @@
-# DataStream#from\<T>( input, options )
+# DataStream#from
 
 Creates new data stream of a specified typed based on the given input.
 
@@ -13,11 +13,11 @@ Parameters:
 
 Returns new `DataStream` instance of the type `T`.
 
-**Generic signature**:
+## Generic signature
 
 ```
-DataStream.from<T>( Iterable<T> input, options?: Object ): DataStream<T>
-DataStream.from<T>( Stream<T> input, options?: Object ): DataStream<T>
+DataStream.from<T>(Iterable<T> input, options?: Object): DataStream<T>
+DataStream.from<T>(Stream<T> input, options?: Object): DataStream<T>
 ```
 
 ## Examples
