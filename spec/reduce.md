@@ -77,3 +77,23 @@ int main() {
     return 0;
 }
 ```
+
+---
+
+# Draft
+
+## Generic signature
+
+```
+DataStream<T>.reduce<U,V>(func: (U | V, T) => U | V, [initial: U]): V
+```
+
+## Examples
+
+### Typescript
+
+
+```js
+DataStream.from<Number>([ 1, 2, 3, 4 ])
+  .reduce<Any, Number>((a: String, b: Number) => parseInt( a ) + b, "0")  // result: 10
+```
