@@ -1,0 +1,24 @@
+{
+  "name": "random-name-websocket",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "server:simple": "npx tsc server-simple.ts && node server-simple.js",
+    "client:simple": "npx tsc client-simple.ts && node client-simple.js",
+    "client:streams": "npx tsc client-streams.ts && node client-streams.js",
+    "client:scramjet": "npx tsc client-scramjet.ts && node client-scramjet.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "unique-names-generator": "^4.6.0",
+    "ws": "^8.2.2"
+  },
+  "devDependencies": {
+    "@types/ws": "^7.4.7",
+    "scramjet": "^4.36.0",
+    "typescript": "^4.4.3"
+  }
+}
