@@ -9,7 +9,8 @@ async function run() {
 		async function* (source) {
 			// split into lines
 			// chunk is a part of file of a given length, it may end in the middle
-			// of the line which will cause incomplete records - this requires additional manual handling here
+			// of the line (in fact it does in most cases) which will cause incomplete records
+			// and this requires additional manual handling here
 			// btw. there is also readline node module: https://nodejs.org/api/readline.html
 			for await (const chunk of source) {
 				// console.log(chunk);

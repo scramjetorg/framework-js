@@ -20,7 +20,7 @@ StringStream
 StringStream
 	.from(fs.createReadStream('vgsales.csv', 'utf8'))
 	.setOptions({maxParallel: 100})
-	.lines()
+	.split('\n')
 	.map(line => {
 		const [rank, name, platform, year, genre, publisher] = line.split(',');
 		return {rank, name, platform, year, genre, publisher};
