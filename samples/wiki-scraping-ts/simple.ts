@@ -11,8 +11,6 @@ import {JSDOM} from 'jsdom';
 		.map(el => el.getAttribute('href') || '')
 		.filter(href => href.startsWith('/wiki/') && !href.includes(':')));
 
-	console.log(links);
-	console.log('---'.repeat(20));
 
 	const results: Set<string> = new Set();
 	const counter: Map<string,number> = new Map();
@@ -27,7 +25,7 @@ import {JSDOM} from 'jsdom';
 	const categoryRequests = Array.from(links).map(link => {
 		return new Promise<void>(async res => { // No error handling...
 			const category = await axios.get(`${baseUrl}${link}`);
-			console.log('>', link);
+			console.log(link);
 			extractCategories(category.data, results, counter); // Side-effects :(
 			res();
 		});
@@ -46,7 +44,6 @@ function extractCategories(html: string, results: Set<string>, counter: Map<stri
 	if (catLinks) {
 		catLinks.querySelectorAll('a').forEach(link => {
 			const linkText = link.textContent || '';
-			console.log(linkText);
 			results.add(linkText);
 			counter.set(linkText, (counter.get(linkText) || 0) + 1);
 		});

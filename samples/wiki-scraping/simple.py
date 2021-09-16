@@ -17,19 +17,15 @@ page_links = [
     if h and h[0:6] == '/wiki/' and ':' not in h
 ]
 
-pprint(page_links)
-print("---"*20)
-
 def extract_categories(page_html, result_list=categories):
     parsed = BeautifulSoup(page_html, 'html.parser')
     cat_links = parsed.find('div', attrs={'class':'mw-normal-catlinks'})
     if cat_links:
         for link in cat_links.find_all('a'):
-            print(link.text)
             result_list.append(link.text)
 
 for link in page_links:
-    print(f'\033[1;97m{link}\033[0m')
+    print(link)
     html = requests.get(f'https://en.wikipedia.org/{link}').text
     extract_categories(html)
 

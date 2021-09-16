@@ -14,7 +14,6 @@ def extract_categories(page_html, result_list=categories):
     cat_links = parsed.find('div', attrs={'class':'mw-normal-catlinks'})
     if cat_links:
         for link in cat_links.find_all('a'):
-            print(link.text)
             result_list.append(link.text)
 
 async def main():
@@ -29,14 +28,11 @@ async def main():
                 if h and h[0:6] == '/wiki/' and ':' not in h
             ]
 
-        pprint(page_links)
-        print("---"*20)
-
         async def analyze_page(link):
             url = f'https://en.wikipedia.org/{link}'
             print(f"Requesting {url}...")
             async with session.get(url) as response:
-                print(f'\033[1;97m{link}\033[0m: {response.status}')
+                print(f'{link}: {response.status}')
                 html = await response.text()
                 extract_categories(html)
 
