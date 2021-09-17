@@ -16,11 +16,23 @@ import {JSDOM} from 'jsdom';
 
 	const results: Set<string> = new Set();
 	const counter: Map<string,number> = new Map();
-	for await(const link of links) {
-		console.log('>', link);
-		const category = await axios.get(`${baseUrl}${link}`);
-		extractCategories(category.data, results, counter);
-	}
+	// for await(const link of links) {
+	// 	console.log('>', link);
+	// 	const category = await axios.get(`${baseUrl}${link}`);
+	// 	extractCategories(category.data, results, counter); // Side-effects :(
+	// }
+
+	// Above could by also done in parallel like above.
+	// Limiting concurrent request should be added.
+	const categoryRequests = Array.from(links).map(link => {
+		return new Promise<void>(async res => { // No error handling...
+			const category = await axios.get(`${baseUrl}${link}`);
+			console.log('>', link);
+			extractCategories(category.data, results, counter); // Side-effects :(
+			res();
+		});
+	});
+	await Promise.all(categoryRequests);
 
 	console.log('---'.repeat(20));
 	const catsMap: Map<string,number> = new Map(Array.from(counter.entries()).filter(entry => entry[1] > 1).sort());
