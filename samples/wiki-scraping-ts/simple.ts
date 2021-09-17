@@ -22,7 +22,7 @@ import {JSDOM} from 'jsdom';
 	// 	extractCategories(category.data, results, counter); // Side-effects :(
 	// }
 
-	// Above could by also done in parallel like above.
+	// Above could by also done in parallel like below.
 	// Limiting concurrent request should be added.
 	const categoryRequests = Array.from(links).map(link => {
 		return new Promise<void>(async res => { // No error handling...
