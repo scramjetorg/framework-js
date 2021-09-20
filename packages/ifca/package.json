@@ -8,8 +8,8 @@
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf ./dist",
     "watch": "tsc -b --watch",
-    "test": "npm run test:ava",
-    "test:ava": "nyc --reporter=html ava",
+    "test": "nyc --reporter=html ava",
+    "test:w": "npm run test -- -w",
     "prepack": "LOCAL_PACKAGES=true node ../../scripts/publish.js"
   },
   "author": "Scramjet <open-source@scramjet.org>",
