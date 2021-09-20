@@ -1,5 +1,5 @@
 import { Readable } from "stream";
-import { IFCA } from "../../ifca/lib/index";
+import { IFCA, TransformFunction } from "../../ifca/lib/index";
 
 export class DataStream<T> {
     constructor() {
@@ -20,7 +20,10 @@ export class DataStream<T> {
         return dataStream;
     }
 
-    // map(){}
+    map<U>(callback: TransformFunction<T,U>): DataStream<U> {
+        this.ifca.addTransform(callback);
+        return this as unknown as DataStream<U>; // this looks fishy, probably we should create new DataStream instance
+    }
 
     // filter(){}
 
