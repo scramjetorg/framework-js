@@ -24,7 +24,35 @@ export class DataStream<T> {
 
     // filter(){}
 
-    // into(){}
+    toArray() {
+        return new Promise( (res) => {
+            const chunks: Array<T> = [];
+
+            const readChunk = () => {
+                const chunk = this.ifca.read();
+                console.log('--- read chunk', chunk);
+                if (chunk === null) {
+                    res(chunks);
+                }
+                else if (chunk instanceof Promise) {
+                    chunk.then(value => {
+                        console.log('--- chunk resolved', value);
+                        if (value === null) {
+                            res(chunks);
+                        } else {
+                            chunks.push(value);
+                            readChunk();
+                        }
+                    });
+                } else {
+                    chunks.push(chunk);
+                    readChunk();
+                }
+            }
+
+            readChunk();
+        });
+    }
 
     private fromIterable(iterable: Iterable<T> | AsyncIterable<T>): void {
         this.fromReadable(Readable.from(iterable));
@@ -37,7 +65,7 @@ export class DataStream<T> {
             console.log('readable');
 
             let data;
-            while (drain === undefined && (data = readable.read())) {
+            while (drain === undefined && (data = readable.read()) !== null) {
                 console.log('data', data);
                 drain = this.ifca.write(data);
                 console.log('drain', drain);
@@ -57,5 +85,9 @@ export class DataStream<T> {
         };
 
         readable.on('readable', readChunk);
+
+        readable.on('end', () => {
+            this.ifca.write(null);
+        });
     };
 }
