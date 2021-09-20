@@ -1,7 +1,7 @@
 import test from "ava";
 import { DataStream } from "../lib/index";
 
-test("DataStream can map chunks vi sync callback (to same type)", async (t) => {
+test("DataStream can map chunks via sync callback (to same type)", async (t) => {
     const dsNumber = DataStream.from<number>([1,2,3,4,5]);
 
     const result = await dsNumber.map<number>(chunk => chunk*2).toArray();
@@ -44,5 +44,3 @@ test("DataStream can map chunks via async callback (to different type)", async (
 
     t.deepEqual(result, ['foo-1','foo-2','foo-3','foo-4','foo-5']);
 });
-
-
