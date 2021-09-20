@@ -1,17 +1,3 @@
 {
-    "compilerOptions": {
-        "outDir": "./dist"
-    },
-    "extends": "../../tsconfig.react.json",
-    "include": [
-      "./src",
-      "./test"
-    ],
-    "exclude": [
-        "node_modules"
-    ],
-    "typedocOptions": {
-        "entryPoints": ["index.ts"],
-        "out": "../../docs/template"
-    }
+  "extends": "../../tsconfig.base.json"
 }
