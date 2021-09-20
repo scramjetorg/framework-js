@@ -20,6 +20,14 @@ test("DataStream can be created via static from method", (t) => {
     t.true(dsAny instanceof DataStream);
 });
 
+test("DataStream can be cretaed from an empty iterable", async (t) => {
+    const input: number[] = [];
+    const dsNumber = DataStream.from<number>(input);
+
+    const result = await dsNumber.toArray();
+    t.deepEqual(result, input);
+});
+
 test("DataStream can read from iterable", async (t) => {
     const input = [1,2,3,4,5,6,7,8];
     const dsNumber = DataStream.from<number>(input);
