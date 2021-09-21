@@ -25,7 +25,28 @@ export class DataStream<T> {
         return this as unknown as DataStream<U>; // this looks fishy, probably we should create new DataStream instance
     }
 
-    // filter(){}
+    // we would like to have single stream/IFCA which requires supporting 1 to 0 chunk transformations in IFCA (TBD)
+    filter(callback: TransformFunction<T,Boolean>): DataStream<T> {
+        const filteredDataStream = new DataStream<T>();
+
+        this.ifca.whenEnded().then(() => {
+            filteredDataStream.ifca.end();
+        });
+
+        const wrappedCallback = async (chunk: T): Promise<void> => {
+            let drained;
+            let chunkResult = await callback(chunk);
+            if (chunkResult) {
+                drained = filteredDataStream.ifca.write(chunk);
+            }
+
+            return drained instanceof Promise ? drained : Promise.resolve();
+        };
+
+        this.ifca.addTransform(wrappedCallback);
+
+        return filteredDataStream;
+    }
 
     toArray() {
         return new Promise( (res) => {
