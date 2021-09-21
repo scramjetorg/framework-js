@@ -66,6 +66,8 @@ test("DataStream can read from async iterable", async (t) => {
 
 // test("DataStream can read from async generator (async iterable)", async (t) => {}); // TBD
 
+// test("DataStream can read from another scramjet stream", async (t) => {}); // TBD
+
 test("DataStream can read from readable", async (t) => {
     const readable = createReadStream('./test/helpers/sample.txt', 'utf8');
 
@@ -73,4 +75,36 @@ test("DataStream can read from readable", async (t) => {
 
     const result = await dsString.toArray();
     t.deepEqual(result, ['foo\nbar\nbaz\nbax\n']);
+});
+
+test("DataStream will not start reading until 'output' transfomration is called (generator)", async (t) => {
+    let startedReading = false;
+
+    function * numbers() {
+        for(let i = 0; i < 8; i++) {
+            startedReading = true;
+            yield i;
+        }
+    }
+
+    const dsNumber = DataStream.from<number>(numbers());
+
+    t.false(startedReading);
+
+    await dsNumber.toArray();
+
+    t.true(startedReading);
+});
+
+test("DataStream will not start reading until 'output' transfomration is called (readable)", async (t) => {
+    const readable = createReadStream('./test/helpers/sample.txt', 'utf8');
+
+    const dsString = DataStream.from<string>(readable);
+
+    // Since readable will be read at once, if it's not ended means reading haven't started yet.
+    t.false(readable.readableEnded);
+
+    await dsString.toArray();
+
+    t.true(readable.readableEnded)
 });

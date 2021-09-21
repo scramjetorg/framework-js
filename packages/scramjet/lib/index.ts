@@ -7,6 +7,8 @@ export class DataStream<T> {
     }
 
     private ifca: IFCA<T,any,any>;
+    private isReading: Boolean = false;
+    private readable: Readable | null = null;
 
     static from<U>(input: Iterable<U> | AsyncIterable<U> | Readable): DataStream<U> {
         const dataStream = new DataStream<U>();
@@ -45,10 +47,14 @@ export class DataStream<T> {
 
         this.ifca.addTransform(wrappedCallback);
 
+        this.startReading(); // this means any transfromation duplicating the stream (even interanlly) would need to be described as "output" transformation
+
         return filteredDataStream;
     }
 
     toArray() {
+        this.startReading();
+
         return new Promise( (res) => {
             const chunks: Array<T> = [];
 
@@ -81,27 +87,36 @@ export class DataStream<T> {
     };
 
     private fromReadable(readable: Readable): void {
-        let drain: Promise<void> | void = undefined;
-
-        const readChunk = () => {
-            let data;
-            while (drain === undefined && (data = readable.read()) !== null) {
-                drain = this.ifca.write(data);
-
-                if (drain instanceof Promise) {
-                    readable.pause();
-                    drain.then(() => {
-                        drain = undefined;
-                        readable.resume();
-                    });
-                }
-            }
-        };
-
-        readable.on('readable', readChunk);
-
-        readable.on('end', () => {
-            this.ifca.write(null);
-        });
+        this.readable = readable;
     };
+
+    private startReading() {
+        if(!this.isReading && this.readable !== null) {
+            let drain: Promise<void> | void = undefined;
+            const readable = this.readable;
+
+            const readChunk = () => {
+                let data;
+                while (drain === undefined && (data = readable.read()) !== null) {
+                    drain = this.ifca.write(data);
+
+                    if (drain instanceof Promise) {
+                        readable.pause();
+                        drain.then(() => {
+                            drain = undefined;
+                            readable.resume();
+                        });
+                    }
+                }
+            };
+
+            this.readable.on('readable', readChunk);
+
+            this.readable.on('end', () => {
+                this.ifca.write(null);
+            });
+        }
+
+        this.isReading = true;
+    }
 }
