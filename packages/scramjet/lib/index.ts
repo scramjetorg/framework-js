@@ -1,7 +1,9 @@
 import { Readable } from "stream";
+import { BaseStream } from './basestream';
 import { IFCA, TransformFunction } from "../../ifca/lib/index";
 
-export class DataStream<T> {
+
+export class DataStream<T> implements BaseStream<T> {
     constructor() {
         this.ifca = new IFCA<T,any,any>(2, (chunk: T) => chunk);
     }
