@@ -54,13 +54,11 @@ export class DataStream<T> {
 
             const readChunk = () => {
                 const chunk = this.ifca.read();
-                console.log('--- read chunk', chunk);
                 if (chunk === null) {
                     res(chunks);
                 }
                 else if (chunk instanceof Promise) {
                     chunk.then(value => {
-                        console.log('--- chunk resolved', value);
                         if (value === null) {
                             res(chunks);
                         } else {
@@ -86,25 +84,17 @@ export class DataStream<T> {
         let drain: Promise<void> | void = undefined;
 
         const readChunk = () => {
-            console.log('readable');
-
             let data;
             while (drain === undefined && (data = readable.read()) !== null) {
-                console.log('data', data);
                 drain = this.ifca.write(data);
-                console.log('drain', drain);
 
                 if (drain instanceof Promise) {
-                    console.log('waiting');
                     readable.pause();
                     drain.then(() => {
-                        console.log('read');
                         drain = undefined;
                         readable.resume();
                     });
                 }
-
-                console.log('--- loop');
             }
         };
 
