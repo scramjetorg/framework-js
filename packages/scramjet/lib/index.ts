@@ -1,15 +1,16 @@
 import { Readable } from "stream";
-import { BaseStream } from './basestream';
+import { BaseStream, BaseStreamCreators } from "./basestream";
 import { IFCA, TransformFunction } from "../../ifca/lib/index";
 
-
-export class DataStream<T> implements BaseStream<T> {
+export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
     constructor() {
-        this.ifca = new IFCA<T,any,any>(2, (chunk: T) => chunk);
+        super();
+
+        this.ifca = new IFCA<T, T, any>(2, (chunk: T) => chunk);
     }
 
-    private ifca: IFCA<T,any,any>;
-    private isReading: Boolean = false;
+    private ifca: IFCA<T, T, any>;
+    private hasReadingStarted: Boolean = false;
     private readable: Readable | null = null;
 
     static from<U>(input: Iterable<U> | AsyncIterable<U> | Readable): DataStream<U> {
@@ -24,13 +25,14 @@ export class DataStream<T> implements BaseStream<T> {
         return dataStream;
     }
 
-    map<U>(callback: TransformFunction<T,U>): DataStream<U> {
+    map<U>(callback: TransformFunction<T, U>): DataStream<U> {
         this.ifca.addTransform(callback);
-        return this as unknown as DataStream<U>; // this looks fishy, probably we should create new DataStream instance
+        return this as unknown as DataStream<U>;
     }
 
-    // we would like to have single stream/IFCA which requires supporting 1 to 0 chunk transformations in IFCA (TBD)
-    filter(callback: TransformFunction<T,Boolean>): DataStream<T> {
+    // We would like to have single stream/IFCA for filtering
+    // which requires supporting 1 to 0 chunk transformations in IFCA (TODO)
+    filter(callback: TransformFunction<T, Boolean>): DataStream<T> {
         const filteredDataStream = new DataStream<T>();
 
         this.ifca.whenEnded().then(() => {
@@ -40,6 +42,7 @@ export class DataStream<T> implements BaseStream<T> {
         const wrappedCallback = async (chunk: T): Promise<void> => {
             let drained;
             let chunkResult = await callback(chunk);
+
             if (chunkResult) {
                 drained = filteredDataStream.ifca.write(chunk);
             }
@@ -49,7 +52,7 @@ export class DataStream<T> implements BaseStream<T> {
 
         this.ifca.addTransform(wrappedCallback);
 
-        this.startReading(); // this means any transfromation duplicating the stream (even interanlly) would need to be described as "output" transformation
+        this.startReading();
 
         return filteredDataStream;
     }
@@ -57,15 +60,14 @@ export class DataStream<T> implements BaseStream<T> {
     toArray() {
         this.startReading();
 
-        return new Promise( (res) => {
+        return new Promise((res) => {
             const chunks: Array<T> = [];
-
             const readChunk = () => {
                 const chunk = this.ifca.read();
+
                 if (chunk === null) {
                     res(chunks);
-                }
-                else if (chunk instanceof Promise) {
+                } else if (chunk instanceof Promise) {
                     chunk.then(value => {
                         if (value === null) {
                             res(chunks);
@@ -78,7 +80,7 @@ export class DataStream<T> implements BaseStream<T> {
                     chunks.push(chunk);
                     readChunk();
                 }
-            }
+            };
 
             readChunk();
         });
@@ -86,24 +88,26 @@ export class DataStream<T> implements BaseStream<T> {
 
     private fromIterable(iterable: Iterable<T> | AsyncIterable<T>): void {
         this.fromReadable(Readable.from(iterable));
-    };
+    }
 
     private fromReadable(readable: Readable): void {
         this.readable = readable;
-    };
+    }
 
     private startReading() {
-        if(!this.isReading && this.readable !== null) {
-            let drain: Promise<void> | void = undefined;
-            const readable = this.readable;
+        if (!this.hasReadingStarted && this.readable !== null) {
+            let drain: Promise<void> | void;
 
+            const readable = this.readable;
             const readChunk = () => {
                 let data;
+
                 while (drain === undefined && (data = readable.read()) !== null) {
                     drain = this.ifca.write(data);
 
                     if (drain instanceof Promise) {
                         readable.pause();
+                        // eslint-disable-next-line no-loop-func
                         drain.then(() => {
                             drain = undefined;
                             readable.resume();
@@ -112,13 +116,13 @@ export class DataStream<T> implements BaseStream<T> {
                 }
             };
 
-            this.readable.on('readable', readChunk);
+            this.readable.on("readable", readChunk);
 
-            this.readable.on('end', () => {
+            this.readable.on("end", () => {
                 this.ifca.write(null);
             });
         }
 
-        this.isReading = true;
+        this.hasReadingStarted = true;
     }
 }
