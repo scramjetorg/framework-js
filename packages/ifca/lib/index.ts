@@ -117,11 +117,12 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     private readers: ChunkResolver<T>[] = [];
     private ended: boolean = false;
     private readonly strict: boolean;
+    private endedPromise: Promise<void> | null = null;
+    private endedPromiseResolver: Function | null = null;
 
     get status() {
         return "R,".repeat(this.readers.length) + this.processing.slice(this.readers.length).map((x,i) => this.readable[this.readers.length + i] ? 'd,' : 'p,')
     }
-
 
     /**
      * Write (add chunk)
@@ -366,9 +367,12 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
         this.ended = true;
 
-        if (this.processing.length > 0)
-            return Promise.all(this.processing)
-                .then(() => { this.handleEnd() });
+
+
+        if (this.processing.length > 0) {
+            return Promise.all(this.processing).then(() => { this.handleEnd() });
+        }
+
         this.handleEnd();
     }
 
@@ -381,6 +385,11 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         trace("IFCA-HANDLE_END()")
         this.readers.slice(this.processing.length).forEach(([res]) => res(null));
         this.readable.push(null as unknown as T);
+
+        if (this.endedPromiseResolver) {
+            this.endedPromiseResolver();
+        }
+
         return null;
     }
 
@@ -466,6 +475,16 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     removeTransform(): I {
         this.transformHandlers.shift();
         return this as IFCA<S,unknown,any> as I;
+    }
+
+    whenEnded(): Promise<void> {
+        if (!this.endedPromise) {
+            this.endedPromise = new Promise(res => {
+                this.endedPromiseResolver = res;
+            });
+        }
+
+        return this.endedPromise;
     }
 
 }
