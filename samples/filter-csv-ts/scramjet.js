@@ -13,7 +13,7 @@ StringStream
 	.stringify(record => Object.values( record ).join(','))
 	.append("\n")
 	.catch(err => `! Error occured ${err}`)
-	.pipe(fs.createWriteStream('vgsales-nintendo-sj-1.csv'));
+	.pipe(fs.createWriteStream('results-nintendo-sj-1.csv'));
 
 // Simpler version
 // The result is the same but map is used insted of specialized functions(parse,stringfiy,append).
@@ -29,4 +29,4 @@ StringStream
 	.map(record => Object.values( record ).join(','))
 	.map(record => record + '\n')
 	.catch(err => `! Error occured ${err}`)
-	.pipe(fs.createWriteStream('vgsales-nintendo-sj-2.csv'));
+	.pipe(fs.createWriteStream('results-nintendo-sj-2.csv'));

@@ -56,7 +56,7 @@ async function run() {
 				yield Object.values( record ).join(',') + '\n';
 			}
 		},
-		fs.createWriteStream('vgsales-nintendo-ns.csv')
+		fs.createWriteStream('results-nintendo-ns.csv')
 	);
 	console.log('Pipeline succeeded.');
 }
