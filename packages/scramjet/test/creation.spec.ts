@@ -1,6 +1,6 @@
 import test from "ava";
 import { createReadStream } from "fs";
-import { DataStream } from "../lib/index";
+import { DataStream } from "../lib/data-stream";
 
 test("DataStream can be constructed", (t) => {
     const dsNumber = new DataStream<number>();

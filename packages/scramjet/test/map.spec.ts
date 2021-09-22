@@ -1,5 +1,5 @@
 import test from "ava";
-import { DataStream } from "../lib/index";
+import { DataStream } from "../lib/data-stream";
 
 test("DataStream can map chunks via sync callback (to same type)", async (t) => {
     const dsNumber = DataStream.from<number>([1,2,3,4,5]);

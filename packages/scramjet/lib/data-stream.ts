@@ -1,5 +1,5 @@
 import { Readable } from "stream";
-import { BaseStream, BaseStreamCreators } from "./basestream";
+import { BaseStream, BaseStreamCreators } from "./base-stream";
 import { IFCA, TransformFunction } from "../../ifca/lib/index";
 import { isIterable, isAsyncIterable } from "./utils";
 export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
