@@ -10,6 +10,7 @@ export type TransformArray<S, T> = [TransformFunction<S, T>] | [
     TransformFunction<any, T>,
     ...TransformFunction<any, any>[]
 ];
+export const DroppedChunk = Symbol("DroppedChunk");
 
 const isAsync = (func: any[]) => func.length && (
     func[0] && func[0][Symbol.toStringTag] === 'AsyncFunction' ||
@@ -113,7 +114,9 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     private processing: Promise<any>[] = []
     // private processing_await?: Promise<any>;
+    // readable is a queue of chunks waiting to be reAD
     private readable: NullTerminatedArray<T[]> = [];
+    // readers is a queue of "read calls" waiting to receive value
     private readers: ChunkResolver<T>[] = [];
     private ended: boolean = false;
     private readonly strict: boolean;
@@ -220,35 +223,24 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      * @returns {Promise}
      */
     private makeProcessingItem(chunkBeforeThisOne: Promise<any>, currentChunkResult: MaybePromise<T>): Promise<any> {
-        const currentSafeChunkResult =
-            "catch" in currentChunkResult
-                ? currentChunkResult.catch(
-                    (err: Error) => {
-                        if (err) {
-                            if (this.readers.length) {
-                                const res = this.readers[0];
-                                if (res[1]) {
-                                    this.readers.shift();
-                                    // TODO: this potentially throws?
-                                    return res[1](err);
-                                }
-                            }
-                            throw err;
-                        }
-                        return;
-                    }
-                )
-                : currentChunkResult
-
         return Promise.all([
             chunkBeforeThisOne?.finally(),
-            currentSafeChunkResult
+            this.attachErrorHandlerToChunkResult(currentChunkResult)
         ])
             .then(([, result]) => {
                 if (result !== undefined) {
                     trace('IFCA-WRITE_RESULT', result);
+
+                    // if (result as any === DroppedChunk) {
+                    //     // this.processing.shift();
+                    //     // this.readers.shift();
+                    //     trace("IFCA-WRITE_PROCESSING_DROPPEDCHUNK");
+                    // } else
+                    // noop is a placeholder saying someones is waiting for reading this chunk
                     if (this.readers.length === 0 || this.readers[0][0] === noop) {
-                        if (this.readers.length) this.readers.shift();
+                        if (this.readers.length) {
+                            this.readers.shift(); // remove noop reader
+                        }
                         this.readable.push(result);
                         trace("IFCA-WRITE_PROCESSING_PUSH", this.readable.length, result)
                     } else {
@@ -266,20 +258,49 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             });
     }
 
+    private attachErrorHandlerToChunkResult(currentChunkResult: MaybePromise<T>): MaybePromise<T> {
+        if (currentChunkResult instanceof Promise) {
+            currentChunkResult.catch((err: Error) => {
+                if (!err) {
+                    return;
+                }
+
+                if (this.readers.length) {
+                    const res = this.readers[0];
+
+                    if (res[1]) {
+                        this.readers.shift();
+                        // TODO: this potentially throws?
+                        return res[1](err);
+                    }
+                }
+                throw err;
+            });
+        }
+
+        return currentChunkResult;
+    }
+
     private makeStrictTransformChain(_chunk: S): MaybePromise<T> {
+        trace('IFCA makeStrictTransformChain');
         let funcs = [...this.transformHandlers] as TransformHandler<any, any>[];
         if (!funcs.length) return _chunk as unknown as T;
 
         let value: any = _chunk;
 
-        // Synchronous start
-        const syncFunctions = funcs.findIndex(isAsync);
-        if (syncFunctions > 0) {
-            value = this.makeSynchronousChain(funcs.slice(0, syncFunctions), _chunk)(value);
-            funcs = funcs.slice(syncFunctions);
+        // Find first async function
+        const firstAsyncFunctions = funcs.findIndex(isAsync);
+
+        // Only sync functions
+        if (firstAsyncFunctions === -1) {
+            return this.makeSynchronousChain(funcs, _chunk)(value);
         }
 
-        if (!funcs.length) return value;
+        // First X funcs are sync
+        if (firstAsyncFunctions > 0) {
+            value = this.makeSynchronousChain(funcs.slice(0, firstAsyncFunctions), _chunk)(value);
+            funcs = funcs.slice(firstAsyncFunctions);
+        }
 
         let next = Promise.resolve(value);
         while(funcs.length) {
@@ -297,18 +318,36 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     private makeSynchronousChain<X,Y>(funcs: TransformHandler<X, Y>[], processingChunk: X): (a: X) => Y {
-        return funcs.reduce.bind(funcs, (acc, func) => {
-            try {
-                if (!func[0]) return acc;
-                return func[0](acc as any);
-            } catch(e) {
-                if (typeof e === "undefined") return;
-                if (func[1]) {
-                    return func[1](e as any, processingChunk);
+        return () : Y => {
+            let value: any = processingChunk;
+
+            trace('IFCA makeSynchronousChain');
+
+            for (const [executor, handler] of funcs) {
+                try {
+                    if (executor) {
+                        value = executor(value as any);
+                    }
+                    console.log("MSC", value);
+                    if (value === DroppedChunk) {
+                        console.log('DROPPED-CHUNK');
+                        break;
+                    }
+                } catch (err) {
+                    if (typeof err !== "undefined") {
+                        if (handler) {
+                            value = handler(err, processingChunk);
+                        } else {
+                            throw err;
+                        }
+                    } else {
+                        value = undefined;
+                    }
                 }
-                throw e;
             }
-        }) as (a: X) => Y;
+
+            return value as Y;
+        };
     }
 
     /**
@@ -401,6 +440,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     read(): MaybePromise<T|null> {
         trace('IFCA-READ() processing', this.processing)
         const ret = this.processing.shift();
+        trace('IFCA-READ() RET', ret)
         if (this.readable.length > 0) {
             if (this.readable[0] === null) {
                 // TODO: this makes nulls precede data
