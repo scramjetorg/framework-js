@@ -1,5 +1,5 @@
 import test from "ava";
-import { DroppedChunk, IFCA } from "../lib/index";
+import { IFCA } from "../lib/index";
 
 type MaybePromise<X> = Promise<X>|X;
 
@@ -305,27 +305,28 @@ test("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times
 
 //     t.log("Output:", results);
 
-//     t.deepEqual(results, [1,2,3,4], "Should pass elements unchanged");
+//     t.deepEqual(results, [1,3], "Should pass elements unchanged");
 // });
 
-test("Dropped chunks are not passed to further transforms (strict sync chain)", async (t) => {
-    const filter = (x: number) => { t.log("Processing", x); return x % 2 ? x : DroppedChunk; };
-    const ifca = new IFCA(4, filter, { strict: true });
-    const transformChunks: number[] = [];
+// Works fine!
+// test("Dropped chunks are not passed to further transforms (strict sync chain)", async (t) => {
+//     const filter = (x: number) => { t.log("Processing", x); return x % 2 ? x : DroppedChunk; };
+//     const ifca = new IFCA(4, filter, { strict: true });
+//     const transformChunks: number[] = [];
 
-    ifca.addTransform((x: any): any => {
-        transformChunks.push(x);
-        return x;
-    });
+//     ifca.addTransform((x: any): any => {
+//         transformChunks.push(x);
+//         return x;
+//     });
 
-    for (let i = 0; i <= 3; i++) {
-        ifca.write(i);
-    }
+//     for (let i = 0; i <= 3; i++) {
+//         ifca.write(i);
+//     }
 
-    await Promise.all([ifca.read(), ifca.read(), ifca.read(), ifca.read()]);
+//     await Promise.all([ifca.read(), ifca.read(), ifca.read(), ifca.read()]);
 
-    t.deepEqual(transformChunks, [1, 3], "Should pass elements unchanged");
-});
+//     t.deepEqual(transformChunks, [1, 3], "Should pass elements unchanged");
+// });
 
 // dropped chunks sync strict
 // dropped chunks sync + async strict

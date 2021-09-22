@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { cpus } from "os";
 import { trace } from "../utils"
 
@@ -288,19 +289,28 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
         let value: any = _chunk;
 
-        // Find first async function
-        const firstAsyncFunctions = funcs.findIndex(isAsync);
+        // // Find first async function
+        // const firstAsyncFunctions = funcs.findIndex(isAsync);
 
-        // Only sync functions
-        if (firstAsyncFunctions === -1) {
-            return this.makeSynchronousChain(funcs, _chunk)(value);
+        // // Only sync functions
+        // if (firstAsyncFunctions === -1) {
+        //     return this.makeSynchronousChain(funcs, _chunk)(value);
+        // }
+
+        // // First X funcs are sync
+        // if (firstAsyncFunctions > 0) {
+        //     value = this.makeSynchronousChain(funcs.slice(0, firstAsyncFunctions), _chunk)(value);
+        //     funcs = funcs.slice(firstAsyncFunctions);
+        // }
+
+        // Synchronous start
+        const syncFunctions = funcs.findIndex(isAsync);
+        if (syncFunctions > 0) {
+            value = this.makeSynchronousChain(funcs.slice(0, syncFunctions), _chunk)(value);
+            funcs = funcs.slice(syncFunctions);
         }
 
-        // First X funcs are sync
-        if (firstAsyncFunctions > 0) {
-            value = this.makeSynchronousChain(funcs.slice(0, firstAsyncFunctions), _chunk)(value);
-            funcs = funcs.slice(firstAsyncFunctions);
-        }
+        if (!funcs.length) return value;
 
         let next = Promise.resolve(value);
         while(funcs.length) {
@@ -455,7 +465,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             this.readers.push([noop])
             return ret.then(() => {
                 trace('IFCA-READ PROCESSING-SHIFT', this.readable[0]);
-                return this.readable.shift() as T
+                return this.readable.shift() as T;
             });
         }
         else if (this.ended) {
