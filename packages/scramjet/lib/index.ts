@@ -1,7 +1,7 @@
 import { Readable } from "stream";
 import { BaseStream, BaseStreamCreators } from "./basestream";
 import { IFCA, TransformFunction } from "../../ifca/lib/index";
-
+import { isIterable, isAsyncIterable } from "./utils";
 export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
     constructor() {
         super();
@@ -10,17 +10,12 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
     }
 
     private ifca: IFCA<T, T, any>;
-    private hasReadingStarted: Boolean = false;
-    private readable: Readable | null = null;
+    private input: Iterable<T> | AsyncIterable<T> | Readable | null = null;
 
     static from<U>(input: Iterable<U> | AsyncIterable<U> | Readable): DataStream<U> {
         const dataStream = new DataStream<U>();
 
-        if (input instanceof Readable) {
-            dataStream.fromReadable(input);
-        } else {
-            dataStream.fromIterable(input);
-        }
+        dataStream.input = input;
 
         return dataStream;
     }
@@ -86,43 +81,90 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         });
     }
 
-    private fromIterable(iterable: Iterable<T> | AsyncIterable<T>): void {
-        this.fromReadable(Readable.from(iterable));
-    }
-
-    private fromReadable(readable: Readable): void {
-        this.readable = readable;
-    }
-
     private startReading() {
-        if (!this.hasReadingStarted && this.readable !== null) {
+        if (this.input !== null) {
+            const input = this.input;
+
+            // We don't need keeping reference to the input after reading has started.
+            this.input = null;
+
+            if (input instanceof Readable) {
+                this.readFromReadble(input);
+            } else if (isIterable(input)) {
+                this.readFromIterable(input as Iterable<T>);
+            } else if (isAsyncIterable(input)){
+                this.readFromAsyncIterable(input as AsyncIterable<T>);
+            } else {
+                // Should we throw error here?
+                throw Error("Invalid input type");
+            }
+        }
+    }
+
+    private readFromReadble(readable: Readable): void {
+        const readChunks = (): void => {
             let drain: Promise<void> | void;
+            let data;
 
-            const readable = this.readable;
-            const readChunk = () => {
-                let data;
+            while (drain === undefined && (data = readable.read()) !== null) {
+                drain = this.ifca.write(data);
+            }
 
-                while (drain === undefined && (data = readable.read()) !== null) {
-                    drain = this.ifca.write(data);
+            if (drain instanceof Promise) {
+                readable.pause();
+                drain.then(() => {
+                    readable.resume();
+                });
+            }
+        };
+
+        readable.on("readable", readChunks);
+
+        readable.on("end", () => {
+            this.ifca.write(null);
+        });
+    }
+
+    private readFromIterable(iterable: Iterable<T>): void {
+        const iterator = iterable[Symbol.iterator]();
+        const readItems = (): void => {
+            let drain: Promise<void> | void;
+            let data;
+
+            while (drain === undefined && (data = iterator.next()).done !== true) {
+                drain = this.ifca.write(data.value);
+            }
+
+            if (drain instanceof Promise) {
+                drain.then(readItems);
+            }
+
+            if (data?.done) {
+                this.ifca.write(null);
+            }
+        };
+
+        readItems();
+    }
+
+    private readFromAsyncIterable(iterable: AsyncIterable<T>): void {
+        const iterator = iterable[Symbol.asyncIterator]();
+        const readItem = (): void => {
+            iterator.next().then(data => {
+                if (data.done) {
+                    this.ifca.write(null);
+                } else {
+                    const drain = this.ifca.write(data.value);
 
                     if (drain instanceof Promise) {
-                        readable.pause();
-                        // eslint-disable-next-line no-loop-func
-                        drain.then(() => {
-                            drain = undefined;
-                            readable.resume();
-                        });
+                        drain.then(readItem);
+                    } else {
+                        readItem();
                     }
                 }
-            };
-
-            this.readable.on("readable", readChunk);
-
-            this.readable.on("end", () => {
-                this.ifca.write(null);
             });
-        }
+        };
 
-        this.hasReadingStarted = true;
+        readItem();
     }
 }
