@@ -2,9 +2,9 @@ import { Readable } from "stream";
 import { createReadStream, promises as fs } from "fs";
 import * as readline from "readline";
 import { BaseStream, BaseStreamCreators } from "./base-stream";
-import { IFCA, TransformFunction } from "../../ifca/lib/index";
-import { isIterable, isAsyncIterable } from "./utils";
-export class DataStream<T extends any> extends BaseStreamCreators implements BaseStream<T> {
+import { IFCA, TransformFunction, DroppedChunk } from "../../ifca/lib/index";
+import { isIterable, isAsyncIterable, isAsyncFunction } from "./utils";
+export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
     constructor() {
         super();
 
@@ -27,31 +27,21 @@ export class DataStream<T extends any> extends BaseStreamCreators implements Bas
         return this as unknown as DataStream<U>;
     }
 
-    // We would like to have single stream/IFCA for filtering
-    // which requires supporting 1 to 0 chunk transformations in IFCA (TODO)
     filter(callback: TransformFunction<T, Boolean>): DataStream<T> {
-        const filteredDataStream = new DataStream<T>();
+        // When wrapping we don't want to make sync callback async to not break IFCA optimization.
+        const isCallbackAsync = isAsyncFunction(callback);
 
-        this.ifca.whenEnded().then(() => {
-            filteredDataStream.ifca.end();
-        });
+        if (isCallbackAsync) {
+            console.log("TBD");
+        } else {
+            const newCallback = (chunk: T): T | Symbol => {
+                return callback(chunk) ? chunk : DroppedChunk;
+            };
 
-        const wrappedCallback = async (chunk: T): Promise<void> => {
-            let drained;
-            let chunkResult = await callback(chunk);
+            this.ifca.addTransform(newCallback);
+        }
 
-            if (chunkResult) {
-                drained = filteredDataStream.ifca.write(chunk);
-            }
-
-            return drained instanceof Promise ? drained : Promise.resolve();
-        };
-
-        this.ifca.addTransform(wrappedCallback);
-
-        this.startReading();
-
-        return filteredDataStream;
+        return this;
     }
 
     toArray(): Promise<T[]> {
