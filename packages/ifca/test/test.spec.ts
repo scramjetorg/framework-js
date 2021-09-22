@@ -1,5 +1,5 @@
 import test from "ava";
-import { IFCA } from "../lib/index";
+import { DroppedChunk, IFCA } from "../lib/index";
 
 type MaybePromise<X> = Promise<X>|X;
 
@@ -94,7 +94,7 @@ test("Identity function, 4x write, 8x read", async (t) => {
     await ifca.end(); // Must await in order to get correct results
 
     const read8 = [
-        ifca.read(), ifca.read(), ifca.read(), ifca.read(), 
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(),
         ifca.read(), ifca.read(), ifca.read(), ifca.read()
     ];
     const results = await Promise.all(read8);
@@ -150,21 +150,21 @@ test("Overflow reads", async (t) => {
 
 test("Overflow writes. Read 8 x 2", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
-    
+
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
     }
     const whenEnd = ifca.end(); // without ifca.end() -> Error: Promise returned by test never resolved
-    
+
     const read8 = [
-        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read() 
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
     ];
     const first8 = await Promise.all(read8);
 
     t.log(whenEnd);
 
     const another8 = [
-        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read() 
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
     ];
     const second8 = await Promise.all(another8);
 
@@ -254,7 +254,7 @@ test("Write. Read. Write. Read", async (t) => {
     }
 
     const read4 = [ ifca.read(), ifca.read(), ifca.read(), ifca.read() ];
-    
+
     for (let i = 4; i < 8; i++) {
         ifca.write(i);
     }
@@ -274,14 +274,14 @@ test("Write. Read. Write. Read", async (t) => {
 // Works okay now
 test("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
-    
+
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
     }
     // ifca.end();
 
     let results:any[] = [];
-    
+
     for (let j = 0; j < 6; j++) {
         const read2 = [ ifca.read(), ifca.read() ];
         const result = await Promise.all(read2);
@@ -289,3 +289,48 @@ test("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times
     }
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12], "Should work well");
 });
+
+// test("Dropped chunks are not present on output (strict sync chain)", async (t) => {
+//     const filter = (x: number) => { t.log("Processing", x); return x % 2 ? x : DroppedChunk; };
+//     const ifca = new IFCA(4, filter, { strict: true });
+
+//     for (let i = 0; i <= 3; i++) {
+//         ifca.write(i);
+//     }
+
+//     const read12 = [
+//         ifca.read(), ifca.read(), ifca.read(), ifca.read()
+//     ];
+//     const results = await Promise.all(read12);
+
+//     t.log("Output:", results);
+
+//     t.deepEqual(results, [1,2,3,4], "Should pass elements unchanged");
+// });
+
+test("Dropped chunks are not passed to further transforms (strict sync chain)", async (t) => {
+    const filter = (x: number) => { t.log("Processing", x); return x % 2 ? x : DroppedChunk; };
+    const ifca = new IFCA(4, filter, { strict: true });
+    const transformChunks: number[] = [];
+
+    ifca.addTransform((x: any): any => {
+        transformChunks.push(x);
+        return x;
+    });
+
+    for (let i = 0; i <= 3; i++) {
+        ifca.write(i);
+    }
+
+    await Promise.all([ifca.read(), ifca.read(), ifca.read(), ifca.read()]);
+
+    t.deepEqual(transformChunks, [1, 3], "Should pass elements unchanged");
+});
+
+// dropped chunks sync strict
+// dropped chunks sync + async strict
+// dropped chunks async
+// dropped chunks are not processed further
+// dropped chunks are skipped in the output
+// all dropped chunks still ends ifca
+// all with setTimeout to make promises resolve
