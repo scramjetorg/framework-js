@@ -1,4 +1,6 @@
 import { Readable } from "stream";
+import { createReadStream, promises as fs } from "fs";
+import * as readline from "readline";
 import { BaseStream, BaseStreamCreators } from "./base-stream";
 import { IFCA, TransformFunction } from "../../ifca/lib/index";
 import { isIterable, isAsyncIterable } from "./utils";
@@ -52,7 +54,7 @@ export class DataStream<T extends any> extends BaseStreamCreators implements Bas
         return filteredDataStream;
     }
 
-    toArray() {
+    toArray(): Promise<T[]> {
         this.startReading();
 
         return new Promise((res) => {
@@ -79,6 +81,26 @@ export class DataStream<T extends any> extends BaseStreamCreators implements Bas
 
             readChunk();
         });
+    }
+
+    // TODO
+    // Helper created to be used in E2E test.
+    // Reads line-by-line which should not be default behaviour.
+    static fromFile(filePath: string): DataStream<string> {
+        const fileStream = createReadStream(filePath);
+        const lineStream = readline.createInterface({
+            input: fileStream
+        });
+
+        return DataStream.from(lineStream);
+    }
+
+    // TODO
+    // Helper created to be used in E2E test.
+    // After DataStream will be a subclass of Transform, it can be simply piped to naitve writeStream.
+    async toFile(filePath: string): Promise<void> {
+        const results: T[] = await this.toArray();
+        await fs.writeFile(filePath, results.map(line => `${line}\n`).join(''));
     }
 
     private startReading() {
