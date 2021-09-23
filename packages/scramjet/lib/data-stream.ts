@@ -121,7 +121,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         readable.on("readable", readChunks);
 
         readable.on("end", () => {
-            this.ifca.write(null);
+            this.ifca.end();
         });
     }
 
@@ -140,7 +140,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
             }
 
             if (data?.done) {
-                this.ifca.write(null);
+                this.ifca.end();
             }
         };
 
@@ -152,7 +152,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         const readItem = (): void => {
             iterator.next().then(data => {
                 if (data.done) {
-                    this.ifca.write(null);
+                    this.ifca.end();
                 } else {
                     const drain = this.ifca.write(data.value);
 
