@@ -6,6 +6,7 @@
     "declaration": false
   },
   "include": [
-    "lib"
+    "lib",
+    "pts.ts"
   ]
 }
