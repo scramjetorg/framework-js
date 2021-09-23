@@ -56,12 +56,16 @@ test("DataStream can read from async iterable", async (t) => {
             yield "bar";
             yield "baz";
             yield "bax";
+            yield "foo2";
+            yield "bar2";
+            yield "baz2";
+            yield "bax2";
         }
     };
 
     const dsWords = DataStream.from<string>(words);
     const result = await dsWords.toArray();
-    t.deepEqual(result, ['foo','bar','baz','bax']);
+    t.deepEqual(result, ['foo','bar','baz','bax','foo2','bar2','baz2','bax2']);
 });
 
 // test("DataStream can read from async generator (async iterable)", async (t) => {}); // TBD

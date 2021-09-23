@@ -90,10 +90,8 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
 
             if (input instanceof Readable) {
                 this.readFromReadble(input);
-            } else if (isIterable(input)) {
-                this.readFromIterable(input as Iterable<T>);
-            } else if (isAsyncIterable(input)){
-                this.readFromAsyncIterable(input as AsyncIterable<T>);
+            } else if (isIterable(input) || isAsyncIterable(input)) {
+                this.readFromIterable(input);
             } else {
                 // Should we throw error here?
                 throw Error("Invalid input type");
@@ -125,46 +123,18 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         });
     }
 
-    private readFromIterable(iterable: Iterable<T>): void {
-        const iterator = iterable[Symbol.iterator]();
-        const readItems = (): void => {
-            let drain: Promise<void> | void;
-            let data;
-
-            while (drain === undefined && (data = iterator.next()).done !== true) {
-                drain = this.ifca.write(data.value);
-            }
-
-            if (drain instanceof Promise) {
-                drain.then(readItems);
-            }
-
-            if (data?.done) {
-                this.ifca.end();
-            }
-        };
-
-        readItems();
-    }
-
-    private readFromAsyncIterable(iterable: AsyncIterable<T>): void {
-        const iterator = iterable[Symbol.asyncIterator]();
-        const readItem = (): void => {
-            iterator.next().then(data => {
-                if (data.done) {
-                    this.ifca.end();
-                } else {
-                    const drain = this.ifca.write(data.value);
-
-                    if (drain instanceof Promise) {
-                        drain.then(readItem);
-                    } else {
-                        readItem();
-                    }
+    private readFromIterable(iterable: Iterable<T> | AsyncIterable<T>): void {
+        // We don't want to return or wait for the result of the async call,
+        // it will just run in the background reading chunks as they appear.
+        (async(): Promise<void> => {
+            for await (const data of iterable) {
+                const drain = this.ifca.write(data);
+                if (drain instanceof Promise) {
+                    await drain;
                 }
-            });
-        };
+            }
 
-        readItem();
+            this.ifca.end();
+        })();
     }
 }
