@@ -1,3 +1,4 @@
+/* eslint-disable */
 import test from "ava";
 import { IFCA, TransformFunction } from "../lib/index";
 import { defer } from "../utils"
@@ -6,7 +7,7 @@ type Dict = { [k: string]: number; };
 
 /**
  * Helper function that checks if passed argument is a promise.
- * 
+ *
  * @param {Object} x Obejct to be checked
  * @returns {Boolean}
  */
@@ -67,7 +68,7 @@ test("PTS", async (t) => {
     t.false(isPromise(writeNext()), "8th entry should resolve write immediately");
     t.true(isPromise(writeNext()), "9th entry should fill up max parallel");
 
-    // TODO: make this go 8 items beyond 
+    // TODO: make this go 8 items beyond
     const item2 = ifca.read(); // {a: 1}
     const item3 = ifca.read(); // {a: 2}
     t.true(isPromise(item2), "Is a promise.");
@@ -82,13 +83,13 @@ test("PTS", async (t) => {
     const read8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
     ];
-    
+
     t.deepEqual(read8[0], { a:4, n: 0, x: 4, y: 2, z: 2 }, "Reads the 4 element");
     t.deepEqual(read8[5], { a:9, n: 1, x: 9, y: 9, z: 9 }, "Reads the 9 element");
     t.true(isPromise(read8[6]), "The 10 element is not resolved yet");
     t.deepEqual(await read8[6], { a:10, n: 0, x: 10, y: 10, z: 10 }, "The 10 element resolves");
-    
-    
+
+
     t.true(isPromise(read8[7]), "The 11 element is a promise");
 
     let wrote = false;
@@ -164,7 +165,7 @@ test("Simple order check", async (t) => {
     const item3 = ifca.read(); // {"a":2,"n":0,"x":2,"y":1,"z":1}
     const item4 = ifca.read(); // {"a":3,"n":1,"x":3,"y":4,"z":4}
     const item5 = ifca.read(); // {"a":4,"n":0,"x":4,"y":2,"z":2}
-    const item6 = ifca.read(); // {"a":5,"n":1,"x":5,"y":5,"z":5} 
+    const item6 = ifca.read(); // {"a":5,"n":1,"x":5,"y":5,"z":5}
 
     t.true(isPromise(item2), "Is a promise.");
     t.true(isPromise(item3), "Is a promise.");

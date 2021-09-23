@@ -15,8 +15,7 @@ export const DroppedChunk = Symbol("DroppedChunk");
 
 const isAsync = (func: any[]) => func.length && (
     func[0] && func[0][Symbol.toStringTag] === 'AsyncFunction' ||
-    func[1] && func[1][Symbol.toStringTag] === 'AsyncFunction'
-);
+    func[1] && func[1][Symbol.toStringTag] === 'AsyncFunction');
 
 const noop = () => { };
 
@@ -127,6 +126,13 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     get status() {
         return "R,".repeat(this.readers.length) + this.processing.slice(this.readers.length).map((x,i) => this.readable[this.readers.length + i] ? 'd,' : 'p,')
     }
+
+    //private resulting
+    //processing.push(chain)
+    //resulting.push({promise,resolver})
+
+    //read reads resulting promises which are resolved only by non dropped chunks
+    //what about ending stream and promises returning nulls?
 
     /**
      * Write (add chunk)
@@ -289,28 +295,18 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
         let value: any = _chunk;
 
-        // // Find first async function
-        // const firstAsyncFunctions = funcs.findIndex(isAsync);
-
-        // // Only sync functions
-        // if (firstAsyncFunctions === -1) {
-        //     return this.makeSynchronousChain(funcs, _chunk)(value);
-        // }
-
-        // // First X funcs are sync
-        // if (firstAsyncFunctions > 0) {
-        //     value = this.makeSynchronousChain(funcs.slice(0, firstAsyncFunctions), _chunk)(value);
-        //     funcs = funcs.slice(firstAsyncFunctions);
-        // }
-
-        // Synchronous start
-        const syncFunctions = funcs.findIndex(isAsync);
-        if (syncFunctions > 0) {
-            value = this.makeSynchronousChain(funcs.slice(0, syncFunctions), _chunk)(value);
-            funcs = funcs.slice(syncFunctions);
+        // Find first async function
+        const firstAsyncFunctions = funcs.findIndex(isAsync);
+        // Only sync functions
+        if (firstAsyncFunctions === -1) {
+            return this.makeSynchronousChain(funcs, _chunk)(value);
         }
 
-        if (!funcs.length) return value;
+        // First X funcs are sync
+        if (firstAsyncFunctions > 0) {
+            value = this.makeSynchronousChain(funcs.slice(0, firstAsyncFunctions), _chunk)(value);
+            funcs = funcs.slice(firstAsyncFunctions);
+        }
 
         let next = Promise.resolve(value);
         while(funcs.length) {
@@ -328,6 +324,20 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     private makeSynchronousChain<X,Y>(funcs: TransformHandler<X, Y>[], processingChunk: X): (a: X) => Y {
+        // return funcs.reduce.bind(funcs, (prev, [transformFn, errorHandler]) => {
+        //     try {
+        //         return transformFn ? transformFn(prev as any) : prev;
+        //     } catch(err) {
+        //         if (typeof err === "undefined") {
+        //             return;
+        //         }
+        //         if (errorHandler) {
+        //             return errorHandler(err, processingChunk);
+        //         }
+        //         throw err;
+        //     }
+        // }) as (a: X) => Y;
+
         return () : Y => {
             let value: any = processingChunk;
 
@@ -346,7 +356,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
                 } catch (err) {
                     if (typeof err !== "undefined") {
                         if (handler) {
-                            value = handler(err, processingChunk);
+                            value = handler(err as any, processingChunk);
                         } else {
                             throw err;
                         }
