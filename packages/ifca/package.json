@@ -4,13 +4,12 @@
   "description": "Tests intended to run on ",
   "main": "./src/index.ts",
   "scripts": {
-    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "build": "rm -rf ./build && tsc -p tsconfig.build.json",
     "build:watch": "npm run build -- -w",
     "test": "npm run build && ava",
     "test:watch": "concurrently 'npm run build:watch' 'sleep 8 && npm run test -- -w'",
-    "coverage": "nyc --reporter=html ava",
-    "clean": "rm -rf ./dist",
-    "prepack": "LOCAL_PACKAGES=true node ../../scripts/publish.js"
+    "dist": "rm -rf ./dist && tsc -p tsconfig.dist.json",
+    "coverage": "npm run build && nyc --reporter=html ava"
   },
   "author": "Scramjet <open-source@scramjet.org>",
   "license": "AGPL-3.0",
@@ -31,7 +30,7 @@
       "js"
     ],
     "files": [
-      "**/*.spec.js"
+      "build/**/*.spec.js"
     ]
   },
   "private": true
