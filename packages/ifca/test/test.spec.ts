@@ -194,7 +194,7 @@ test("Overflow writes. Read 8 x 2", async (t) => {
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
     }
-    const whenEnd = ifca.end(); // without ifca.end() -> Error: Promise returned by test never resolved
+    ifca.end(); // without ifca.end() -> Error: Promise returned by test never resolved
 
     const read8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
