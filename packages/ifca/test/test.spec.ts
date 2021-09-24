@@ -1,7 +1,13 @@
+/* eslint-disable */
+
 import test from "ava";
-import { IFCA, DroppedChunk } from "../lib/index";
+import { IFCA } from "../lib/index";
 
 type MaybePromise<X> = Promise<X>|X;
+
+// IFCA can detect on it's own if stream has ended, so the Stream using it will
+// be sending end() event based on input. That's why some tests needs calling
+// end() explicitly (simulating cases when stream has ended).
 
 test("Identity function, numbers starting from 1", async (t) => {
     const ifca = new IFCA(4, (x: number) => {t.log('Processing', x); return x});
@@ -9,13 +15,14 @@ test("Identity function, numbers starting from 1", async (t) => {
     for (let i = 1; i <= 4; i++) {
         ifca.write(i);
     }
-    // /* No end needed: */ ifca.end();
 
     const read4 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(),
     ];
+
     const results = await Promise.all(read4);
-    t.log('Output:', results)
+
+    t.log('Output:', results);
 
     t.deepEqual(results, [1,2,3,4], "Should pass elements unchanged");
 });
@@ -26,7 +33,6 @@ test("Identity function, objects starting from 0", async (t) => {
     for (let i = 0; i < 4; i++) {
         ifca.write({i});
     }
-    // /* No end needed: */ ifca.end();
 
     const read4 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(),
@@ -37,14 +43,12 @@ test("Identity function, objects starting from 0", async (t) => {
     t.deepEqual(results, [{i: 0},{i: 1},{i: 2},{i: 3}], "Should pass elements unchanged");
 });
 
-// TODO: skipped, 0 is skipped in IFCA.
 test("Identity function, numbers starting from 0", async (t) => {
     const ifca = new IFCA(4, (x: number) => {t.log('Processing', x); return x; });
 
     for (let i = 0; i < 4; i++) {
         ifca.write(i);
     }
-    // /* No end needed: */ ifca.end();
 
     const read4 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(),
@@ -72,7 +76,6 @@ test("Falsy values in results", async (t) => {
     for (let i = 0; i < 8; i++) {
         ifca.write(i);
     }
-    // /* No end needed: */ ifca.end();
 
     const read8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(),
@@ -85,13 +88,13 @@ test("Falsy values in results", async (t) => {
     t.deepEqual(results, expected, "Falsy values in output shouldn't be treated specially");
 });
 
-test("Identity function, 4x write, 8x read", async (t) => {
+test("Identity function, 4x write, 8x read (with explicit end)", async (t) => {
     const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x});
 
     for (let i = 0; i < 4; i++) {
         ifca.write({i});
     }
-    await ifca.end(); // Must await in order to get correct results
+    await ifca.end();
 
     const read8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(),
@@ -103,13 +106,50 @@ test("Identity function, 4x write, 8x read", async (t) => {
     t.deepEqual(results, [{i: 0},{i: 1},{i: 2},{i: 3},null,null,null,null], "Should first output chunks matching inputs, then nulls");
 });
 
-test("Identity function, 8x write, 1x read + 4x read", async (t) => {
+// // Should it work without explicit '.end()' call?
+// // test("Identity function, 4x write, 8x read (without explicit end)", async (t) => {
+// //     const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x});
+
+// //     for (let i = 0; i < 4; i++) {
+// //         ifca.write({i});
+// //     }
+
+// //     const read8 = [
+// //         ifca.read(), ifca.read(), ifca.read(), ifca.read(),
+// //         ifca.read(), ifca.read(), ifca.read(), ifca.read()
+// //     ];
+// //     const results = await Promise.all(read8);
+// //     t.log('Output:', results)
+
+// //     t.deepEqual(results, [{i: 0},{i: 1},{i: 2},{i: 3},null,null,null,null], "Should first output chunks matching inputs, then nulls");
+// // });
+
+test("Identity function, 8x write, 1x read + 4x read (with explicit end)", async (t) => {
     const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x});
 
     for (let i = 0; i < 8; i++) {
         ifca.write({i});
     }
     // ifca.end();
+
+    const first = await ifca.read()
+    t.log('Got', first)
+    const read4 = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(),
+    ];
+    const next4 = await Promise.all(read4);
+    t.log('Got:', next4)
+
+    const results = [first, ...next4]
+    t.deepEqual(results, [{i: 0},{i: 1},{i: 2},{i: 3},{i: 4}], "Should pass elements unchanged");
+});
+
+test("Identity function, 8x write, 1x read + 4x read (without explicit end)", async (t) => {
+    const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x});
+
+    for (let i = 0; i < 8; i++) {
+        ifca.write({i});
+    }
 
     const first = await ifca.read()
     t.log('Got', first)
@@ -161,7 +201,7 @@ test("Overflow writes. Read 8 x 2", async (t) => {
     ];
     const first8 = await Promise.all(read8);
 
-    t.log(whenEnd);
+    console.log('----whenEnd', whenEnd);
 
     const another8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
@@ -212,13 +252,13 @@ test("Overflow writes. Read 7x + read 9x", async (t) => {
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12,null,null,null,null], "Should work well");
 });
 
-test("Overflow writes. Read 4x", async (t) => {
+test("Overflow writes. Read 4x (with end)", async (t) => {
     const ifca = new IFCA(2, (x: number) => x+1);
 
     for (let i = 0; i < 4; i++) {
         ifca.write(i);
     }
-    // ifca.end();
+    ifca.end();
 
     const read4 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read()
@@ -228,15 +268,44 @@ test("Overflow writes. Read 4x", async (t) => {
     t.deepEqual(results, [1,2,3,4], "Should work well");
 });
 
+test("Overflow writes. Read 4x (without end)", async (t) => {
+    const ifca = new IFCA(2, (x: number) => x+1);
 
-// This used to work. Now I've got: Error: Promise returned by test never resolved
-test("Overflow writes. Read 12x", async (t) => {
+    for (let i = 0; i < 4; i++) {
+        ifca.write(i);
+    }
+
+    const read4 = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+    const results = await Promise.all(read4);
+
+    t.deepEqual(results, [1,2,3,4], "Should work well");
+});
+
+test("Overflow writes. Read 12x (with end)", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
 
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
     }
-    // ifca.end();
+    ifca.end();
+
+    const read12 = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+    const results = await Promise.all(read12);
+
+    t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12], "Should work well");
+});
+
+test("Overflow writes. Read 12x (without end)", async (t) => {
+    const ifca = new IFCA(4, (x: number) => x+1);
+
+    for (let i = 0; i < 12; i++) {
+        ifca.write(i);
+    }
+    ifca.end();
 
     const read12 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
@@ -271,7 +340,6 @@ test("Write. Read. Write. Read", async (t) => {
 
 });
 
-// Works okay now
 test("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
 
@@ -290,49 +358,49 @@ test("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12], "Should work well");
 });
 
-// npm run build && npx ava test/test.spec.js -m "*chunks are not present on output*"
-test("Dropped chunks are not present on output (strict sync chain)", async (t) => {
-    const filter = (x: number) => { t.log("Processing", x); return x % 2 ? x : DroppedChunk; };
-    const ifca = new IFCA(4, filter, { strict: true });
+// // npm run build && npx ava test/test.spec.js -m "*chunks are not present on output*"
+// test("Dropped chunks are not present on output (strict sync chain)", async (t) => {
+//     const filter = (x: number) => { t.log("Processing", x); return x % 2 ? x : DroppedChunk; };
+//     const ifca = new IFCA(4, filter, { strict: true });
 
-    for (let i = 0; i <= 3; i++) {
-        ifca.write(i);
-    }
+//     for (let i = 0; i <= 3; i++) {
+//         ifca.write(i);
+//     }
 
-    const read12 = [
-        ifca.read(), ifca.read(), ifca.read(), ifca.read()
-    ];
-    const results = await Promise.all(read12);
+//     const read12 = [
+//         ifca.read(), ifca.read(), ifca.read(), ifca.read()
+//     ];
+//     const results = await Promise.all(read12);
 
-    t.log("Output:", results);
+//     t.log("Output:", results);
 
-    t.deepEqual(results, [1,3], "Should pass elements unchanged");
-});
+//     t.deepEqual(results, [1,3], "Should pass elements unchanged");
+// });
 
-// Works fine!
-test("Dropped chunks are not passed to further transforms (strict sync chain)", async (t) => {
-    const filter = (x: number) => { t.log("Processing", x); return x % 2 ? x : DroppedChunk; };
-    const ifca = new IFCA(4, filter, { strict: true });
-    const transformChunks: number[] = [];
+// // // Works fine!
+// // test("Dropped chunks are not passed to further transforms (strict sync chain)", async (t) => {
+// //     const filter = (x: number) => { t.log("Processing", x); return x % 2 ? x : DroppedChunk; };
+// //     const ifca = new IFCA(4, filter, { strict: true });
+// //     const transformChunks: number[] = [];
 
-    ifca.addTransform((x: any): any => {
-        transformChunks.push(x);
-        return x;
-    });
+// //     ifca.addTransform((x: any): any => {
+// //         transformChunks.push(x);
+// //         return x;
+// //     });
 
-    for (let i = 0; i <= 3; i++) {
-        ifca.write(i);
-    }
+// //     for (let i = 0; i <= 3; i++) {
+// //         ifca.write(i);
+// //     }
 
-    await Promise.all([ifca.read(), ifca.read(), ifca.read(), ifca.read()]);
+// //     await Promise.all([ifca.read(), ifca.read(), ifca.read(), ifca.read()]);
 
-    t.deepEqual(transformChunks, [1, 3], "Should pass elements unchanged");
-});
+// //     t.deepEqual(transformChunks, [1, 3], "Should pass elements unchanged");
+// // });
 
-// dropped chunks sync strict
-// dropped chunks sync + async strict
-// dropped chunks async
-// dropped chunks are not processed further
-// dropped chunks are skipped in the output
-// all dropped chunks still ends ifca
-// all with setTimeout to make promises resolve
+// // // dropped chunks sync strict
+// // // dropped chunks sync + async strict
+// // // dropped chunks async
+// // // dropped chunks are not processed further
+// // // dropped chunks are skipped in the output
+// // // all dropped chunks still ends ifca
+// // // all with setTimeout to make promises resolve

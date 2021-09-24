@@ -17,7 +17,7 @@ const isAsync = (func: any[]) => func.length && (
     func[0] && func[0][Symbol.toStringTag] === 'AsyncFunction' ||
     func[1] && func[1][Symbol.toStringTag] === 'AsyncFunction');
 
-const noop = () => { };
+// const noop = () => { };
 
 export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
     // TODO: This may need a setter if maxParallel is increased so that chunks are not waiting for drain.
@@ -123,6 +123,9 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     private endedPromise: Promise<void> | null = null;
     private endedPromiseResolver: Function | null = null;
 
+    private processingQueue: ProcessingQueue<T> = new ProcessingQueue();
+
+    //TBD
     get status() {
         return "R,".repeat(this.readers.length) + this.processing.slice(this.readers.length).map((x,i) => this.readable[this.readers.length + i] ? 'd,' : 'p,')
     }
@@ -149,19 +152,19 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         if (this.ended) throw new Error("Write after end");
         if (_chunk === null) return this.end();
 
-        const pos = this.processing.length;
-        trace('IFCA WRITE pos: ', pos, _chunk)
-        const drain: MaybePromise<any> = pos < this.maxParallel
+        const pendingLength = this.processingQueue.length;
+        trace('IFCA WRITE pos: ', pendingLength, _chunk)
+        const drain: MaybePromise<any> = pendingLength < this.maxParallel
             ? undefined
-            : this.processing[pos - this.maxParallel].finally()
+            : this.processingQueue.get(pendingLength - this.maxParallel).finally()
         ;
-        const chunkBeforeThisOne = this.processing[pos - 1]; // First one is undefined obviously. Rest are Promise { <pending> }
+        const chunkBeforeThisOne = this.processingQueue.last as any;
         const currentChunkResult = this.strict ? this.makeStrictTransformChain(_chunk) : this.makeTransformChain(_chunk);
 
         /**
          * Make processing item and push to processing array in order to start processing transformations.
          */
-        this.processing.push(
+        this.processingQueue.push(
             this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult)
         );
 
@@ -180,6 +183,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      * @param {Object[]|null}_chunks The data to be written. The value is an array of <Object> that each represent a discrete chunk of data to write.
      * @returns {MaybePromise}
      */
+    // TBD
     writev(_chunks: (S|null)[]):MaybePromise<void> {
         if (this.ended) throw new Error("Write after end");
 
@@ -238,23 +242,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
                 if (result !== undefined) {
                     trace('IFCA-WRITE_RESULT', result);
 
-                    // if (result as any === DroppedChunk) {
-                    //     // this.processing.shift();
-                    //     // this.readers.shift();
-                    //     trace("IFCA-WRITE_PROCESSING_DROPPEDCHUNK");
-                    // } else
-                    // noop is a placeholder saying someones is waiting for reading this chunk
-                    if (this.readers.length === 0 || this.readers[0][0] === noop) {
-                        if (this.readers.length) {
-                            this.readers.shift(); // remove noop reader
-                        }
-                        this.readable.push(result);
-                        trace("IFCA-WRITE_PROCESSING_PUSH", this.readable.length, result)
-                    } else {
-                        this.processing.shift();
-                        (this.readers.shift() as ChunkResolver<T>)[0](result)
-                        trace("IFCA-WRITE_PROCESSING_SET_READER", this.readers.length, result)
-                    }
+                    return result;
                 } else {
                     trace("IFCA-WRITE_PROCESSING_UNDEFINED")
                 }
@@ -422,14 +410,16 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      * @returns {MaybePromise}
      */
     end(): MaybePromise<void> {
-        if (this.ended) throw new Error("End called multiple times");
+        if (this.ended) {
+            throw new Error("End called multiple times");
+        }
+
+        this.processingQueue.close();
 
         this.ended = true;
 
-
-
-        if (this.processing.length > 0) {
-            return Promise.all(this.processing).then(() => { this.handleEnd() });
+        if (this.processingQueue.length > 0) {
+            return Promise.all(this.processingQueue.all).then(() => { this.handleEnd() });
         }
 
         this.handleEnd();
@@ -442,8 +432,8 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      */
     private handleEnd() {
         trace("IFCA-HANDLE_END()")
-        this.readers.slice(this.processing.length).forEach(([res]) => res(null));
-        this.readable.push(null as unknown as T);
+        // this.readers.slice(this.processing.length).forEach(([res]) => res(null));
+        // this.readable.push(null as unknown as T);
 
         if (this.endedPromiseResolver) {
             this.endedPromiseResolver();
@@ -458,31 +448,19 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      * @returns {MaybePromise|null}
      */
     read(): MaybePromise<T|null> {
-        trace('IFCA-READ() processing', this.processing)
-        const ret = this.processing.shift();
-        trace('IFCA-READ() RET', ret)
-        if (this.readable.length > 0) {
-            if (this.readable[0] === null) {
-                // TODO: this makes nulls precede data
-                trace('IFCA-READ READABLE-NULL')
-                return null;
-            }
-            trace('IFCA-READ READABLE-EXISTS', this.readable);
-            return this.readable.shift() as T;
+        trace('IFCA-READ() processing');
+
+        const result = this.processingQueue.read();
+
+        if (result) {
+            return result;
         }
-        else if (ret) {
-            trace('IFCA-READ PROCESSING-AWAIT');
-            this.readers.push([noop])
-            return ret.then(() => {
-                trace('IFCA-READ PROCESSING-SHIFT', this.readable[0]);
-                return this.readable.shift() as T;
-            });
-        }
-        else if (this.ended) {
-            trace('IFCA-READ ENDED', ret);
+        else if (!result && this.ended) {
+            trace('IFCA-READ ENDED', result);
             return null;
         }
 
+        // TBD not sure how to handle this
         trace('IFCA-READ CREATE_READER');
         // This gives Promise { <pending> }
         // In scribbe.spec.js this never resolves
@@ -492,15 +470,6 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             // push both [resolve, reject]
             return this.readers.push(handlers);
         });
-    }
-
-    /**
-     * Return last processing item
-     *
-     * @returns {PromiseLike}
-     */
-    last(): PromiseLike<T> {
-        return this.processing[this.processing.length - 1];
     }
 
     /**
@@ -547,4 +516,115 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return this.endedPromise;
     }
 
+}
+class ProcessingQueue<T> {
+
+    private hasStarted: Boolean = false;
+    private hasEnded: Boolean = false;
+    private pending: Promise<T>[] = [];
+    private ready: T[] = [];
+    private requested: Object[] = [];
+
+    get length(): number {
+        return this.pending.length;
+    }
+
+    get last(): Promise<T|void> | null {
+        if (this.pending.length) {
+            return this.pending[this.pending.length - 1];
+        }
+
+        // Instead of returning undefined on empty, not started queue return resolved promise.
+        if (!this.hasStarted) {
+            return Promise.resolve();
+        }
+
+        return null;
+    }
+
+    // Returns all pending chunks.
+    get all(): Promise<T>[] {
+        return this.pending;
+    }
+
+    // Returns pending chunk from the given position.
+    get(index: number) {
+        return this.pending[index];
+    }
+
+    // We don't need to worry about chunks resolving order since it is guaranteed
+    // by IFCA with Promise.all[previousChunk,currentChunk].
+    push(chunkResolver: Promise<T>): void {
+        chunkResolver.then((result: T) => {
+            this.pending.shift();
+            this.ready.push(result); // TBD here we will check reult for DroppedChunks
+
+            // If there is any chunk requested (read awaiting) resolve it.
+            if (this.requested.length) {
+                const chunkRequest: any = this.requested.shift();
+                chunkRequest.resolver(this.ready.shift() as T);
+            }
+
+            // If queue is closed and there are no more pending items we need to make sure
+            // to resolve all waiting chunks requests (with nulls since there is no more data).
+            this.hasEnded && this.resolveAwaitingRequests();
+        });
+
+        this.hasStarted = true;
+
+        this.pending.push(chunkResolver);
+    }
+
+    // Requesting read from the queue.
+    read(): MaybePromise<T|null> {
+        // If chunk is ready, simply return it.
+        if (this.ready.length) {
+            // TBD handle nulls as in line 468
+
+            return this.ready.shift() as T;
+        }
+
+        // If queue is not closed and there are no ready chunks
+        // add chunk request which will be resolved when next chunk becomes available.
+        if (!this.hasEnded) {
+            const chunkRequest = this.createChunkRequest();
+            this.requested.push(chunkRequest);
+            return chunkRequest.promise as Promise<T>;
+        }
+
+        // If queue is closed but there are still pending chunks
+        // add chunk request.
+        if (this.hasEnded && this.pending.length > 0) {
+            const chunkRequest = this.createChunkRequest();
+            this.requested.push(chunkRequest);
+            return chunkRequest.promise as Promise<T>;
+        }
+
+        return null;
+    }
+
+    // Closes the queue.
+    close() {
+        this.hasEnded = true;
+        this.resolveAwaitingRequests();
+    }
+
+    // Creates chunk request promise which can be directly resolved by the outside call.
+    private createChunkRequest() {
+        let resolver = undefined;
+        const promise = new Promise( res => {
+            resolver = res;
+        } );
+
+        return { promise, resolver };
+    }
+
+    // Resolves all chunk awaiting requests which cannot be resolved due to end of data.
+    private resolveAwaitingRequests() {
+        if (this.hasEnded && this.pending.length === 0 && this.requested.length > 0) {
+            for (const chunkRequest of this.requested) {
+                (chunkRequest as any).resolver(null);
+            }
+        }
+    }
 }
