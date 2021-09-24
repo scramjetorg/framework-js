@@ -76,7 +76,7 @@ export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
 type TransformHandler<S,T> = [TransformFunction<S,T>, TransformErrorHandler<S,T>?] | [undefined, TransformErrorHandler<S,T>];
 type ChunkResolver<S> = [TransformFunction<S|null,void>, TransformErrorHandler<S,void>?];
 type MaybePromise<S> = Promise<S> | S;
-type NullTerminatedArray<X extends any[]> = X | [...X, null]
+// type NullTerminatedArray<X extends any[]> = X | [...X, null]
 
 export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
@@ -112,30 +112,19 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     // transforms: TransformArray<S, T>;
     // public handlers = [] as TransformErrorHandler<S,T>[];
 
-    private processing: Promise<any>[] = []
-    // private processing_await?: Promise<any>;
-    // readable is a queue of chunks waiting to be reAD
-    private readable: NullTerminatedArray<T[]> = [];
-    // readers is a queue of "read calls" waiting to receive value
+    private processingQueue: ProcessingQueue<T> = new ProcessingQueue();
     private readers: ChunkResolver<T>[] = [];
+    private processing: Promise<any>[] = []
     private ended: boolean = false;
     private readonly strict: boolean;
     private endedPromise: Promise<void> | null = null;
     private endedPromiseResolver: Function | null = null;
 
-    private processingQueue: ProcessingQueue<T> = new ProcessingQueue();
-
-    //TBD
+    // TBD
     get status() {
-        return "R,".repeat(this.readers.length) + this.processing.slice(this.readers.length).map((x,i) => this.readable[this.readers.length + i] ? 'd,' : 'p,')
+        return "";
+        // return "R,".repeat(this.readers.length) + this.processing.slice(this.readers.length).map((x,i) => this.readable[this.readers.length + i] ? 'd,' : 'p,')
     }
-
-    //private resulting
-    //processing.push(chain)
-    //resulting.push({promise,resolver})
-
-    //read reads resulting promises which are resolved only by non dropped chunks
-    //what about ending stream and promises returning nulls?
 
     /**
      * Write (add chunk)
@@ -226,7 +215,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return result;
     }
 
-    // TODO: here's a low hanging fruit for implementing non-ordered processing
+    // TODO: here's a low hanging fruit for implementing non-ordered processings
     /**
      *
      * @param {Promise} chunkBeforeThisOne
@@ -254,6 +243,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
                     return;
                 }
 
+                // TBD/TODO - readers are no longer used so this needs to handled in ProcessingQueue
                 if (this.readers.length) {
                     const res = this.readers[0];
 
