@@ -19,4 +19,4 @@ jobs:
       with:
         node-version: 14.x
         cache: 'npm'
-    - run: cd packages/${{ matrix.package }} && npm ci && npm run check:coverage
+    - run: cd packages/${{ matrix.package }} && npm ci && npm run coverage:check
