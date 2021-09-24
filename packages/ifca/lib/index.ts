@@ -239,13 +239,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             this.attachErrorHandlerToChunkResult(currentChunkResult)
         ])
             .then(([, result]) => {
-                if (result !== undefined) {
-                    trace('IFCA-WRITE_RESULT', result);
-
-                    return result;
-                } else {
-                    trace("IFCA-WRITE_PROCESSING_UNDEFINED")
-                }
+                return result;
             })
             .catch(e => {
                 if (typeof e === "undefined") return;
@@ -419,73 +413,34 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         this.ended = true;
 
         if (this.processingQueue.length > 0) {
-            return Promise.all(this.processingQueue.all).then(() => { this.handleEnd() });
+            return Promise.all(this.processingQueue.all).then(() => { this.endedPromiseResolver && this.endedPromiseResolver() });
         }
 
-        this.handleEnd();
+        this.endedPromiseResolver && this.endedPromiseResolver()
     }
 
     /**
-     * This resolves all readers beyond those being processed.
-     *
-     * @returns {null}
-     */
-    private handleEnd() {
-        trace("IFCA-HANDLE_END()")
-        // this.readers.slice(this.processing.length).forEach(([res]) => res(null));
-        // this.readable.push(null as unknown as T);
-
-        if (this.endedPromiseResolver) {
-            this.endedPromiseResolver();
-        }
-
-        return null;
-    }
-
-    /**
-     * Read result from readable NullTerminatedArray.
+     * Reads processing results.
      *
      * @returns {MaybePromise|null}
      */
     read(): MaybePromise<T|null> {
-        trace('IFCA-READ() processing');
-
-        const result = this.processingQueue.read();
-
-        if (result) {
-            return result;
-        }
-        else if (!result && this.ended) {
-            trace('IFCA-READ ENDED', result);
-            return null;
-        }
-
-        // TBD not sure how to handle this
-        trace('IFCA-READ CREATE_READER');
-        // This gives Promise { <pending> }
-        // In scribbe.spec.js this never resolves
-        return new Promise((...handlers) => {
-            trace('IFCA-READ INSIDE PROMISE');
-            trace('READERS', this.readers);
-            // push both [resolve, reject]
-            return this.readers.push(handlers);
-        });
+        return this.processingQueue.read();
     }
 
     /**
-     * Add error handler
+     * Adds error handler.
      *
      * @param {TransformErrorHandler} handler Transform error handler
      * @returns {IFCA}
      */
     addErrorHandler(handler: TransformErrorHandler<S,T>): this {
         this.transformHandlers.push([, handler]);
-
         return this;
     }
 
     /**
-     * Add transform
+     * Adds transform.
      *
      * @param {TransformFunction} transform Transform function
      * @param {TransformErrorHandler} [handler] Optional transform error handler
@@ -497,7 +452,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     /**
-     * Remove transform (pop)
+     * Removes transform.
      *
      * @returns {IFCA}
      */
