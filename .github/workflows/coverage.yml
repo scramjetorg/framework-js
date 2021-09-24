@@ -1,11 +1,11 @@
-name: Check coverage
+name: Coverage
 
 on:
   push:
     branches: [ feature/** ]
 
 jobs:
-  coverage:
+  check:
 
     runs-on: ubuntu-latest
 

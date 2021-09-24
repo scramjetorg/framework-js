@@ -1,11 +1,11 @@
-name: Run tests
+name: Tests
 
 on:
   push:
     branches: [ feature/** ]
 
 jobs:
-  test:
+  run:
 
     runs-on: ubuntu-latest
 
