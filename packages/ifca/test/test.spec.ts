@@ -356,6 +356,46 @@ test("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12], "Should work well");
 });
 
+test("Ending IFCA more than once throws an error", async (t) => {
+    const ifca = new IFCA(2, (x: number) => x+1);
+
+    for (let i = 0; i < 4; i++) {
+        ifca.write(i);
+    }
+
+    ifca.end();
+
+    t.throws(ifca.end);
+});
+
+test("Writitng null chunk to IFCA triggers end", async (t) => {
+    const ifca = new IFCA(2, (x: number) => x+1);
+
+    const whenEnded = ifca.whenEnded();
+
+    for (let i = 0; i < 4; i++) {
+        ifca.write(i);
+    }
+
+    ifca.write(null);
+
+    await whenEnded;
+
+    t.pass();
+});
+
+test("Writitng to IFCA after it's ended throws an error", async (t) => {
+    const ifca = new IFCA(2, (x: number) => x+1);
+
+    for (let i = 0; i < 4; i++) {
+        ifca.write(i);
+    }
+
+    await ifca.end();
+
+    t.throws(() => {ifca.write(4)});
+});
+
 // // npm run build && npx ava test/test.spec.js -m "*chunks are not present on output*"
 // test("Dropped chunks are not present on output (strict sync chain)", async (t) => {
 //     const filter = (x: number) => { t.log("Processing", x); return x % 2 ? x : DroppedChunk; };
