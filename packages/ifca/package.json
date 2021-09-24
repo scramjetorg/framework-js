@@ -9,7 +9,8 @@
     "test": "npm run build && ava",
     "test:watch": "concurrently 'npm run build:watch' 'sleep 8 && npm run test -- -w'",
     "dist": "rm -rf ./dist && tsc -p tsconfig.dist.json",
-    "coverage": "npm run build && nyc --reporter=html ava"
+    "coverage": "npm run build && nyc --reporter=html ava",
+    "coverage:check": "npm run build && nyc --check-coverage ava"
   },
   "author": "Scramjet <open-source@scramjet.org>",
   "license": "AGPL-3.0",
@@ -31,6 +32,12 @@
     "files": [
       "build/**/*.spec.js"
     ]
+  },
+  "nyc": {
+    "branches": 60,
+    "lines": 60,
+    "functions": 60,
+    "statements": 60
   },
   "private": true
 }

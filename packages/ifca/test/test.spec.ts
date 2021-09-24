@@ -201,8 +201,6 @@ test("Overflow writes. Read 8 x 2", async (t) => {
     ];
     const first8 = await Promise.all(read8);
 
-    console.log('----whenEnd', whenEnd);
-
     const another8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
     ];

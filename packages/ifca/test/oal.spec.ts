@@ -19,7 +19,6 @@ test("Acceptable latency test", async (t) => {
         (async () => {
             for (let i = 0; i < 4000; i++) {
                 const ret = ifca.write({i: i+1});
-                // console.log("write", {i}, ifca.status, ret instanceof Promise);
                 await Promise.all([ret, defer(1)]);
             }
             ifca.end(); // TODO: test for correct end operation
