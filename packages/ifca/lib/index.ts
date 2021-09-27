@@ -12,6 +12,7 @@ export type TransformArray<S, T> = [TransformFunction<S, T>] | [
     ...TransformFunction<any, any>[]
 ];
 export const DroppedChunk = Symbol("DroppedChunk");
+export type ResolvablePromiseObject = {promise: Promise<void>, resolver: () => (void)};
 
 const isAsync = (func: any[]) => func.length && (
     func[0] && func[0][Symbol.toStringTag] === 'AsyncFunction' ||
@@ -126,6 +127,12 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         // return "R,".repeat(this.readers.length) + this.processing.slice(this.readers.length).map((x,i) => this.readable[this.readers.length + i] ? 'd,' : 'p,')
     }
 
+    get state() {
+        return {
+            pending: this.processingQueue.length
+        }
+    }
+
     /**
      * Write (add chunk)
      *
@@ -145,7 +152,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         trace('IFCA WRITE pos: ', pendingLength, _chunk)
         const drain: MaybePromise<any> = pendingLength < this.maxParallel
             ? undefined
-            : this.processingQueue.get(pendingLength - this.maxParallel).finally()
+            : this.processingQueue.get(pendingLength - this.maxParallel)
         ;
         const chunkBeforeThisOne = this.processingQueue.last as any;
         const currentChunkResult = this.strict ? this.makeStrictTransformChain(_chunk) : this.makeTransformChain(_chunk);

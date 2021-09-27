@@ -2,6 +2,7 @@
 
 import test from "ava";
 import { IFCA } from "../lib/index";
+// import { defer } from "../utils";
 
 type MaybePromise<X> = Promise<X>|X;
 
@@ -395,6 +396,117 @@ test("Writitng to IFCA after it's ended throws an error", async (t) => {
 
     t.throws(() => {ifca.write(4)});
 });
+
+test("Drain is emitted and resolved correctly", async (t) => {
+    // maxParellel === 2, means 2 chunks can be processed in the same time,
+    // this means second write should return promise.
+    const ifca = new IFCA(2, (x: number) => x*10);
+
+    const drains1: Array<Promise<void> | void | string> = [];
+    for (let i = 0; i < 4; i++) {
+        drains1.push(ifca.write(i));
+    }
+
+    markWhenResolved(drains1, 2);
+    markWhenResolved(drains1, 3);
+
+    // processing queue [0, 1, 2, 3]
+    t.deepEqual({pending: 4}, ifca.state);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, undefined, "Promise", "Promise"]);
+
+    // read first chunk
+    t.deepEqual(await ifca.read(), 0);
+
+    // processing queue [1, 2, 3]
+    t.deepEqual({pending: 3}, ifca.state);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, undefined, "ResolvedPromise", "Promise"]);
+
+    // read second chunk
+    t.deepEqual(await ifca.read(), 10);
+
+    // processing queue [2, 3]
+    t.deepEqual({pending: 2}, ifca.state);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, undefined, "ResolvedPromise", "ResolvedPromise"]);
+
+    // read third chunk
+    t.deepEqual(await ifca.read(), 20);
+
+    // processing queue [3]
+    t.deepEqual({pending: 1}, ifca.state);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, undefined, "ResolvedPromise", "ResolvedPromise"]);
+
+    const drains2: Array<Promise<void> | void | string> = [];
+    for (let i = 100; i < 103; i++) {
+        drains2.push(ifca.write(i));
+    }
+
+    markWhenResolved(drains2, 1);
+    markWhenResolved(drains2, 2);
+
+    // processing queue [3, 100, 101, 102]
+    t.deepEqual({pending: 4}, ifca.state);
+    t.deepEqual(mapDrainsArray(drains2), [undefined, "Promise", "Promise"]);
+
+    // read fourth chunk
+    t.deepEqual(await ifca.read(), 30);
+
+    // processing queue [100, 101, 102]
+    t.deepEqual({pending: 3}, ifca.state);
+    t.deepEqual(mapDrainsArray(drains2), [undefined, "ResolvedPromise", "Promise"]);
+
+    // read fifth chunk
+    t.deepEqual(await ifca.read(), 1000);
+
+    // processing queue [101, 102]
+    t.deepEqual({pending: 2}, ifca.state);
+    t.deepEqual(mapDrainsArray(drains2), [undefined, "ResolvedPromise", "ResolvedPromise"]);
+
+    // read sixth chunk
+    t.deepEqual(await ifca.read(), 1010);
+
+    // processing queue [102]
+    t.deepEqual({pending: 1}, ifca.state);
+    t.deepEqual(mapDrainsArray(drains2), [undefined, "ResolvedPromise", "ResolvedPromise"]);
+
+    // read last chunk
+    t.deepEqual(await ifca.read(), 1020);
+
+    // processing queue []
+    t.deepEqual({pending: 0}, ifca.state);
+    t.deepEqual(mapDrainsArray(drains2), [undefined, "ResolvedPromise", "ResolvedPromise"]);
+});
+
+test("Drain is resolved correctly on end", async (t) => {
+    const ifca = new IFCA(2, (x: number) => x*10);
+
+    const drains1: Array<Promise<void> | void | string> = [];
+    for (let i = 0; i < 4; i++) {
+        drains1.push(ifca.write(i));
+    }
+
+    markWhenResolved(drains1, 2);
+    markWhenResolved(drains1, 3);
+
+    // processing queue [0, 1, 2, 3]
+    t.deepEqual({pending: 4}, ifca.state);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, undefined, "Promise", "Promise"]);
+
+    await ifca.end();
+
+    // processing queue []
+    t.deepEqual({pending: 0}, ifca.state);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, undefined, "ResolvedPromise", "ResolvedPromise"]);
+});
+
+function markWhenResolved(items: Array<any>, index: number) {
+    (items[index] as Promise<void>).then(() => {
+        items[index] = "ResolvedPromise";
+    });
+}
+
+function mapDrainsArray(drains: Array<any>) {
+    return drains.map(drain => drain instanceof Promise ? "Promise" : drain);
+}
 
 // // npm run build && npx ava test/test.spec.js -m "*chunks are not present on output*"
 // test("Dropped chunks are not present on output (strict sync chain)", async (t) => {
