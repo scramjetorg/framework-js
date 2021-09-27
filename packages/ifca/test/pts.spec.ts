@@ -67,16 +67,28 @@ test("PTS", async (t) => {
     t.false(isPromise(writeNext()), "7th entry should resolve write immediately");
     t.true(isPromise(writeNext()), "8th entry should fill up max parallel");
 
+    // 8 chunks pending
+    t.deepEqual(ifca.state, {pending: 8});
+
     // TODO: make this go 8 items beyond
     const item2 = ifca.read(); // {a: 1}
     const item3 = ifca.read(); // {a: 2}
     t.true(isPromise(item2), "Is a promise.");
     t.true(isPromise(item3), "Is a promise.");
 
+    // 8 chunks pending (still since we haven't await on read() call)
+    t.deepEqual(ifca.state, {pending: 8});
+
     await defer(20);
+    // 8 chunks pending
+    t.deepEqual(ifca.state, {pending: 8});
+
     t.true(isPromise(ifca.read()), "Is a promise."); // read {a: 3}.
 
     await defer(100);
+    // All chunks should be processed by now.
+    t.deepEqual(ifca.state, {pending: 0});
+
     t.false(isPromise(writeNext()), "After reading should allow to write immediately again"); // write {a: 9}
 
     const read8 = [

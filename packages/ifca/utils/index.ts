@@ -1,5 +1,7 @@
 const SCRAMJET_LOG = process.env.SCRAMJET_LOG;
 
+type ResolvablePromiseObject<T> = {promise: Promise<T>, resolver: () => (T)};
+
 /**
  * Helper function that defers and optionaly returns given output after waiting.
  *
@@ -26,4 +28,14 @@ function trace (msg:any, ...array: any[]) {
     console.log(`${date.valueOf()}: ${msg}`, ...array);
 }
 
-export { defer, trace };
+function createResolvablePromiseObject<T>(): ResolvablePromiseObject<T> {
+    let resolver: any;
+
+    const promise = new Promise<T>(res => {
+        resolver = res;
+    });
+
+    return { promise, resolver: resolver as () => (T) };
+}
+
+export { defer, trace, createResolvablePromiseObject, ResolvablePromiseObject };

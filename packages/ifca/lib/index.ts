@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { cpus } from "os";
-import { trace } from "../utils"
+import { trace, createResolvablePromiseObject, ResolvablePromiseObject } from "../utils"
 
 export type TransformFunction<V,U> = (chunk: V) => (Promise<U>|U)
 export type TransformErrorHandler<S, T> = (err: ErrorWithReason|undefined, chunk?: S) => MaybePromise<T|undefined>;
@@ -12,7 +12,6 @@ export type TransformArray<S, T> = [TransformFunction<S, T>] | [
     ...TransformFunction<any, any>[]
 ];
 export const DroppedChunk = Symbol("DroppedChunk");
-export type ResolvablePromiseObject = {promise: Promise<void>, resolver: () => (void)};
 
 const isAsync = (func: any[]) => func.length && (
     func[0] && func[0][Symbol.toStringTag] === 'AsyncFunction' ||
@@ -120,6 +119,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     private readonly strict: boolean;
     private endedPromise: Promise<void> | null = null;
     private endedPromiseResolver: Function | null = null;
+    private drain: ResolvablePromiseObject<void> | undefined = undefined;
 
     // TBD
     get status() {
@@ -154,19 +154,14 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         /**
          * Make processing item and push to processing array in order to start processing transformations.
          */
-        this.processingQueue.push(
-            this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult)
-        );
+        this.processingQueue.push(this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult));
 
-        const pendingLength = this.processingQueue.length;
-        trace('IFCA WRITE pos: ', pendingLength, _chunk)
-        const drain: MaybePromise<any> = pendingLength < this.maxParallel
-            ? undefined
-            : this.processingQueue.get(pendingLength - this.maxParallel)
-        ;
+        if (this.processingQueue.length >= this.maxParallel && this.drain === undefined) {
+            this.drain = createResolvablePromiseObject<void>();
+        }
 
-        trace('DRAIN WRITE:', drain);
-        return drain;
+        trace('DRAIN WRITE:', this.drain);
+        return this.drain ? this.drain.promise as Promise<void> : undefined;
     }
 
     /**
@@ -236,6 +231,12 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             this.attachErrorHandlerToChunkResult(currentChunkResult)
         ])
             .then(([, result]) => {
+                trace("IFCA ON-CHUNK-RESOLVED", this.processingQueue.length, this.maxParallel, this.drain);
+                if (this.processingQueue.length - 1 < this.maxParallel && this.drain !== undefined) {
+                    this.drain.resolver();
+                    this.drain = undefined;
+                }
+
                 return result;
             })
             .catch(e => {

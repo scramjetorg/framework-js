@@ -2,7 +2,6 @@
 
 import test from "ava";
 import { IFCA } from "../lib/index";
-// import { defer } from "../utils";
 
 type MaybePromise<X> = Promise<X>|X;
 
@@ -420,14 +419,14 @@ test("Drain is emitted and resolved correctly", async (t) => {
 
     // processing queue [1, 2, 3]
     t.deepEqual({pending: 3}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains1), [undefined, "ResolvedPromise", "Promise", "Promise"]);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, "Promise", "Promise", "Promise"]);
 
     // read second chunk
     t.deepEqual(await ifca.read(), 10);
 
     // processing queue [2, 3]
     t.deepEqual({pending: 2}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains1), [undefined, "ResolvedPromise", "ResolvedPromise", "Promise"]);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, "Promise", "Promise", "Promise"]);
 
     // read third chunk
     t.deepEqual(await ifca.read(), 20);
@@ -454,14 +453,14 @@ test("Drain is emitted and resolved correctly", async (t) => {
 
     // processing queue [100, 101, 102]
     t.deepEqual({pending: 3}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains2), ["ResolvedPromise", "Promise", "Promise"]);
+    t.deepEqual(mapDrainsArray(drains2), ["Promise", "Promise", "Promise"]);
 
     // read fifth chunk
     t.deepEqual(await ifca.read(), 1000);
 
     // processing queue [101, 102]
     t.deepEqual({pending: 2}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains2), ["ResolvedPromise", "ResolvedPromise", "Promise"]);
+    t.deepEqual(mapDrainsArray(drains2), ["Promise", "Promise", "Promise"]);
 
     // read sixth chunk
     t.deepEqual(await ifca.read(), 1010);
@@ -503,6 +502,7 @@ test("Drain is resolved correctly on end", async (t) => {
 
 function markWhenResolved(items: Array<any>, index: number) {
     (items[index] as Promise<void>).then(() => {
+        console.log('RESOLVED-----', index);
         items[index] = "ResolvedPromise";
     });
 }
