@@ -148,12 +148,6 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         if (this.ended) throw new Error("Write after end");
         if (_chunk === null) return this.end();
 
-        const pendingLength = this.processingQueue.length;
-        trace('IFCA WRITE pos: ', pendingLength, _chunk)
-        const drain: MaybePromise<any> = pendingLength < this.maxParallel
-            ? undefined
-            : this.processingQueue.get(pendingLength - this.maxParallel)
-        ;
         const chunkBeforeThisOne = this.processingQueue.last as any;
         const currentChunkResult = this.strict ? this.makeStrictTransformChain(_chunk) : this.makeTransformChain(_chunk);
 
@@ -163,6 +157,13 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         this.processingQueue.push(
             this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult)
         );
+
+        const pendingLength = this.processingQueue.length;
+        trace('IFCA WRITE pos: ', pendingLength, _chunk)
+        const drain: MaybePromise<any> = pendingLength < this.maxParallel
+            ? undefined
+            : this.processingQueue.get(pendingLength - this.maxParallel)
+        ;
 
         trace('DRAIN WRITE:', drain);
         return drain;

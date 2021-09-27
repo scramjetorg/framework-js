@@ -407,73 +407,75 @@ test("Drain is emitted and resolved correctly", async (t) => {
         drains1.push(ifca.write(i));
     }
 
+    markWhenResolved(drains1, 1);
     markWhenResolved(drains1, 2);
     markWhenResolved(drains1, 3);
 
     // processing queue [0, 1, 2, 3]
     t.deepEqual({pending: 4}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains1), [undefined, undefined, "Promise", "Promise"]);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, "Promise", "Promise", "Promise"]);
 
     // read first chunk
     t.deepEqual(await ifca.read(), 0);
 
     // processing queue [1, 2, 3]
     t.deepEqual({pending: 3}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains1), [undefined, undefined, "ResolvedPromise", "Promise"]);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, "ResolvedPromise", "Promise", "Promise"]);
 
     // read second chunk
     t.deepEqual(await ifca.read(), 10);
 
     // processing queue [2, 3]
     t.deepEqual({pending: 2}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains1), [undefined, undefined, "ResolvedPromise", "ResolvedPromise"]);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, "ResolvedPromise", "ResolvedPromise", "Promise"]);
 
     // read third chunk
     t.deepEqual(await ifca.read(), 20);
 
     // processing queue [3]
     t.deepEqual({pending: 1}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains1), [undefined, undefined, "ResolvedPromise", "ResolvedPromise"]);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, "ResolvedPromise", "ResolvedPromise", "ResolvedPromise"]);
 
     const drains2: Array<Promise<void> | void | string> = [];
     for (let i = 100; i < 103; i++) {
         drains2.push(ifca.write(i));
     }
 
+    markWhenResolved(drains2, 0);
     markWhenResolved(drains2, 1);
     markWhenResolved(drains2, 2);
 
     // processing queue [3, 100, 101, 102]
     t.deepEqual({pending: 4}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains2), [undefined, "Promise", "Promise"]);
+    t.deepEqual(mapDrainsArray(drains2), ["Promise", "Promise", "Promise"]);
 
     // read fourth chunk
     t.deepEqual(await ifca.read(), 30);
 
     // processing queue [100, 101, 102]
     t.deepEqual({pending: 3}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains2), [undefined, "ResolvedPromise", "Promise"]);
+    t.deepEqual(mapDrainsArray(drains2), ["ResolvedPromise", "Promise", "Promise"]);
 
     // read fifth chunk
     t.deepEqual(await ifca.read(), 1000);
 
     // processing queue [101, 102]
     t.deepEqual({pending: 2}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains2), [undefined, "ResolvedPromise", "ResolvedPromise"]);
+    t.deepEqual(mapDrainsArray(drains2), ["ResolvedPromise", "ResolvedPromise", "Promise"]);
 
     // read sixth chunk
     t.deepEqual(await ifca.read(), 1010);
 
     // processing queue [102]
     t.deepEqual({pending: 1}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains2), [undefined, "ResolvedPromise", "ResolvedPromise"]);
+    t.deepEqual(mapDrainsArray(drains2), ["ResolvedPromise", "ResolvedPromise", "ResolvedPromise"]);
 
     // read last chunk
     t.deepEqual(await ifca.read(), 1020);
 
     // processing queue []
     t.deepEqual({pending: 0}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains2), [undefined, "ResolvedPromise", "ResolvedPromise"]);
+    t.deepEqual(mapDrainsArray(drains2), ["ResolvedPromise", "ResolvedPromise", "ResolvedPromise"]);
 });
 
 test("Drain is resolved correctly on end", async (t) => {
@@ -484,18 +486,19 @@ test("Drain is resolved correctly on end", async (t) => {
         drains1.push(ifca.write(i));
     }
 
+    markWhenResolved(drains1, 1);
     markWhenResolved(drains1, 2);
     markWhenResolved(drains1, 3);
 
     // processing queue [0, 1, 2, 3]
     t.deepEqual({pending: 4}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains1), [undefined, undefined, "Promise", "Promise"]);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, "Promise", "Promise", "Promise"]);
 
     await ifca.end();
 
     // processing queue []
     t.deepEqual({pending: 0}, ifca.state);
-    t.deepEqual(mapDrainsArray(drains1), [undefined, undefined, "ResolvedPromise", "ResolvedPromise"]);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, "ResolvedPromise", "ResolvedPromise", "ResolvedPromise"]);
 });
 
 function markWhenResolved(items: Array<any>, index: number) {
