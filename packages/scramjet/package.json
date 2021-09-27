@@ -27,8 +27,7 @@
   },
   "ava": {
     "extensions": [
-      "ts",
-      "tsx"
+      "ts"
     ],
     "files": [
       "**/*.spec.ts"

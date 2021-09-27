@@ -27,7 +27,6 @@
   },
   "ava": {
     "extensions": [
-      "tsx",
       "ts"
     ],
     "files": [
