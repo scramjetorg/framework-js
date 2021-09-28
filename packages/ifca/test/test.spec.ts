@@ -29,6 +29,26 @@ test("Identity function, numbers starting from 1", async (t) => {
     t.deepEqual(results, [1,2,3,4], "Should pass elements unchanged");
 });
 
+test("Identity function, numbers starting from 1 (writev)", async (t) => {
+    const ifca = new IFCA(4, (x: number) => {t.log('Processing', x); return x});
+
+    const chunks: number[] = [];
+    for (let i = 1; i <= 4; i++) {
+        chunks.push(i);
+    }
+    ifca.writev(chunks);
+
+    const read4 = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(),
+    ];
+
+    const results = await Promise.all(read4);
+
+    t.log('Output:', results);
+
+    t.deepEqual(results, [1,2,3,4], "Should pass elements unchanged");
+});
+
 test("Identity function, objects starting from 0", async (t) => {
     const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x; });
 
@@ -315,6 +335,26 @@ test("Overflow writes. Read 12x (without end)", async (t) => {
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12], "Should work well");
 });
 
+test("Overflow writes. Read 12x (with end, writev)", async (t) => {
+    const ifca = new IFCA(4, (x: number) => x+1);
+
+    const chunks: number[] = [];
+    for (let i = 0; i < 12; i++) {
+        chunks.push(i);
+    }
+
+    ifca.writev(chunks);
+
+    ifca.end();
+
+    const read12 = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+    const results = await Promise.all(read12);
+
+    t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12], "Should work well");
+});
+
 test("Write. Read. Write. Read", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
 
@@ -386,7 +426,7 @@ test("Writitng null chunk to IFCA triggers end", async (t) => {
     t.pass();
 });
 
-test("Writitng to IFCA after it's ended throws an error", async (t) => {
+test("Writitng to IFCA after it's ended throws an error (write)", async (t) => {
     const ifca = new IFCA(2, (x: number) => x+1);
 
     for (let i = 0; i < 4; i++) {
@@ -396,6 +436,16 @@ test("Writitng to IFCA after it's ended throws an error", async (t) => {
     await ifca.end();
 
     t.throws(() => {ifca.write(4)});
+});
+
+test("Writitng to IFCA after it's ended throws an error (writev)", async (t) => {
+    const ifca = new IFCA(2, (x: number) => x+1);
+
+    ifca.writev([1, 2, 3, 4]);
+
+    await ifca.end();
+
+    t.throws(() => {ifca.writev([5, 6, 7, 8])});
 });
 
 test("Drain is emitted and resolved correctly", async (t) => {
