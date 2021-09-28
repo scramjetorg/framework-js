@@ -1,13 +1,15 @@
 /* eslint-disable */
 
 import test from "ava";
-import { IFCA } from "../lib/index";
+import { IFCA, DroppedChunk } from "../lib/index";
+import { defer } from "../utils";
 
 type MaybePromise<X> = Promise<X>|X;
 
-// IFCA can detect on it's own if stream has ended, so the Stream using it will
-// be sending end() event based on input. That's why some tests needs calling
-// end() explicitly (simulating cases when stream has ended).
+// Important:
+// IFCA can't detect on its own if input (stream) has ended, so the Stream using it will
+// be calling "ifca.end()" based on streams input. That's why some tests needs calling
+// "ifca.end()" explicitly (simulating cases when stream has ended).
 
 test("Identity function, numbers starting from 1", async (t) => {
     const ifca = new IFCA(4, (x: number) => {t.log('Processing', x); return x});
@@ -500,9 +502,181 @@ test("Drain is resolved correctly on end", async (t) => {
     t.deepEqual(mapDrainsArray(drains1), [undefined, "ResolvedPromise", "ResolvedPromise", "ResolvedPromise"]);
 });
 
+// Note on filtering:
+// Without ending IFCA, promises awaitng dropped chunks won't be resolved.
+// This is beacuse we assume new valid chunks may come so unless IFCA is ended
+// We can't predict what data will be there thus can't emit 'null's for filtered items.
+
+test("Dropped chunks are filtered out correctly (strict, sync chain)", async (t) => {
+    const ifca = new IFCA(4, transforms.initial, { strict: true });
+    const transformChunks: number[] = [];
+
+    ifca.addTransform(transforms.filter);
+    ifca.addTransform(transforms.logger(transformChunks));
+
+    for (let i = 0; i <= 3; i++) {
+        ifca.write(i);
+    }
+
+    const reads = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+
+    await ifca.end();
+
+    const results = await Promise.all(reads);
+
+    t.deepEqual(transformChunks, [1,3], "Filtered out chunks should not be passed to further transforms.");
+
+    t.deepEqual(results, [1,3,null,null], "Chunks should be resolved in the correct order with correct values.");
+});
+
+test("Dropped chunks are filtered out correctly (strict, async chain, sync filter )", async (t) => {
+    const ifca = new IFCA(4, transforms.initial, { strict: true });
+    const transformChunks: number[] = [];
+
+    ifca.addTransform(transforms.filter);
+    ifca.addTransform(transforms.loggerAsync(transformChunks));
+
+    for (let i = 0; i <= 3; i++) {
+        ifca.write(i);
+    }
+
+    const reads = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+
+    await ifca.end();
+
+    const results = await Promise.all(reads);
+
+    t.deepEqual(transformChunks, [1,3], "Filtered out chunks should not be passed to further transforms.");
+
+    t.deepEqual(results, [1,3,null,null], "Chunks should be resolved in the correct order with correct values.");
+});
+
+test("Dropped chunks are filtered out correctly (strict, async chain, async filter)", async (t) => {
+    const ifca = new IFCA(4, transforms.initial, { strict: true });
+    const transformChunks: number[] = [];
+
+    ifca.addTransform(transforms.filterAsync);
+    ifca.addTransform(transforms.loggerAsync(transformChunks));
+
+    for (let i = 0; i <= 3; i++) {
+        ifca.write(i);
+    }
+
+    const reads = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+
+    await ifca.end();
+
+    const results = await Promise.all(reads);
+
+    t.deepEqual(transformChunks, [1,3], "Filtered out chunks should not be passed to further transforms.");
+
+    t.deepEqual(results, [1,3,null,null], "Chunks should be resolved in the correct order with correct values.");
+});
+
+test("Dropped chunks are filtered out correctly (sync chain)", async (t) => {
+    const ifca = new IFCA(4, transforms.initial);
+    const transformChunks: number[] = [];
+
+    ifca.addTransform(transforms.filter);
+    ifca.addTransform(transforms.logger(transformChunks));
+
+    for (let i = 0; i <= 3; i++) {
+        ifca.write(i);
+    }
+
+    const reads = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+
+    await ifca.end();
+
+    const results = await Promise.all(reads);
+
+    t.deepEqual(transformChunks, [1,3], "Filtered out chunks should not be passed to further transforms.");
+
+    t.deepEqual(results, [1,3,null,null], "Chunks should be resolved in the correct order with correct values.");
+});
+
+test("Dropped chunks are filtered out correctly (sync filter to async chain)", async (t) => {
+    const ifca = new IFCA(4, transforms.initial);
+    const transformChunks: number[] = [];
+
+    ifca.addTransform(transforms.filter);
+    ifca.addTransform(transforms.loggerAsync(transformChunks));
+
+    for (let i = 0; i <= 3; i++) {
+        ifca.write(i);
+    }
+
+    const reads = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+
+    await ifca.end();
+
+    const results = await Promise.all(reads);
+
+    t.deepEqual(transformChunks, [1,3], "Filtered out chunks should not be passed to further transforms.");
+
+    t.deepEqual(results, [1,3,null,null], "Chunks should be resolved in the correct order with correct values.");
+});
+
+test("Dropped chunks are filtered out correctly (async chain)", async (t) => {
+    const ifca = new IFCA(4, transforms.initial);
+    const transformChunks: number[] = [];
+
+    ifca.addTransform(transforms.filterAsync);
+    ifca.addTransform(transforms.loggerAsync(transformChunks));
+
+    for (let i = 0; i <= 3; i++) {
+        ifca.write(i);
+    }
+
+    const reads = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+
+    await ifca.end();
+
+    const results = await Promise.all(reads);
+
+    t.deepEqual(transformChunks, [1,3], "Filtered out chunks should not be passed to further transforms.");
+
+    t.deepEqual(results, [1,3,null,null], "Chunks should be resolved in the correct order with correct values.");
+});
+
+test("IFCA ends correctly if all values are filtered out", async (t) => {
+    const ifca = new IFCA(4, transforms.initial);
+    const transformChunks: number[] = [];
+
+    ifca.addTransform((x: number) => DroppedChunk);
+    ifca.addTransform(transforms.loggerAsync(transformChunks));
+
+    for (let i = 0; i <= 3; i++) {
+        ifca.write(i);
+    }
+
+    const reads = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+
+    await ifca.end();
+
+    const results = await Promise.all(reads);
+
+    t.deepEqual(transformChunks, [], "Filtered out chunks should not be passed to further transforms.");
+
+    t.deepEqual(results, [null,null,null,null,null,null], "Chunks should be resolved in the correct order with correct values.");
+});
+
 function markWhenResolved(items: Array<any>, index: number) {
     (items[index] as Promise<void>).then(() => {
-        console.log('RESOLVED-----', index);
         items[index] = "ResolvedPromise";
     });
 }
@@ -511,49 +685,10 @@ function mapDrainsArray(drains: Array<any>) {
     return drains.map(drain => drain instanceof Promise ? "Promise" : drain);
 }
 
-// // npm run build && npx ava test/test.spec.js -m "*chunks are not present on output*"
-// test("Dropped chunks are not present on output (strict sync chain)", async (t) => {
-//     const filter = (x: number) => { t.log("Processing", x); return x % 2 ? x : DroppedChunk; };
-//     const ifca = new IFCA(4, filter, { strict: true });
-
-//     for (let i = 0; i <= 3; i++) {
-//         ifca.write(i);
-//     }
-
-//     const read12 = [
-//         ifca.read(), ifca.read(), ifca.read(), ifca.read()
-//     ];
-//     const results = await Promise.all(read12);
-
-//     t.log("Output:", results);
-
-//     t.deepEqual(results, [1,3], "Should pass elements unchanged");
-// });
-
-// // // Works fine!
-// // test("Dropped chunks are not passed to further transforms (strict sync chain)", async (t) => {
-// //     const filter = (x: number) => { t.log("Processing", x); return x % 2 ? x : DroppedChunk; };
-// //     const ifca = new IFCA(4, filter, { strict: true });
-// //     const transformChunks: number[] = [];
-
-// //     ifca.addTransform((x: any): any => {
-// //         transformChunks.push(x);
-// //         return x;
-// //     });
-
-// //     for (let i = 0; i <= 3; i++) {
-// //         ifca.write(i);
-// //     }
-
-// //     await Promise.all([ifca.read(), ifca.read(), ifca.read(), ifca.read()]);
-
-// //     t.deepEqual(transformChunks, [1, 3], "Should pass elements unchanged");
-// // });
-
-// // // dropped chunks sync strict
-// // // dropped chunks sync + async strict
-// // // dropped chunks async
-// // // dropped chunks are not processed further
-// // // dropped chunks are skipped in the output
-// // // all dropped chunks still ends ifca
-// // // all with setTimeout to make promises resolve
+const transforms = {
+    initial: (x: number) => x,
+    filter: (x: number) => x % 2 ? x : DroppedChunk,
+    filterAsync: async (x: number) => { await defer(2); return Promise.resolve(x % 2 ? x : DroppedChunk); },
+    logger: (into: any[]) => { return (x: number) => { into.push(x); return x; }},
+    loggerAsync: (into: any[]) => { return async (x: number) => { await defer(2); into.push(x); return Promise.resolve(x); }},
+}
