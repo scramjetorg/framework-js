@@ -8,14 +8,14 @@ import { TransformFunction } from "../../ifca/lib/index";
 //
 // thus the workaround with BaseStream and BaseStreamCreators used below.
 
-export interface BaseStream<T> {
+export interface BaseStream<T extends any> {
     map<U>(callback: TransformFunction<T, U>): BaseStream<U>;
     filter(callback: TransformFunction<T, Boolean>): BaseStream<T>;
 }
 
 export abstract class BaseStreamCreators {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    static from<T>(input: Iterable<T> | AsyncIterable<T> | Readable): BaseStream<T> {
+    static from<T extends any>(input: Iterable<T> | AsyncIterable<T> | Readable): BaseStream<T> {
         throw new Error("Not implemented!");
     }
 }

@@ -2,7 +2,7 @@ import { Readable } from "stream";
 import { BaseStream, BaseStreamCreators } from "./base-stream";
 import { IFCA, TransformFunction } from "../../ifca/lib/index";
 import { isIterable, isAsyncIterable } from "./utils";
-export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
+export class DataStream<T extends any> extends BaseStreamCreators implements BaseStream<T> {
     constructor() {
         super();
 
@@ -12,7 +12,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
     private ifca: IFCA<T, T, any>;
     private input: Iterable<T> | AsyncIterable<T> | Readable | null = null;
 
-    static from<U>(input: Iterable<U> | AsyncIterable<U> | Readable): DataStream<U> {
+    static from<U extends any>(input: Iterable<U> | AsyncIterable<U> | Readable): DataStream<U> {
         const dataStream = new DataStream<U>();
 
         dataStream.input = input;
