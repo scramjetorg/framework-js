@@ -128,31 +128,13 @@ test("Identity function, 4x write, 8x read (with explicit end)", async (t) => {
     t.deepEqual(results, [{i: 0},{i: 1},{i: 2},{i: 3},null,null,null,null], "Should first output chunks matching inputs, then nulls");
 });
 
-// // Should it work without explicit '.end()' call?
-// // test("Identity function, 4x write, 8x read (without explicit end)", async (t) => {
-// //     const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x});
-
-// //     for (let i = 0; i < 4; i++) {
-// //         ifca.write({i});
-// //     }
-
-// //     const read8 = [
-// //         ifca.read(), ifca.read(), ifca.read(), ifca.read(),
-// //         ifca.read(), ifca.read(), ifca.read(), ifca.read()
-// //     ];
-// //     const results = await Promise.all(read8);
-// //     t.log('Output:', results)
-
-// //     t.deepEqual(results, [{i: 0},{i: 1},{i: 2},{i: 3},null,null,null,null], "Should first output chunks matching inputs, then nulls");
-// // });
-
 test("Identity function, 8x write, 1x read + 4x read (with explicit end)", async (t) => {
     const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x});
 
     for (let i = 0; i < 8; i++) {
         ifca.write({i});
     }
-    // ifca.end();
+    ifca.end();
 
     const first = await ifca.read()
     t.log('Got', first)
@@ -192,12 +174,10 @@ test("Overflow reads", async (t) => {
     for (let i = 0; i < 8; i++) {
         const ret = ifca.read();
         read8.push(ret);
-        t.log("r", ifca.status, ret)
     }
 
     for (let i = 0; i < 8; i++) {
         ifca.write(i);
-        t.log("w", ifca.status)
     }
     ifca.end();
 
@@ -239,7 +219,6 @@ test("Overflow writes Write: 5x Read: 3x Max Parallel: 2", async(t) => {
     for (let i = 0; i < 5; i++) {
         ifca.write(i);
     }
-    // ifca.end();
 
     const read3 = [ifca.read(), ifca.read(), ifca.read()];
     const first3 = await Promise.all(read3);
@@ -247,14 +226,13 @@ test("Overflow writes Write: 5x Read: 3x Max Parallel: 2", async(t) => {
     t.deepEqual(results, [1,2,3]);
 })
 
-// Same as above.
 test("Overflow writes. Read 7x + read 9x", async (t) => {
     const ifca = new IFCA(4, (x: number) => x+1);
 
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
     }
-    ifca.end(); // without ifca.end() -> Error: Promise returned by test never resolved
+    ifca.end();
 
     const read7 = [ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()];
     t.log(read7);
@@ -264,7 +242,6 @@ test("Overflow writes. Read 7x + read 9x", async (t) => {
     const second9 = [];
     for (const next of another9) {
         const val = await next;
-        t.log(val, ifca.status);
         second9.push(val);
     }
 
@@ -367,7 +344,6 @@ test("Write. Read. Write. Read", async (t) => {
     for (let i = 4; i < 8; i++) {
         ifca.write(i);
     }
-    // ifca.end();
 
     const another4 = [ ifca.read(), ifca.read(), ifca.read(), ifca.read() ];
 
@@ -386,7 +362,6 @@ test("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
     }
-    // ifca.end();
 
     let results:any[] = [];
 
