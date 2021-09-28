@@ -304,7 +304,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             } catch(e) {
                 if (typeof e === "undefined") return;
                 if (func[1]) {
-                    return func[1](e, processingChunk);
+                    return func[1](e as any, processingChunk);
                 }
                 throw e;
             }
