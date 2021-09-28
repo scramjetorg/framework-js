@@ -151,9 +151,6 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         const chunkBeforeThisOne = this.processingQueue.last as any;
         const currentChunkResult = this.strict ? this.makeStrictTransformChain(_chunk) : this.makeTransformChain(_chunk);
 
-        /**
-         * Make processing item and push to processing array in order to start processing transformations.
-         */
         this.processingQueue.push(this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult));
 
         if (this.processingQueue.length >= this.maxParallel && this.drain === undefined) {
@@ -161,6 +158,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         }
 
         trace('DRAIN WRITE:', this.drain);
+
         return this.drain ? this.drain.promise as Promise<void> : undefined;
     }
 
@@ -175,30 +173,30 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      * @param {Object[]|null}_chunks The data to be written. The value is an array of <Object> that each represent a discrete chunk of data to write.
      * @returns {MaybePromise}
      */
-    // TBD
-    writev(_chunks: (S|null)[]):MaybePromise<void> {
+    writev(_chunks: (S|null)[]): MaybePromise<void> {
         if (this.ended) throw new Error("Write after end");
 
-        const pos = this.processing.length;
-        trace('IFCA WRITEV pos:', pos, _chunks)
-        const drain: MaybePromise<void> = pos < this.maxParallel
-            ? undefined
-            : this.processing[pos - this.maxParallel]
-        ;
-        const chunkBeforeThisOne = this.processing[pos - 1];
-        const chunksToBeProcessed = (_chunks.indexOf(null) >= 0
-            ? _chunks.slice(0, _chunks.indexOf(null)) : _chunks) as S[];
-        const currentChunksResult = chunksToBeProcessed.map(chunk => this.strict ? this.makeStrictTransformChain(chunk) : this.makeTransformChain(chunk));
+        // TODO how do we treat 'null's inside _chunks array?
+        // * one or multiple nulls at the beginning
+        // * nulls between data
+        // * nulls at the end
 
-        this.processing.push(
-            ...this.makeProcessingItems(chunkBeforeThisOne, currentChunksResult)
-        );
-        trace('DRAIN WRITEV:');
-        trace(drain);
+        const chunksToBeProcessed = (_chunks.indexOf(null) >= 0 ? _chunks.slice(0, _chunks.indexOf(null)) : _chunks) as S[];
 
-        if (chunksToBeProcessed !== _chunks) return drain ? drain.then(() => this.end()) : this.end();
+        chunksToBeProcessed.forEach(_chunk => {
+            const chunkBeforeThisOne = this.processingQueue.last as any;
+            const currentChunkResult = this.strict ? this.makeStrictTransformChain(_chunk) : this.makeTransformChain(_chunk);
 
-        return drain;
+            this.processingQueue.push(this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult));
+        });
+
+        if (this.processingQueue.length >= this.maxParallel && this.drain === undefined) {
+            this.drain = createResolvablePromiseObject<void>();
+        }
+
+        trace('DRAIN WRITE:', this.drain);
+
+        return this.drain ? this.drain.promise as Promise<void> : undefined;
     }
 
     /**
