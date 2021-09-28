@@ -32,7 +32,11 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         const isCallbackAsync = isAsyncFunction(callback);
 
         if (isCallbackAsync) {
-            console.log("TBD");
+            const newCallback = async (chunk: T): Promise<T | Symbol> => {
+                return await callback(chunk) ? chunk : DroppedChunk;
+            };
+
+            this.ifca.addTransform(newCallback);
         } else {
             const newCallback = (chunk: T): T | Symbol => {
                 return callback(chunk) ? chunk : DroppedChunk;
