@@ -13,11 +13,9 @@ export type TransformArray<S, T> = [TransformFunction<S, T>] | [
 ];
 export const DroppedChunk = Symbol("DroppedChunk");
 
-const isAsync = (func: any[]) => func.length && (
-    func[0] && func[0][Symbol.toStringTag] === 'AsyncFunction' ||
-    func[1] && func[1][Symbol.toStringTag] === 'AsyncFunction');
-
-// const noop = () => { };
+const isSync = (func: any[]) => !!(func.length && (
+    func[0] && func[0][Symbol.toStringTag] !== 'AsyncFunction' ||
+    func[1] && func[1][Symbol.toStringTag] !== 'AsyncFunction'));
 
 export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
     // TODO: This may need a setter if maxParallel is increased so that chunks are not waiting for drain.
@@ -76,7 +74,6 @@ export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
 type TransformHandler<S,T> = [TransformFunction<S,T>, TransformErrorHandler<S,T>?] | [undefined, TransformErrorHandler<S,T>];
 type ChunkResolver<S> = [TransformFunction<S|null,void>, TransformErrorHandler<S,void>?];
 type MaybePromise<S> = Promise<S> | S;
-// type NullTerminatedArray<X extends any[]> = X | [...X, null]
 
 export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
@@ -114,18 +111,11 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     private processingQueue: ProcessingQueue<T> = new ProcessingQueue();
     private readers: ChunkResolver<T>[] = [];
-    private processing: Promise<any>[] = []
     private ended: boolean = false;
     private readonly strict: boolean;
     private endedPromise: Promise<void> | null = null;
     private endedPromiseResolver: Function | null = null;
     private drain: ResolvablePromiseObject<void> | undefined = undefined;
-
-    // TBD
-    get status() {
-        return "";
-        // return "R,".repeat(this.readers.length) + this.processing.slice(this.readers.length).map((x,i) => this.readable[this.readers.length + i] ? 'd,' : 'p,')
-    }
 
     get state() {
         return {
@@ -200,20 +190,81 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     /**
-     * Same as `makeProcessingItem` but accepts array of chunks. Processes many items.
+     * Creates chain of asyncrhonous transformation calls where result of the previous one
+     * is passed to the next one.
      *
-     * @param {Promise} chunkBeforeThisOne
-     * @param {MaybePromise[]} currentChunksResult
-     * @returns {Promise[]}
+     * @param {S} _chunk
+     * @returns {MaybePromise<T>}
      */
-    private makeProcessingItems(chunkBeforeThisOne: Promise<any>, currentChunksResult: MaybePromise<T>[]): Promise<any>[] {
-        const result:MaybePromise<any>[] = [];
-        result.push(this.makeProcessingItem(chunkBeforeThisOne, currentChunksResult[0]));
-        for (let i = 1; i < currentChunksResult.length; i++) {
-            result.push(this.makeProcessingItem(currentChunksResult[i - 1] as Promise<T>, currentChunksResult[i]))
+    private makeTransformChain(_chunk: S): MaybePromise<T> {
+        const transforms = this.transformHandlers as TransformHandler<any, any>[];
+        return this.makeAsynchronousChain<S,any>(transforms, _chunk)(_chunk);
+    }
+
+    /**
+     * Creates chain of transformation calls where result of the previous one
+     * is passed to the next one.
+     *
+     * Synchronous functions are grouped and called at once.
+     *
+     * @param {S} _chunk
+     * @returns {MaybePromise<T>}
+     */
+    private makeStrictTransformChain(_chunk: S): MaybePromise<T> {
+        const funcs = [...this.transformHandlers] as TransformHandler<any, any>[];
+
+        let value: any = _chunk;
+        let buffer: TransformHandler<any, any>[] = [];
+        let isPrevFuncSync: boolean = true;
+
+        // Loops over transforms array and as long as transforms are of the same type groups them.
+        // If next transform is of different type, previous group is transformed into chain.
+        while (funcs.length)  {
+            const func = funcs.shift() as TransformHandler<any, any>;
+            const isFuncSync = isSync(func);
+
+            if (buffer.length && isFuncSync !== isPrevFuncSync) {
+                value = this.createTransformChain(value, buffer, _chunk, isPrevFuncSync);
+                buffer = [];
+            }
+
+            if (value === DroppedChunk) {
+                buffer = [];
+                break;
+            }
+
+            buffer.push(func);
+
+            isPrevFuncSync = isFuncSync;
         }
 
-        return result;
+        if (buffer.length) {
+            value = this.createTransformChain(value, buffer, _chunk, isPrevFuncSync);
+        }
+
+        return value;
+    }
+
+    /**
+     * Creates synchronous or asynchronous transforms chain according to provided data.
+     *
+     * @param {any} value
+     * @param {TransformHandler<any, any>[]} transforms
+     * @param {S} initialChunk
+     * @param {boolean} synchronous
+     * @returns
+     */
+    private createTransformChain(value: any, transforms: TransformHandler<any, any>[], initialChunk: S, synchronous: boolean = true): MaybePromise<T> {
+        const isPromise = value instanceof Promise;
+
+        if (synchronous) {
+            return isPromise ? value.then(this.makeSynchronousChain(transforms, initialChunk)) : this.makeSynchronousChain(transforms, initialChunk)(value);
+        } else {
+            if (!isPromise) {
+                value = Promise.resolve(value);
+            }
+            return value.then(this.makeAsynchronousChain(transforms, initialChunk));
+        }
     }
 
     // TODO: here's a low hanging fruit for implementing non-ordered processings
@@ -250,7 +301,10 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
                     return;
                 }
 
-                // TBD/TODO - readers are no longer used so this needs to handled in ProcessingQueue
+                // TODO - readers are no longer used so this needs to handled in ProcessingQueue
+                // Looks like it passes caught error to reader (first in the queue) error handler
+                // as reader should be (since it's still TODO) [transform, handler].
+                // This needs to be reworked.
                 if (this.readers.length) {
                     const res = this.readers[0];
 
@@ -267,69 +321,16 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return currentChunkResult;
     }
 
-    private makeStrictTransformChain(_chunk: S): MaybePromise<T> {
-        trace('IFCA makeStrictTransformChain');
-        let funcs = [...this.transformHandlers] as TransformHandler<any, any>[];
-        if (!funcs.length) return _chunk as unknown as T;
-
-        let value: any = _chunk;
-
-        // Find first async function
-        const firstAsyncFunctions = funcs.findIndex(isAsync);
-        // Only sync functions
-        if (firstAsyncFunctions === -1) {
-            return this.makeSynchronousChain(funcs, _chunk)(value);
-        }
-
-        // First X funcs are sync
-        if (firstAsyncFunctions > 0) {
-            value = this.makeSynchronousChain(funcs.slice(0, firstAsyncFunctions), _chunk)(value);
-            funcs = funcs.slice(firstAsyncFunctions);
-        }
-
-        let next = Promise.resolve(value);
-        while(funcs.length) {
-            const handler = funcs.shift() as TransformHandler<any, any>;
-            next = next.then(...handler);
-
-            const syncFunctions = funcs.findIndex(isAsync);
-
-            if (syncFunctions > 0) {
-                next = next.then(this.makeSynchronousChain(funcs.slice(0, syncFunctions), _chunk));
-                funcs = funcs.slice(syncFunctions);
-            }
-        }
-        return next;
-    }
-
     private makeSynchronousChain<X,Y>(funcs: TransformHandler<X, Y>[], processingChunk: X): (a: X) => Y {
-        // return funcs.reduce.bind(funcs, (prev, [transformFn, errorHandler]) => {
-        //     try {
-        //         return transformFn ? transformFn(prev as any) : prev;
-        //     } catch(err) {
-        //         if (typeof err === "undefined") {
-        //             return;
-        //         }
-        //         if (errorHandler) {
-        //             return errorHandler(err, processingChunk);
-        //         }
-        //         throw err;
-        //     }
-        // }) as (a: X) => Y;
-
-        return () : Y => {
-            let value: any = processingChunk;
-
-            trace('IFCA makeSynchronousChain');
+        return (a: X): Y => {
+            let value: any = a;
 
             for (const [executor, handler] of funcs) {
                 try {
                     if (executor) {
                         value = executor(value as any);
                     }
-                    console.log("MSC", value);
                     if (value === DroppedChunk) {
-                        console.log('DROPPED-CHUNK');
                         break;
                     }
                 } catch (err) {
@@ -349,47 +350,36 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         };
     }
 
-    /**
-     * Takes chunk and applies transformations
-     *
-     * @param {Object} _chunk
-     * @returns {Promise}
-     */
-    private makeTransformChain(_chunk: S): Promise<T> {
-        let ret: Promise<T> = (this.transformHandlers as TransformHandler<any, any>[])
-            .reduce(
-                /**
-                 * Reducer function that executes all transformations
-                 *
-                 * @param {Promise} prev Chunk resolved as promise
-                 * @param {Array} param
-                 * @param {TransformationFunction} param._executor - Transformation Function
-                 * @param {TransformErrorHandler} param._handler - Transformation Error Handler
-                 *
-                 * @returns {Promise}
-                 */
-                // TODO: maybe here we should have the argument to prev
-                (prev, [_executor, _handler]) => {
-                    if (!_handler) return prev.then(_executor?.bind(this));
+    private makeAsynchronousChain<X,Y>(funcs: TransformHandler<X, Y>[], processingChunk: X): (a: X) => Promise<Y> {
+        return async(a: X): Promise<Y> => {
+            let value: any = Promise.resolve(a);
 
-                    // TODO: check why chunk is undefined
-                    const handler: TransformErrorHandler<any, any> = (err, chunk) => {
-                        if (typeof err === "undefined") return Promise.reject(undefined);
-                        return _handler.bind(this)(err, chunk);
+            for (const [executor, handler] of funcs) {
+                try {
+                    if (value) {
+                        value = await value;
                     }
-                    if (!_executor && handler) return prev.catch(handler);
-                    return prev.then(_executor?.bind(this), handler);
-                },
-                Promise.resolve(_chunk)
-            ) as Promise<unknown> as Promise<T>;
+                    if (executor) {
+                        value = await executor(value);
+                    }
+                    if (value === DroppedChunk) {
+                        break;
+                    }
+                } catch (err) {
+                    if (typeof err === "undefined") {
+                        value = await Promise.reject(undefined);
+                    } else {
+                        if (handler) {
+                            value = await handler(err as any, processingChunk);
+                        } else {
+                            throw err;
+                        }
+                    }
+                }
+            }
 
-        // Promise.resolve(1)
-        //     .then(b => b+2)
-        //     .then(a => a+1)
-        //     .then(fx, fy)
-        //     .catch(z)
-
-        return ret;
+            return value as Promise<Y>;
+        };
     }
 
     /**
@@ -509,12 +499,15 @@ class ProcessingQueue<T> {
     push(chunkResolver: Promise<T>): void {
         chunkResolver.then((result: T) => {
             this.pending.shift();
-            this.ready.push(result); // TBD here we will check reult for DroppedChunks
 
-            // If there is any chunk requested (read awaiting) resolve it.
-            if (this.requested.length) {
-                const chunkRequest: any = this.requested.shift();
-                chunkRequest.resolver(this.ready.shift() as T);
+            if (result as any !== DroppedChunk) {
+                this.ready.push(result);
+
+                // If there is any chunk requested (read awaiting) resolve it.
+                if (this.requested.length) {
+                    const chunkRequest: any = this.requested.shift();
+                    chunkRequest.resolver(this.ready.shift() as T);
+                }
             }
 
             // If queue is closed and there are no more pending items we need to make sure
