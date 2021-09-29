@@ -461,23 +461,59 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 }
 class ProcessingQueue<T> {
 
+    /**
+     * Ready chunks waitng to be read.
+     */
     private ready: T[] = [];
+
+    /**
+     * Awaitng chunk requests.
+     */
     private requested: Object[] = [];
+
+    /**
+     * Number of chunks processed at the given moment.
+     */
     private pendingLength: number = 0;
+
+    /**
+     * Whenever the queue is closed.
+     */
     private hasEnded: Boolean = false;
+
+    /**
+     * Last chunk which was pushed to the queue.
+     */
     private previousChunk: Promise<T | void> = Promise.resolve()
 
+    /**
+     * Number of chunks processed at the given moment.
+     *
+     * @returns {number}
+     */
     get length(): number {
         return this.pendingLength;
     }
 
+    /**
+     * Last chunk which was pushed to the queue.
+     * If there were no chunks pushed, resolved promise is returned.
+     *
+     * @returns {Promise<T|void>}
+     */
     get last(): Promise<T|void> {
         return this.previousChunk;
     }
 
-    // We don't need to worry about chunks resolving order since it is guaranteed
-    // by IFCA with Promise.all[previousChunk,currentChunk].
+    /**
+     * Adds chunk promise to the queue.
+     *
+     * @param {Promise<T>} chunkResolver
+     * @returns {void}
+     */
     push(chunkResolver: Promise<T>): void {
+        // We don't need to worry about chunks resolving order since it is guaranteed
+        // by IFCA with Promise.all[previousChunk, currentChunk].
         chunkResolver.then((result: T) => {
             this.pendingLength--;
 
@@ -501,7 +537,16 @@ class ProcessingQueue<T> {
         this.previousChunk = chunkResolver;
     }
 
-    // Requesting read from the queue.
+    /**
+     * Reads chunk from the queue.
+     *
+     * If there are ready chunks waiting, value is returned. If not, a promise
+     * which will resolved upon next chunk processing completes is returned.
+     *
+     * If the queue is closed and no more data avaialbe, `null`s are retruned.
+     *
+     * @returns {MaybePromise<T|null>}
+     */
     read(): MaybePromise<T|null> {
         // If chunk is ready, simply return it.
         if (this.ready.length) {
@@ -510,17 +555,10 @@ class ProcessingQueue<T> {
             return this.ready.shift() as T;
         }
 
-        // If queue is not closed and there are no ready chunks
-        // add chunk request which will be resolved when next chunk becomes available.
-        if (!this.hasEnded) {
-            const chunkRequest = createResolvablePromiseObject();
-            this.requested.push(chunkRequest);
-            return chunkRequest.promise as Promise<T>;
-        }
-
-        // If queue is closed but there are still pending chunks
-        // add chunk request.
-        if (this.hasEnded && this.pendingLength > 0) {
+        // Add chunk request to a queue if:
+        // * queue is not closed and there are no ready chunks
+        // * queue is closed but there are still pending chunks
+        if (!this.hasEnded || this.hasEnded && this.pendingLength > 0) {
             const chunkRequest = createResolvablePromiseObject();
             this.requested.push(chunkRequest);
             return chunkRequest.promise as Promise<T>;
@@ -529,13 +567,21 @@ class ProcessingQueue<T> {
         return null;
     }
 
-    // Closes the queue.
+    /**
+     * Closes the queue and resolves all awaiting chunk requests.
+     *
+     * @returns {void}
+     */
     close() {
         this.hasEnded = true;
         this.resolveAwaitingRequests();
     }
 
-    // Resolves all chunk awaiting requests which cannot be resolved due to end of data.
+    /**
+     * Resolves all awaiting chunk requests which cannot be resolved due to end of data.
+     *
+     * @returns {void}
+     */
     private resolveAwaitingRequests() {
         if (this.hasEnded && this.pendingLength === 0 && this.requested.length > 0) {
             for (const chunkRequest of this.requested) {
