@@ -400,7 +400,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         this.ended = true;
 
         if (this.processingQueue.length > 0) {
-            return Promise.all(this.processingQueue.all).then(() => { this.endedPromiseResolver && this.endedPromiseResolver() });
+            return this.processingQueue.last.then(() => { this.endedPromiseResolver && this.endedPromiseResolver() });
         }
 
         this.endedPromiseResolver && this.endedPromiseResolver()
@@ -461,44 +461,25 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 }
 class ProcessingQueue<T> {
 
-    private hasStarted: Boolean = false;
-    private hasEnded: Boolean = false;
-    private pending: Promise<T>[] = [];
     private ready: T[] = [];
     private requested: Object[] = [];
+    private pendingLength: number = 0;
+    private hasEnded: Boolean = false;
+    private previousChunk: Promise<T | void> = Promise.resolve()
 
     get length(): number {
-        return this.pending.length;
+        return this.pendingLength;
     }
 
-    get last(): Promise<T|void> | null {
-        if (this.pending.length) {
-            return this.pending[this.pending.length - 1];
-        }
-
-        // Instead of returning undefined on empty, not started queue return resolved promise.
-        if (!this.hasStarted) {
-            return Promise.resolve();
-        }
-
-        return null;
-    }
-
-    // Returns all pending chunks.
-    get all(): Promise<T>[] {
-        return this.pending;
-    }
-
-    // Returns pending chunk from the given position.
-    get(index: number) {
-        return this.pending[index];
+    get last(): Promise<T|void> {
+        return this.previousChunk;
     }
 
     // We don't need to worry about chunks resolving order since it is guaranteed
     // by IFCA with Promise.all[previousChunk,currentChunk].
     push(chunkResolver: Promise<T>): void {
         chunkResolver.then((result: T) => {
-            this.pending.shift();
+            this.pendingLength--;
 
             if (result as any !== DroppedChunk) {
                 this.ready.push(result);
@@ -515,16 +496,16 @@ class ProcessingQueue<T> {
             this.hasEnded && this.resolveAwaitingRequests();
         });
 
-        this.hasStarted = true;
+        this.pendingLength++;
 
-        this.pending.push(chunkResolver);
+        this.previousChunk = chunkResolver;
     }
 
     // Requesting read from the queue.
     read(): MaybePromise<T|null> {
         // If chunk is ready, simply return it.
         if (this.ready.length) {
-            // TBD handle nulls as in line 468
+            // TODO handle nulls?
 
             return this.ready.shift() as T;
         }
@@ -532,15 +513,15 @@ class ProcessingQueue<T> {
         // If queue is not closed and there are no ready chunks
         // add chunk request which will be resolved when next chunk becomes available.
         if (!this.hasEnded) {
-            const chunkRequest = this.createChunkRequest();
+            const chunkRequest = createResolvablePromiseObject();
             this.requested.push(chunkRequest);
             return chunkRequest.promise as Promise<T>;
         }
 
         // If queue is closed but there are still pending chunks
         // add chunk request.
-        if (this.hasEnded && this.pending.length > 0) {
-            const chunkRequest = this.createChunkRequest();
+        if (this.hasEnded && this.pendingLength > 0) {
+            const chunkRequest = createResolvablePromiseObject();
             this.requested.push(chunkRequest);
             return chunkRequest.promise as Promise<T>;
         }
@@ -554,19 +535,9 @@ class ProcessingQueue<T> {
         this.resolveAwaitingRequests();
     }
 
-    // Creates chunk request promise which can be directly resolved by the outside call.
-    private createChunkRequest() {
-        let resolver = undefined;
-        const promise = new Promise( res => {
-            resolver = res;
-        } );
-
-        return { promise, resolver };
-    }
-
     // Resolves all chunk awaiting requests which cannot be resolved due to end of data.
     private resolveAwaitingRequests() {
-        if (this.hasEnded && this.pending.length === 0 && this.requested.length > 0) {
+        if (this.hasEnded && this.pendingLength === 0 && this.requested.length > 0) {
             for (const chunkRequest of this.requested) {
                 (chunkRequest as any).resolver(null);
             }
