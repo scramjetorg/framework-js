@@ -2,7 +2,7 @@
 import { cpus } from "os";
 import { trace, createResolvablePromiseObject, ResolvablePromiseObject } from "../utils"
 
-export type TransformFunction<V,U> = (chunk: V) => (Promise<U>|U)
+export type TransformFunction<V, U> = (chunk: V, ...args: any[]) => (Promise<U>|U)
 export type TransformErrorHandler<S, T> = (err: ErrorWithReason|undefined, chunk?: S) => MaybePromise<T|undefined>;
 export type IFCAOptions = Partial<{ strict: boolean }>
 export type ErrorWithReason = Error & { cause?: Error };
