@@ -24,7 +24,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
     }
 
     map<U>(callback: TransformFunction<T, U>, ...args: any[]): DataStream<U> {
-        this.ifca.addTransform(this.wrapCallback<U, any>(callback, args));
+        this.ifca.addTransform(this.wrapCallback<U, typeof args>(callback, args));
         return this as unknown as DataStream<U>;
     }
 
@@ -32,7 +32,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         const mapFilteredChunks = (chunk: T, result: Boolean) => result ? chunk : DroppedChunk;
 
         this.ifca.addTransform(
-            this.wrapCallbackMap<Boolean, T | typeof DroppedChunk, any>(callback, mapFilteredChunks, args)
+            this.wrapCallbackMap<Boolean, T | typeof DroppedChunk, typeof args>(callback, mapFilteredChunks, args)
         );
 
         return this;
