@@ -37,3 +37,20 @@ test("DataStream can apply multiple filter transforms", async (t) => {
 
     t.deepEqual(result, ["10", "20", "30"]);
 });
+
+test("DataStream passes variadic args to filter", async (t) => {
+    const dsString = DataStream.from<string>(["1", "2", "3", "4", "10", "20", "30", "40", "100", "200", "300", "400"]);
+    const result = await dsString
+        .filter((chunk, limiter: number) => chunk.length < limiter, 3)
+        .filter(async (chunk, prefix: string, prefixes: string[]) => {
+            return new Promise(res => {
+                setTimeout(() => {
+                    res(!!(chunk.startsWith(prefix) || chunk.startsWith(prefixes[0]) || chunk.startsWith(prefixes[1])));
+                }, 10);
+            });
+        }, "1", ["2", "3"])
+        .filter(chunk => chunk.length === 2)
+        .toArray();
+
+    t.deepEqual(result, ["10", "20", "30"]);
+});
