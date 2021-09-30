@@ -69,9 +69,13 @@ test("DataStream can read from async iterable", async (t) => {
     t.deepEqual(result, ["foo", "bar", "baz", "bax", "foo2", "bar2", "baz2", "bax2"]);
 });
 
-// test("DataStream can read from async generator (async iterable)", async (t) => {}); // TBD
+test("DataStream can read from another scramjet stream", async (t) => {
+    const dsNumber = DataStream.from<number>([1, 2, 3, 4]);
+    const dsNumber2 = DataStream.from<number>(dsNumber);
+    const result = await dsNumber2.toArray();
 
-// test("DataStream can read from another scramjet stream", async (t) => {}); // TBD
+    t.deepEqual(result, [1, 2, 3, 4]);
+});
 
 test("DataStream can read from readable", async (t) => {
     const readable = createReadStream("./test/helpers/sample.txt", "utf8");
