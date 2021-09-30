@@ -3,22 +3,24 @@ import { createReadStream, promises as fs } from "fs";
 import * as readline from "readline";
 import { BaseStream, BaseStreamCreators } from "./base-stream";
 import { IFCA, TransformFunction, DroppedChunk } from "../../ifca/lib/index";
-import { isIterable, isAsyncIterable, isAsyncFunction } from "./utils";
+import { isAsyncFunction } from "./utils";
+import { createResolvablePromiseObject, ResolvablePromiseObject } from "../../ifca/utils/index";
 
 export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
     constructor() {
         super();
 
         this.ifca = new IFCA<T, T, any>(2, (chunk: T) => chunk);
+        this.corked = createResolvablePromiseObject<void>();
     }
 
     private ifca: IFCA<T, T, any>;
-    private input: Iterable<T> | AsyncIterable<T> | Readable | null = null;
+    private corked: ResolvablePromiseObject<void> | null;
 
     static from<U extends any>(input: Iterable<U> | AsyncIterable<U> | Readable): DataStream<U> {
         const dataStream = new DataStream<U>();
 
-        dataStream.input = input;
+        dataStream.read(input);
 
         return dataStream;
     }
@@ -39,7 +41,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
     }
 
     toArray(): Promise<T[]> {
-        this.startReading();
+        this._uncork();
 
         return new Promise((res) => {
             const chunks: Array<T> = [];
@@ -88,53 +90,33 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         await fs.writeFile(filePath, results.map(line => `${line}\n`).join(''));
     }
 
-    private startReading() {
-        if (this.input !== null) {
-            const input = this.input;
-
-            // We don't need keeping reference to the input after reading has started.
-            this.input = null;
-
-            if (input instanceof Readable) {
-                this.readFromReadble(input);
-            } else if (isIterable(input) || isAsyncIterable(input)) {
-                this.readFromIterable(input);
-            } else {
-                // Should we throw error here?
-                throw Error("Invalid input type");
-            }
+    _cork(): void {
+        if (this.corked === null) {
+            this.corked = createResolvablePromiseObject<void>();
         }
     }
 
-    private readFromReadble(readable: Readable): void {
-        const readChunks = (): void => {
-            let drain: Promise<void> | void;
-            let data;
-
-            while (drain === undefined && (data = readable.read()) !== null) {
-                drain = this.ifca.write(data);
-            }
-
-            if (drain instanceof Promise) {
-                readable.pause();
-                drain.then(() => {
-                    readable.resume();
-                });
-            }
-        };
-
-        readable.on("readable", readChunks);
-
-        readable.on("end", () => {
-            this.ifca.end();
-        });
+    _uncork(): void {
+        if (this.corked) {
+            this.corked.resolver();
+            this.corked = null;
+        }
     }
 
-    private readFromIterable(iterable: Iterable<T> | AsyncIterable<T>): void {
+    // Native node readables also implement AsyncIterable interface.
+    private read(iterable: Iterable<T> | AsyncIterable<T>): void {
         // We don't want to return or wait for the result of the async call,
         // it will just run in the background reading chunks as they appear.
         (async (): Promise<void> => {
+            if (this.corked) {
+                await this.corked.promise;
+            }
+
             for await (const data of iterable) {
+                if (this.corked) {
+                    await this.corked.promise;
+                }
+
                 const drain = this.ifca.write(data);
 
                 if (drain instanceof Promise) {
