@@ -26,12 +26,12 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
     }
 
     [Symbol.asyncIterator]() {
+        if (this.corked) {
+            this._uncork();
+        }
+
         return {
             next: async () => {
-                if (this.corked) {
-                    this._uncork();
-                }
-
                 const value = await this.ifca.read();
 
                 return Promise.resolve({ value, done: value === null } as IteratorResult<T, boolean>);
@@ -59,33 +59,14 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
         return this;
     }
 
-    toArray(): Promise<T[]> {
-        this._uncork();
+    async toArray(): Promise<T[]> {
+        const chunks: Array<T> = [];
 
-        return new Promise((res) => {
-            const chunks: Array<T> = [];
-            const readChunk = () => {
-                const chunk = this.ifca.read();
+        for await (const chunk of this) {
+            chunks.push(chunk);
+        }
 
-                if (chunk === null) {
-                    res(chunks);
-                } else if (chunk instanceof Promise) {
-                    chunk.then(value => {
-                        if (value === null) {
-                            res(chunks);
-                        } else {
-                            chunks.push(value);
-                            readChunk();
-                        }
-                    });
-                } else {
-                    chunks.push(chunk);
-                    readChunk();
-                }
-            };
-
-            readChunk();
-        });
+        return chunks;
     }
 
     // TODO
