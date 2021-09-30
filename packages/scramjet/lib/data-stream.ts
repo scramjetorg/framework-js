@@ -6,7 +6,7 @@ import { IFCA, TransformFunction, DroppedChunk } from "../../ifca/lib/index";
 import { isAsyncFunction } from "./utils";
 import { createResolvablePromiseObject, ResolvablePromiseObject } from "../../ifca/utils/index";
 
-export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
+export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, AsyncIterable<T> {
     constructor() {
         super();
 
@@ -25,6 +25,19 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         return dataStream;
     }
 
+    [Symbol.asyncIterator]() {
+        return {
+            next: async () => {
+                if (this.corked) {
+                    this._uncork();
+                }
+
+                const value = await this.ifca.read();
+
+                return Promise.resolve({ value, done: value === null } as IteratorResult<T, boolean>);
+            }
+        };
+    }
 
     map<U, W extends any[] = []>(callback: TransformFunction<T, U, W>, ...args: W): DataStream<U> {
         if (args?.length) {
@@ -35,7 +48,6 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
 
         return this as unknown as DataStream<U>;
     }
-
 
     filter<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T> {
         const chunksFilter = (chunk: T, result: Boolean) => result ? chunk : DroppedChunk;
