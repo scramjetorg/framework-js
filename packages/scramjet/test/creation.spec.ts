@@ -1,5 +1,6 @@
 import test from "ava";
 import { createReadStream } from "fs";
+import { defer } from "../../ifca/utils";
 import { DataStream } from "../lib/data-stream";
 
 test("DataStream can be constructed", (t) => {
@@ -109,4 +110,47 @@ test("DataStream will not start reading until 'output' transfomration is called 
     await dsString.toArray();
 
     t.true(readable.readableEnded);
+});
+
+test("DataStream can be corked and uncorked", async (t) => {
+    const ref: any = {};
+    const yielded: number[] = [];
+
+    function* numbers() {
+        for (let i = 0; i < 8; i++) {
+            yield i;
+            yielded.push(i);
+            if (i % 3 === 1) {
+                ref.dataStream._cork();
+            }
+        }
+    }
+
+    const dsNumber = DataStream.from<number>(numbers());
+
+    ref.dataStream = dsNumber as any;
+
+    t.deepEqual(yielded, []);
+
+    const resultPromise = dsNumber.toArray();
+
+    await defer(0);
+
+    t.deepEqual(yielded, [0, 1]);
+
+    dsNumber._uncork();
+
+    await defer(0);
+
+    t.deepEqual(yielded, [0, 1, 2, 3, 4]);
+
+    dsNumber._uncork();
+
+    await defer(0);
+
+    t.deepEqual(yielded, [0, 1, 2, 3, 4, 5, 6, 7]);
+
+    const result = await resultPromise;
+
+    t.deepEqual(result, [0, 1, 2, 3, 4, 5, 6, 7]);
 });
