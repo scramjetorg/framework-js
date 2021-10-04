@@ -61,8 +61,8 @@ test("DataStream can apply multiple map transforms", async (t) => {
 test("DataStream map passes variadic args", async (t) => {
     const dsNumber = DataStream.from<number>([1, 2, 3, 4, 5]);
     const result = await dsNumber
-        .map<number>((chunk, multiplier: number) => chunk * multiplier, 3)
-        .map<string>(async (chunk, postfix: string) => {
+        .map((chunk, multiplier) => chunk * multiplier, 3)
+        .map(async (chunk, postfix) => {
             return new Promise(res => {
                 setTimeout(() => {
                     res(`${chunk}${postfix}`);
