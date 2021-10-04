@@ -2,7 +2,7 @@
 import { cpus } from "os";
 import { trace, createResolvablePromiseObject, ResolvablePromiseObject } from "../utils"
 
-export type TransformFunction<V, U> = (chunk: V, ...args: any[]) => (Promise<U>|U)
+export type TransformFunction<V, U, W extends any[] = []> = (chunk: V, ...args: W) => (Promise<U>|U)
 export type TransformErrorHandler<S, T> = (err: ErrorWithReason|undefined, chunk?: S) => MaybePromise<T|undefined>;
 export type IFCAOptions = Partial<{ strict: boolean }>
 export type ErrorWithReason = Error & { cause?: Error };
@@ -433,7 +433,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      * @param {TransformErrorHandler} [handler] Optional transform error handler
      * @returns {IFCA}
      */
-    addTransform<W>(transform: TransformFunction<T, W>, handler?: TransformErrorHandler<T, W>): IFCA<S, W, this> {
+    addTransform<W, Args extends any[] = []>(transform: TransformFunction<T, W, Args>, handler?: TransformErrorHandler<T, W>): IFCA<S, W, this> {
         (this.transformHandlers as any[]).push([transform, handler]);
         return this as IFCA<S,unknown,any> as IFCA<S,W,this>;
     }

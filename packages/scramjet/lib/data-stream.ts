@@ -23,7 +23,8 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         return dataStream;
     }
 
-    map<U>(callback: TransformFunction<T, U>, ...args: any[]): DataStream<U> {
+
+    map<U, W extends any[] = []>(callback: TransformFunction<T, U, W>, ...args: W): DataStream<U> {
         if (args?.length) {
             this.ifca.addTransform(this.wrapCallback<U, typeof args>(callback, args));
         } else {
@@ -33,11 +34,12 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         return this as unknown as DataStream<U>;
     }
 
-    filter(callback: TransformFunction<T, Boolean>, ...args: any[]): DataStream<T> {
+
+    filter<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T> {
         const mapFilteredChunks = (chunk: T, result: Boolean) => result ? chunk : DroppedChunk;
 
         this.ifca.addTransform(
-            this.wrapCallbackMap<Boolean, T | typeof DroppedChunk, typeof args>(callback, mapFilteredChunks, args)
+            this.wrapCallbackMap(callback, mapFilteredChunks, args)
         );
 
         return this;
@@ -90,7 +92,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
     async toFile(filePath: string): Promise<void> {
         const results: T[] = await this.toArray();
 
-        await fs.writeFile(filePath, results.map(line => `${line}\n`).join(''));
+        await fs.writeFile(filePath, results.map(line => `${line}\n`).join(""));
     }
 
     private startReading() {
@@ -151,9 +153,9 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         })();
     }
 
-    private wrapCallback<U, W>(
-        callback: TransformFunction<T, U>,
-        args: W[]
+    private wrapCallback<U, W extends any[]>(
+        callback: TransformFunction<T, U, W>,
+        args: W
     ): (chunk: T) => Promise<U> | U {
 
         const isCallbackAsync = isAsyncFunction(callback);
@@ -169,10 +171,10 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         };
     }
 
-    private wrapCallbackMap<U, X, W>(
-        callback: TransformFunction<T, U>,
+    private wrapCallbackMap<U, X, W extends any[]>(
+        callback: TransformFunction<T, U, W>,
         mapFn: (chunk: T, result: U) => X,
-        args: W[]
+        args: W
     ): (chunk: T) => Promise<X> | X {
 
         const isCallbackAsync = isAsyncFunction(callback);
