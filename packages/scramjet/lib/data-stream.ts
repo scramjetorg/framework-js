@@ -68,7 +68,16 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
 
         let value;
 
-        while ((value = await this.ifca.read()) !== null) {
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            value = this.ifca.read();
+            if (value instanceof Promise) {
+                value = await value;
+            }
+            if (value === null) {
+                break;
+            }
+
             chunks.push(value as T);
         }
 
