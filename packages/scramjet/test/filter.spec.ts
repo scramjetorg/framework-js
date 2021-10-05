@@ -9,8 +9,8 @@ test("DataStream can filter chunks via sync callback", async (t) => {
 });
 
 test("DataStream can filter chunks via async callback", async (t) => {
-    const dsNumber = DataStream.from<string>(["foo", "bar", "baz", "bax"]);
-    const result = await dsNumber.filter(async chunk => {
+    const dsString = DataStream.from<string>(["foo", "bar", "baz", "bax"]);
+    const result = await dsString.filter(async chunk => {
         return new Promise(res => {
             setTimeout(() => {
                 res(!!chunk.startsWith("b"));
