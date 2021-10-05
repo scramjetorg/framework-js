@@ -60,10 +60,16 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
     }
 
     async toArray(): Promise<T[]> {
+        if (this.corked) {
+            this._uncork();
+        }
+
         const chunks: Array<T> = [];
 
-        for await (const chunk of this) {
-            chunks.push(chunk);
+        let value;
+
+        while ((value = await this.ifca.read()) !== null) {
+            chunks.push(value as T);
         }
 
         return chunks;
