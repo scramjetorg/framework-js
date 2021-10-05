@@ -198,7 +198,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      */
     private makeTransformChain(_chunk: S): MaybePromise<T> {
         const transforms = this.transformHandlers as TransformHandler<any, any>[];
-        return this.makeAsynchronousChain<S,any>(transforms, _chunk)(_chunk);
+        return this.chainAsynchronousTransforms<S,any>(transforms, _chunk)(_chunk);
     }
 
     /**
@@ -214,7 +214,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         const funcs = [...this.transformHandlers] as TransformHandler<any, any>[];
 
         let value: any = _chunk;
-        let buffer: TransformHandler<any, any>[] = [];
+        let transforms: TransformHandler<any, any>[] = [];
         let isPrevFuncSync: boolean = true;
 
         // Loops over transforms array and as long as transforms are of the same type groups them.
@@ -223,47 +223,47 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             const func = funcs.shift() as TransformHandler<any, any>;
             const isFuncSync = isSync(func);
 
-            if (buffer.length && isFuncSync !== isPrevFuncSync) {
-                value = this.createTransformChain(value, buffer, _chunk, isPrevFuncSync);
-                buffer = [];
+            if (transforms.length && isFuncSync !== isPrevFuncSync) {
+                value = this.mergeTransformChains(value, transforms, _chunk, isPrevFuncSync);
+                transforms = [];
             }
 
             if (value === DroppedChunk) {
-                buffer = [];
+                transforms = [];
                 break;
             }
 
-            buffer.push(func);
+            transforms.push(func);
 
             isPrevFuncSync = isFuncSync;
         }
 
-        if (buffer.length) {
-            value = this.createTransformChain(value, buffer, _chunk, isPrevFuncSync);
+        if (transforms.length) {
+            value = this.mergeTransformChains(value, transforms, _chunk, isPrevFuncSync);
         }
 
         return value;
     }
 
     /**
-     * Creates synchronous or asynchronous transforms chain according to provided data.
+     * Creates transform chain of a given type (sync or async) and attaches it to the one provided. This results in creation of a single transform chain.
      *
-     * @param {any} value
+     * @param {any} transformChain
      * @param {TransformHandler<any, any>[]} transforms
      * @param {S} initialChunk
      * @param {boolean} synchronous
      * @returns
      */
-    private createTransformChain(value: any, transforms: TransformHandler<any, any>[], initialChunk: S, synchronous: boolean = true): MaybePromise<T> {
-        const isPromise = value instanceof Promise;
+    private mergeTransformChains(transformChain: any, transforms: TransformHandler<any, any>[], initialChunk: S, synchronous: boolean = true): MaybePromise<T> {
+        const isPromise = transformChain instanceof Promise;
 
         if (synchronous) {
-            return isPromise ? value.then(this.makeSynchronousChain(transforms, initialChunk)) : this.makeSynchronousChain(transforms, initialChunk)(value);
+            return isPromise ? transformChain.then(this.chainSynchronousTransforms(transforms, initialChunk)) : this.chainSynchronousTransforms(transforms, initialChunk)(transformChain);
         } else {
             if (!isPromise) {
-                value = Promise.resolve(value);
+                transformChain = Promise.resolve(transformChain);
             }
-            return value.then(this.makeAsynchronousChain(transforms, initialChunk));
+            return transformChain.then(this.chainAsynchronousTransforms(transforms, initialChunk));
         }
     }
 
@@ -321,7 +321,10 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return currentChunkResult;
     }
 
-    private makeSynchronousChain<X,Y>(funcs: TransformHandler<X, Y>[], processingChunk: X): (a: X) => Y {
+    /**
+     * Creates synchronous transforms chain. Returns a function which runs all the transforms when called.
+     */
+    private chainSynchronousTransforms<X,Y>(funcs: TransformHandler<X, Y>[], processingChunk: X): (a: X) => Y {
         return (a: X): Y => {
             let value: any = a;
 
@@ -350,7 +353,10 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         };
     }
 
-    private makeAsynchronousChain<X,Y>(funcs: TransformHandler<X, Y>[], processingChunk: X): (a: X) => Promise<Y> {
+    /**
+     * Creates asynchronous transforms chain. Returns an asynchronous function which runs all the transforms when called.
+     */
+    private chainAsynchronousTransforms<X,Y>(funcs: TransformHandler<X, Y>[], processingChunk: X): (a: X) => Promise<Y> {
         return async(a: X): Promise<Y> => {
             let value: any = await a;
 
