@@ -73,3 +73,19 @@ test("DataStream map passes variadic args", async (t) => {
 
     t.deepEqual(result, ["300", "600", "900", "1200", "1500"]);
 });
+
+test("DataStream map passes typed variadic args", async (t) => {
+    const dsNumber = DataStream.from<number>([1, 2, 3, 4, 5]);
+    const result = await dsNumber
+        .map<number, number[]>((chunk, multiplier) => chunk * multiplier, 3)
+        .map<string, string[]>(async (chunk, postfix) => {
+            return new Promise(res => {
+                setTimeout(() => {
+                    res(`${chunk}${postfix}`);
+                }, 10);
+            });
+        }, "00")
+        .toArray();
+
+    t.deepEqual(result, ["300", "600", "900", "1200", "1500"]);
+});
