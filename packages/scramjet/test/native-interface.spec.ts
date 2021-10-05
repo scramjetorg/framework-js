@@ -16,8 +16,6 @@ test("DataStream can be iterated with 'for await..of'", async (t) => {
     t.deepEqual(result, [1, 3, 5]);
 });
 
-test("DataStream can be piped to Readable node stream", async (t) => {
+test.skip("DataStream can be piped to Readable node stream", () => {
     // const dsNumber = DataStream.from<number>([1, 2, 3, 4, 5]);
-
-    t.pass();
 });

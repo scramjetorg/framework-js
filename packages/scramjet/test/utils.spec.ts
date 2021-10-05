@@ -44,11 +44,10 @@ test("isAsyncFunction correctly detects async function (TransformFunction)", t =
 
 // This cannot really be done without calling the function to check it's result.
 // We don't need this ATM but will be good to keep in mind, such function is a valid JS function too.
-test("isAsyncFunction correctly detects sync function returning promise", t => {
-    // function syncPromise() {
-    //     return Promise.resolve(1);
-    // }
+test.skip("isAsyncFunction correctly detects sync function returning promise", t => {
+    function syncPromise() {
+        return Promise.resolve(1);
+    }
 
-    // t.true(isAsyncFunction(syncPromise));
-    t.pass();
+    t.true(isAsyncFunction(syncPromise));
 });
