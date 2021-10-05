@@ -352,13 +352,10 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     private makeAsynchronousChain<X,Y>(funcs: TransformHandler<X, Y>[], processingChunk: X): (a: X) => Promise<Y> {
         return async(a: X): Promise<Y> => {
-            let value: any = Promise.resolve(a);
+            let value: any = await a;
 
             for (const [executor, handler] of funcs) {
                 try {
-                    if (value) {
-                        value = await value;
-                    }
                     if (executor) {
                         value = await executor(value);
                     }
