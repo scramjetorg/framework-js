@@ -108,7 +108,7 @@ test("DataStream will not start reading until 'output' transfomration is called 
     const readable = createReadStream("./test/helpers/sample.txt", "utf8");
     const dsString = DataStream.from<string>(readable);
 
-    // Since readable will be read at once, if it"s not ended means reading haven"t started yet.
+    // Since readable will be read at once, if it's not ended means reading haven't started yet.
     t.false(readable.readableEnded);
 
     await dsString.toArray();
