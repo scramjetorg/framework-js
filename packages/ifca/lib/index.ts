@@ -1,5 +1,6 @@
+/* eslint-disable */
 import { cpus } from "os";
-import { trace } from "../utils"
+import { trace, createResolvablePromiseObject, ResolvablePromiseObject } from "../utils"
 
 export type TransformFunction<V,U> = (chunk: V) => (Promise<U>|U)
 export type TransformErrorHandler<S, T> = (err: ErrorWithReason|undefined, chunk?: S) => MaybePromise<T|undefined>;
@@ -10,13 +11,11 @@ export type TransformArray<S, T> = [TransformFunction<S, T>] | [
     TransformFunction<any, T>,
     ...TransformFunction<any, any>[]
 ];
+export const DroppedChunk = Symbol("DroppedChunk");
 
-const isAsync = (func: any[]) => func.length && (
-    func[0] && func[0][Symbol.toStringTag] === 'AsyncFunction' ||
-    func[1] && func[1][Symbol.toStringTag] === 'AsyncFunction'
-);
-
-const noop = () => { };
+const isSync = (func: any[]) => !!(func.length && (
+    func[0] && func[0][Symbol.toStringTag] !== 'AsyncFunction' ||
+    func[1] && func[1][Symbol.toStringTag] !== 'AsyncFunction'));
 
 export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
     // TODO: This may need a setter if maxParallel is increased so that chunks are not waiting for drain.
@@ -75,7 +74,6 @@ export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
 type TransformHandler<S,T> = [TransformFunction<S,T>, TransformErrorHandler<S,T>?] | [undefined, TransformErrorHandler<S,T>];
 type ChunkResolver<S> = [TransformFunction<S|null,void>, TransformErrorHandler<S,void>?];
 type MaybePromise<S> = Promise<S> | S;
-type NullTerminatedArray<X extends any[]> = X | [...X, null]
 
 export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
@@ -111,17 +109,18 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     // transforms: TransformArray<S, T>;
     // public handlers = [] as TransformErrorHandler<S,T>[];
 
-    private processing: Promise<any>[] = []
-    // private processing_await?: Promise<any>;
-    private readable: NullTerminatedArray<T[]> = [];
+    private processingQueue: ProcessingQueue<T> = new ProcessingQueue();
     private readers: ChunkResolver<T>[] = [];
     private ended: boolean = false;
     private readonly strict: boolean;
     private endedPromise: Promise<void> | null = null;
     private endedPromiseResolver: Function | null = null;
+    private drain: ResolvablePromiseObject<void> | undefined = undefined;
 
-    get status() {
-        return "R,".repeat(this.readers.length) + this.processing.slice(this.readers.length).map((x,i) => this.readable[this.readers.length + i] ? 'd,' : 'p,')
+    get state() {
+        return {
+            pending: this.processingQueue.length
+        }
     }
 
     /**
@@ -139,24 +138,18 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         if (this.ended) throw new Error("Write after end");
         if (_chunk === null) return this.end();
 
-        const pos = this.processing.length;
-        trace('IFCA WRITE pos: ', pos, _chunk)
-        const drain: MaybePromise<any> = pos < this.maxParallel
-            ? undefined
-            : this.processing[pos - this.maxParallel].finally()
-        ;
-        const chunkBeforeThisOne = this.processing[pos - 1]; // First one is undefined obviously. Rest are Promise { <pending> }
+        const chunkBeforeThisOne = this.processingQueue.last as any;
         const currentChunkResult = this.strict ? this.makeStrictTransformChain(_chunk) : this.makeTransformChain(_chunk);
 
-        /**
-         * Make processing item and push to processing array in order to start processing transformations.
-         */
-        this.processing.push(
-            this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult)
-        );
+        this.processingQueue.push(this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult));
 
-        trace('DRAIN WRITE:', drain);
-        return drain;
+        if (this.processingQueue.length >= this.maxParallel && this.drain === undefined) {
+            this.drain = createResolvablePromiseObject<void>();
+        }
+
+        trace('DRAIN WRITE:', this.drain);
+
+        return this.drain ? this.drain.promise as Promise<void> : undefined;
     }
 
     /**
@@ -170,49 +163,111 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      * @param {Object[]|null}_chunks The data to be written. The value is an array of <Object> that each represent a discrete chunk of data to write.
      * @returns {MaybePromise}
      */
-    writev(_chunks: (S|null)[]):MaybePromise<void> {
+    writev(_chunks: (S|null)[]): MaybePromise<void> {
         if (this.ended) throw new Error("Write after end");
 
-        const pos = this.processing.length;
-        trace('IFCA WRITEV pos:', pos, _chunks)
-        const drain: MaybePromise<void> = pos < this.maxParallel
-            ? undefined
-            : this.processing[pos - this.maxParallel]
-        ;
-        const chunkBeforeThisOne = this.processing[pos - 1];
-        const chunksToBeProcessed = (_chunks.indexOf(null) >= 0
-            ? _chunks.slice(0, _chunks.indexOf(null)) : _chunks) as S[];
-        const currentChunksResult = chunksToBeProcessed.map(chunk => this.strict ? this.makeStrictTransformChain(chunk) : this.makeTransformChain(chunk));
+        // TODO how do we treat 'null's inside _chunks array?
+        // * one or multiple nulls at the beginning
+        // * nulls between data
+        // * nulls at the end
 
-        this.processing.push(
-            ...this.makeProcessingItems(chunkBeforeThisOne, currentChunksResult)
-        );
-        trace('DRAIN WRITEV:');
-        trace(drain);
+        const chunksToBeProcessed = (_chunks.indexOf(null) >= 0 ? _chunks.slice(0, _chunks.indexOf(null)) : _chunks) as S[];
 
-        if (chunksToBeProcessed !== _chunks) return drain ? drain.then(() => this.end()) : this.end();
+        chunksToBeProcessed.forEach(_chunk => {
+            const chunkBeforeThisOne = this.processingQueue.last as any;
+            const currentChunkResult = this.strict ? this.makeStrictTransformChain(_chunk) : this.makeTransformChain(_chunk);
 
-        return drain;
+            this.processingQueue.push(this.makeProcessingItem(chunkBeforeThisOne, currentChunkResult));
+        });
+
+        if (this.processingQueue.length >= this.maxParallel && this.drain === undefined) {
+            this.drain = createResolvablePromiseObject<void>();
+        }
+
+        trace('DRAIN WRITE:', this.drain);
+
+        return this.drain ? this.drain.promise as Promise<void> : undefined;
     }
 
     /**
-     * Same as `makeProcessingItem` but accepts array of chunks. Processes many items.
+     * Creates chain of asyncrhonous transformation calls where result of the previous one
+     * is passed to the next one.
      *
-     * @param {Promise} chunkBeforeThisOne
-     * @param {MaybePromise[]} currentChunksResult
-     * @returns {Promise[]}
+     * @param {S} _chunk
+     * @returns {MaybePromise<T>}
      */
-    private makeProcessingItems(chunkBeforeThisOne: Promise<any>, currentChunksResult: MaybePromise<T>[]): Promise<any>[] {
-        const result:MaybePromise<any>[] = [];
-        result.push(this.makeProcessingItem(chunkBeforeThisOne, currentChunksResult[0]));
-        for (let i = 1; i < currentChunksResult.length; i++) {
-            result.push(this.makeProcessingItem(currentChunksResult[i - 1] as Promise<T>, currentChunksResult[i]))
-        }
-
-        return result;
+    private makeTransformChain(_chunk: S): MaybePromise<T> {
+        const transforms = this.transformHandlers as TransformHandler<any, any>[];
+        return this.chainAsynchronousTransforms<S,any>(transforms, _chunk)(_chunk);
     }
 
-    // TODO: here's a low hanging fruit for implementing non-ordered processing
+    /**
+     * Creates chain of transformation calls where result of the previous one
+     * is passed to the next one.
+     *
+     * Synchronous functions are grouped and called at once.
+     *
+     * @param {S} _chunk
+     * @returns {MaybePromise<T>}
+     */
+    private makeStrictTransformChain(_chunk: S): MaybePromise<T> {
+        const funcs = [...this.transformHandlers] as TransformHandler<any, any>[];
+
+        let value: any = _chunk;
+        let transforms: TransformHandler<any, any>[] = [];
+        let isPrevFuncSync: boolean = true;
+
+        // Loops over transforms array and as long as transforms are of the same type groups them.
+        // If next transform is of different type, previous group is transformed into chain.
+        while (funcs.length)  {
+            const func = funcs.shift() as TransformHandler<any, any>;
+            const isFuncSync = isSync(func);
+
+            if (transforms.length && isFuncSync !== isPrevFuncSync) {
+                value = this.mergeTransformChains(value, transforms, _chunk, isPrevFuncSync);
+                transforms = [];
+            }
+
+            if (value === DroppedChunk) {
+                transforms = [];
+                break;
+            }
+
+            transforms.push(func);
+
+            isPrevFuncSync = isFuncSync;
+        }
+
+        if (transforms.length) {
+            value = this.mergeTransformChains(value, transforms, _chunk, isPrevFuncSync);
+        }
+
+        return value;
+    }
+
+    /**
+     * Creates transform chain of a given type (sync or async) and attaches it to the one provided. This results in creation of a single transform chain.
+     *
+     * @param {any} transformChain
+     * @param {TransformHandler<any, any>[]} transforms
+     * @param {S} initialChunk
+     * @param {boolean} synchronous
+     * @returns
+     */
+    private mergeTransformChains(transformChain: any, transforms: TransformHandler<any, any>[], initialChunk: S, synchronous: boolean = true): MaybePromise<T> {
+        const isPromise = transformChain instanceof Promise;
+
+        if (synchronous) {
+            return isPromise ? transformChain.then(this.chainSynchronousTransforms(transforms, initialChunk)) : this.chainSynchronousTransforms(transforms, initialChunk)(transformChain);
+        } else {
+            if (!isPromise) {
+                transformChain = Promise.resolve(transformChain);
+            }
+            return transformChain.then(this.chainAsynchronousTransforms(transforms, initialChunk));
+        }
+    }
+
+    // TODO: here's a low hanging fruit for implementing non-ordered processings
     /**
      *
      * @param {Promise} chunkBeforeThisOne
@@ -220,45 +275,18 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      * @returns {Promise}
      */
     private makeProcessingItem(chunkBeforeThisOne: Promise<any>, currentChunkResult: MaybePromise<T>): Promise<any> {
-        const currentSafeChunkResult =
-            "catch" in currentChunkResult
-                ? currentChunkResult.catch(
-                    (err: Error) => {
-                        if (err) {
-                            if (this.readers.length) {
-                                const res = this.readers[0];
-                                if (res[1]) {
-                                    this.readers.shift();
-                                    // TODO: this potentially throws?
-                                    return res[1](err);
-                                }
-                            }
-                            throw err;
-                        }
-                        return;
-                    }
-                )
-                : currentChunkResult
-
         return Promise.all([
             chunkBeforeThisOne?.finally(),
-            currentSafeChunkResult
+            this.attachErrorHandlerToChunkResult(currentChunkResult)
         ])
             .then(([, result]) => {
-                if (result !== undefined) {
-                    trace('IFCA-WRITE_RESULT', result);
-                    if (this.readers.length === 0 || this.readers[0][0] === noop) {
-                        if (this.readers.length) this.readers.shift();
-                        this.readable.push(result);
-                        trace("IFCA-WRITE_PROCESSING_PUSH", this.readable.length, result)
-                    } else {
-                        this.processing.shift();
-                        (this.readers.shift() as ChunkResolver<T>)[0](result)
-                        trace("IFCA-WRITE_PROCESSING_SET_READER", this.readers.length, result)
-                    }
-                } else {
-                    trace("IFCA-WRITE_PROCESSING_UNDEFINED")
+                trace("IFCA ON-CHUNK-RESOLVED", this.processingQueue.length, this.maxParallel, this.drain);
+                if (this.processingQueue.length - 1 < this.maxParallel && this.drain !== undefined) {
+                    this.drain.resolver();
+                    this.drain = undefined;
                 }
+
+                return result;
             })
             .catch(e => {
                 if (typeof e === "undefined") return;
@@ -266,92 +294,95 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             });
     }
 
-    private makeStrictTransformChain(_chunk: S): MaybePromise<T> {
-        let funcs = [...this.transformHandlers] as TransformHandler<any, any>[];
-        if (!funcs.length) return _chunk as unknown as T;
-
-        let value: any = _chunk;
-
-        // Synchronous start
-        const syncFunctions = funcs.findIndex(isAsync);
-        if (syncFunctions > 0) {
-            value = this.makeSynchronousChain(funcs.slice(0, syncFunctions), _chunk)(value);
-            funcs = funcs.slice(syncFunctions);
-        }
-
-        if (!funcs.length) return value;
-
-        let next = Promise.resolve(value);
-        while(funcs.length) {
-            const handler = funcs.shift() as TransformHandler<any, any>;
-            next = next.then(...handler);
-
-            const syncFunctions = funcs.findIndex(isAsync);
-
-            if (syncFunctions > 0) {
-                next = next.then(this.makeSynchronousChain(funcs.slice(0, syncFunctions), _chunk));
-                funcs = funcs.slice(syncFunctions);
-            }
-        }
-        return next;
-    }
-
-    private makeSynchronousChain<X,Y>(funcs: TransformHandler<X, Y>[], processingChunk: X): (a: X) => Y {
-        return funcs.reduce.bind(funcs, (acc, func) => {
-            try {
-                if (!func[0]) return acc;
-                return func[0](acc as any);
-            } catch(e) {
-                if (typeof e === "undefined") return;
-                if (func[1]) {
-                    return func[1](e as any, processingChunk);
+    private attachErrorHandlerToChunkResult(currentChunkResult: MaybePromise<T>): MaybePromise<T> {
+        if (currentChunkResult instanceof Promise) {
+            currentChunkResult.catch((err: Error) => {
+                if (!err) {
+                    return;
                 }
-                throw e;
-            }
-        }) as (a: X) => Y;
+
+                // TODO - readers are no longer used so this needs to handled in ProcessingQueue
+                // Looks like it passes caught error to reader (first in the queue) error handler
+                // as reader should be (since it's still TODO) [transform, handler].
+                // This needs to be reworked.
+                if (this.readers.length) {
+                    const res = this.readers[0];
+
+                    if (res[1]) {
+                        this.readers.shift();
+                        // TODO: this potentially throws?
+                        return res[1](err);
+                    }
+                }
+                throw err;
+            });
+        }
+
+        return currentChunkResult;
     }
 
     /**
-     * Takes chunk and applies transformations
-     *
-     * @param {Object} _chunk
-     * @returns {Promise}
+     * Creates synchronous transforms chain. Returns a function which runs all the transforms when called.
      */
-    private makeTransformChain(_chunk: S): Promise<T> {
-        let ret: Promise<T> = (this.transformHandlers as TransformHandler<any, any>[])
-            .reduce(
-                /**
-                 * Reducer function that executes all transformations
-                 *
-                 * @param {Promise} prev Chunk resolved as promise
-                 * @param {Array} param
-                 * @param {TransformationFunction} param._executor - Transformation Function
-                 * @param {TransformErrorHandler} param._handler - Transformation Error Handler
-                 *
-                 * @returns {Promise}
-                 */
-                // TODO: maybe here we should have the argument to prev
-                (prev, [_executor, _handler]) => {
-                    if (!_handler) return prev.then(_executor?.bind(this));
+    private chainSynchronousTransforms<X,Y>(funcs: TransformHandler<X, Y>[], processingChunk: X): (a: X) => Y {
+        return (a: X): Y => {
+            let value: any = a;
 
-                    // TODO: check why chunk is undefined
-                    const handler: TransformErrorHandler<any, any> = (err, chunk) => {
-                        if (typeof err === "undefined") return Promise.reject(undefined);
-                        return _handler.bind(this)(err, chunk);
+            for (const [executor, handler] of funcs) {
+                try {
+                    if (executor) {
+                        value = executor(value as any);
                     }
-                    if (!_executor && handler) return prev.catch(handler);
-                    return prev.then(_executor?.bind(this), handler);
-                },
-                Promise.resolve(_chunk)
-            ) as Promise<unknown> as Promise<T>;
+                    if (value === DroppedChunk) {
+                        break;
+                    }
+                } catch (err) {
+                    if (typeof err !== "undefined") {
+                        if (handler) {
+                            value = handler(err as any, processingChunk);
+                        } else {
+                            throw err;
+                        }
+                    } else {
+                        value = undefined;
+                    }
+                }
+            }
 
-        // Promise.resolve(1)
-        //     .then(b => b+2)
-        //     .then(a => a+1)
-        //     .then(fx, fy)
-        //     .catch(z)
+            return value as Y;
+        };
+    }
 
-        return ret;
+    /**
+     * Creates asynchronous transforms chain. Returns an asynchronous function which runs all the transforms when called.
+     */
+    private chainAsynchronousTransforms<X,Y>(funcs: TransformHandler<X, Y>[], processingChunk: X): (a: X) => Promise<Y> {
+        return async(a: X): Promise<Y> => {
+            let value: any = await a;
+
+            for (const [executor, handler] of funcs) {
+                try {
+                    if (executor) {
+                        value = await executor(value);
+                    }
+                    if (value === DroppedChunk) {
+                        break;
+                    }
+                } catch (err) {
+                    if (typeof err === "undefined") {
+                        value = await Promise.reject(undefined);
+                    } else {
+                        if (handler) {
+                            value = await handler(err as any, processingChunk);
+                        } else {
+                            throw err;
+                        }
+                    }
+                }
+            }
+
+            return value as Promise<Y>;
+        };
     }
 
     /**
@@ -363,100 +394,43 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      * @returns {MaybePromise}
      */
     end(): MaybePromise<void> {
-        if (this.ended) throw new Error("End called multiple times");
+        if (this.ended) {
+            throw new Error("End called multiple times");
+        }
+
+        this.processingQueue.close();
 
         this.ended = true;
 
-
-
-        if (this.processing.length > 0) {
-            return Promise.all(this.processing).then(() => { this.handleEnd() });
+        if (this.processingQueue.length > 0) {
+            return this.processingQueue.last.then(() => { this.endedPromiseResolver && this.endedPromiseResolver() });
         }
 
-        this.handleEnd();
+        this.endedPromiseResolver && this.endedPromiseResolver()
     }
 
     /**
-     * This resolves all readers beyond those being processed.
-     *
-     * @returns {null}
-     */
-    private handleEnd() {
-        trace("IFCA-HANDLE_END()")
-        this.readers.slice(this.processing.length).forEach(([res]) => res(null));
-        this.readable.push(null as unknown as T);
-
-        if (this.endedPromiseResolver) {
-            this.endedPromiseResolver();
-        }
-
-        return null;
-    }
-
-    /**
-     * Read result from readable NullTerminatedArray.
+     * Reads processing results.
      *
      * @returns {MaybePromise|null}
      */
     read(): MaybePromise<T|null> {
-        trace('IFCA-READ() processing', this.processing)
-        const ret = this.processing.shift();
-        if (this.readable.length > 0) {
-            if (this.readable[0] === null) {
-                // TODO: this makes nulls precede data
-                trace('IFCA-READ READABLE-NULL')
-                return null;
-            }
-            trace('IFCA-READ READABLE-EXISTS', this.readable);
-            return this.readable.shift() as T;
-        }
-        else if (ret) {
-            trace('IFCA-READ PROCESSING-AWAIT');
-            this.readers.push([noop])
-            return ret.then(() => {
-                trace('IFCA-READ PROCESSING-SHIFT', this.readable[0]);
-                return this.readable.shift() as T
-            });
-        }
-        else if (this.ended) {
-            trace('IFCA-READ ENDED', ret);
-            return null;
-        }
-
-        trace('IFCA-READ CREATE_READER');
-        // This gives Promise { <pending> }
-        // In scribbe.spec.js this never resolves
-        return new Promise((...handlers) => {
-            trace('IFCA-READ INSIDE PROMISE');
-            trace('READERS', this.readers);
-            // push both [resolve, reject]
-            return this.readers.push(handlers);
-        });
+        return this.processingQueue.read();
     }
 
     /**
-     * Return last processing item
-     *
-     * @returns {PromiseLike}
-     */
-    last(): PromiseLike<T> {
-        return this.processing[this.processing.length - 1];
-    }
-
-    /**
-     * Add error handler
+     * Adds error handler.
      *
      * @param {TransformErrorHandler} handler Transform error handler
      * @returns {IFCA}
      */
     addErrorHandler(handler: TransformErrorHandler<S,T>): this {
         this.transformHandlers.push([, handler]);
-
         return this;
     }
 
     /**
-     * Add transform
+     * Adds transform.
      *
      * @param {TransformFunction} transform Transform function
      * @param {TransformErrorHandler} [handler] Optional transform error handler
@@ -468,7 +442,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     }
 
     /**
-     * Remove transform (pop)
+     * Removes transform.
      *
      * @returns {IFCA}
      */
@@ -487,4 +461,135 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         return this.endedPromise;
     }
 
+}
+class ProcessingQueue<T> {
+
+    /**
+     * Ready chunks waitng to be read.
+     */
+    private ready: T[] = [];
+
+    /**
+     * Awaitng chunk requests.
+     */
+    private requested: Object[] = [];
+
+    /**
+     * Number of chunks processed at the given moment.
+     */
+    private pendingLength: number = 0;
+
+    /**
+     * Whenever the queue is closed.
+     */
+    private hasEnded: Boolean = false;
+
+    /**
+     * Last chunk which was pushed to the queue.
+     */
+    private previousChunk: Promise<T | void> = Promise.resolve()
+
+    /**
+     * Number of chunks processed at the given moment.
+     *
+     * @returns {number}
+     */
+    get length(): number {
+        return this.pendingLength;
+    }
+
+    /**
+     * Last chunk which was pushed to the queue.
+     * If there were no chunks pushed, resolved promise is returned.
+     *
+     * @returns {Promise<T|void>}
+     */
+    get last(): Promise<T|void> {
+        return this.previousChunk;
+    }
+
+    /**
+     * Adds chunk promise to the queue.
+     *
+     * @param {Promise<T>} chunkResolver
+     * @returns {void}
+     */
+    push(chunkResolver: Promise<T>): void {
+        // We don't need to worry about chunks resolving order since it is guaranteed
+        // by IFCA with Promise.all[previousChunk, currentChunk].
+        chunkResolver.then((result: T) => {
+            this.pendingLength--;
+
+            if (result as any !== DroppedChunk) {
+                this.ready.push(result);
+
+                // If there is any chunk requested (read awaiting) resolve it.
+                if (this.requested.length) {
+                    const chunkRequest: any = this.requested.shift();
+                    chunkRequest.resolver(this.ready.shift() as T);
+                }
+            }
+
+            // If queue is closed and there are no more pending items we need to make sure
+            // to resolve all waiting chunks requests (with nulls since there is no more data).
+            this.hasEnded && this.resolveAwaitingRequests();
+        });
+
+        this.pendingLength++;
+
+        this.previousChunk = chunkResolver;
+    }
+
+    /**
+     * Reads chunk from the queue.
+     *
+     * If there are ready chunks waiting, value is returned. If not, a promise
+     * which will resolved upon next chunk processing completes is returned.
+     *
+     * If the queue is closed and no more data avaialbe, `null`s are retruned.
+     *
+     * @returns {MaybePromise<T|null>}
+     */
+    read(): MaybePromise<T|null> {
+        // If chunk is ready, simply return it.
+        if (this.ready.length) {
+            // TODO handle nulls?
+
+            return this.ready.shift() as T;
+        }
+
+        // Add chunk request to a queue if:
+        // * queue is not closed and there are no ready chunks
+        // * queue is closed but there are still pending chunks
+        if (!this.hasEnded || this.hasEnded && this.pendingLength > 0) {
+            const chunkRequest = createResolvablePromiseObject();
+            this.requested.push(chunkRequest);
+            return chunkRequest.promise as Promise<T>;
+        }
+
+        return null;
+    }
+
+    /**
+     * Closes the queue and resolves all awaiting chunk requests.
+     *
+     * @returns {void}
+     */
+    close() {
+        this.hasEnded = true;
+        this.resolveAwaitingRequests();
+    }
+
+    /**
+     * Resolves all awaiting chunk requests which cannot be resolved due to end of data.
+     *
+     * @returns {void}
+     */
+    private resolveAwaitingRequests() {
+        if (this.hasEnded && this.pendingLength === 0 && this.requested.length > 0) {
+            for (const chunkRequest of this.requested) {
+                (chunkRequest as any).resolver(null);
+            }
+        }
+    }
 }

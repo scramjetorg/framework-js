@@ -1,3 +1,4 @@
+/* eslint-disable */
 import test from "ava";
 import { IFCA, TransformFunction } from "../lib/index";
 import { defer } from "../utils"
@@ -6,7 +7,7 @@ type Dict = { [k: string]: number; };
 
 /**
  * Helper function that checks if passed argument is a promise.
- * 
+ *
  * @param {Object} x Obejct to be checked
  * @returns {Boolean}
  */
@@ -64,40 +65,53 @@ test("PTS", async (t) => {
     t.false(isPromise(writeNext()), "5th entry should resolve write immediately");
     t.false(isPromise(writeNext()), "6th entry should resolve write immediately");
     t.false(isPromise(writeNext()), "7th entry should resolve write immediately");
-    t.false(isPromise(writeNext()), "8th entry should resolve write immediately");
-    t.true(isPromise(writeNext()), "9th entry should fill up max parallel");
+    t.true(isPromise(writeNext()), "8th entry should fill up max parallel");
 
-    // TODO: make this go 8 items beyond 
+    // 8 chunks pending
+    t.deepEqual(ifca.state, {pending: 8});
+
+    // TODO: make this go 8 items beyond
     const item2 = ifca.read(); // {a: 1}
     const item3 = ifca.read(); // {a: 2}
     t.true(isPromise(item2), "Is a promise.");
     t.true(isPromise(item3), "Is a promise.");
 
+    // 8 chunks pending (still since we haven't await on read() call)
+    t.deepEqual(ifca.state, {pending: 8});
+
     await defer(20);
+    // 8 chunks pending
+    t.deepEqual(ifca.state, {pending: 8});
+
     t.true(isPromise(ifca.read()), "Is a promise."); // read {a: 3}.
 
     await defer(100);
-    t.false(isPromise(writeNext()), "After reading should allow to write immediately again"); // write {a: 10}
+    // All chunks should be processed by now.
+    t.deepEqual(ifca.state, {pending: 0});
+
+    t.false(isPromise(writeNext()), "After reading should allow to write immediately again"); // write {a: 9}
 
     const read8 = [
         ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read(), ifca.read()
     ];
-    
+
     t.deepEqual(read8[0], { a:4, n: 0, x: 4, y: 2, z: 2 }, "Reads the 4 element");
-    t.deepEqual(read8[5], { a:9, n: 1, x: 9, y: 9, z: 9 }, "Reads the 9 element");
-    t.true(isPromise(read8[6]), "The 10 element is not resolved yet");
-    t.deepEqual(await read8[6], { a:10, n: 0, x: 10, y: 10, z: 10 }, "The 10 element resolves");
-    
-    
-    t.true(isPromise(read8[7]), "The 11 element is a promise");
+    t.deepEqual(read8[4], { a:8, n: 0, x: 8, y: 4, z: 4 }, "Reads the 8 element");
+    t.true(isPromise(read8[5]), "The 9 element is not resolved yet");
+    t.deepEqual(await read8[5], { a:9, n: 1, x: 9, y: 9, z: 9 }, "The 9 element resolves");
+
+
+    t.true(isPromise(read8[6]), "The 10 element is a promise");
 
     let wrote = false;
     defer(10).then(() => {
+        writeNext();
         writeNext();
         ifca.end(); // without ifca.end() -> Error: Promise returned by test never resolved
         wrote = true;
     });
 
+    t.deepEqual(await read8[6], { a:10, n: 0, x: 10, y: 10, z: 10 }, "The 10th element resolves when written");
     t.deepEqual(await read8[7], { a:11, n: 1, x: 11, y: 11, z: 11 }, "The 11th element resolves when written");
 
     t.true(wrote, "already wrote");
@@ -157,14 +171,14 @@ test("Simple order check", async (t) => {
     t.false(isPromise(writeNext()), "1st entry should resolve write immediately");
     t.false(isPromise(writeNext()), "2nd entry should resolve write immediately");
     t.false(isPromise(writeNext()), "3rd entry should resolve write immediately");
-    t.false(isPromise(writeNext()), "4th entry should resolve write immediately");
-    t.true(isPromise(writeNext()), "5th entry should fill up max parallel"); // As MAX_PARALLEL = 4 and we have 4 items in the queue.
+    t.true(isPromise(writeNext()), "4th entry should fill up max parallel"); // As MAX_PARALLEL = 4 and we have 4 items in the queue.
+    t.true(isPromise(writeNext()), "5th entry should should return promise as it's above max parallel");
 
     const item2 = ifca.read(); // {"a":1,"n":1,"x":1,"y":3,"z":3}
     const item3 = ifca.read(); // {"a":2,"n":0,"x":2,"y":1,"z":1}
     const item4 = ifca.read(); // {"a":3,"n":1,"x":3,"y":4,"z":4}
     const item5 = ifca.read(); // {"a":4,"n":0,"x":4,"y":2,"z":2}
-    const item6 = ifca.read(); // {"a":5,"n":1,"x":5,"y":5,"z":5} 
+    const item6 = ifca.read(); // {"a":5,"n":1,"x":5,"y":5,"z":5}
 
     t.true(isPromise(item2), "Is a promise.");
     t.true(isPromise(item3), "Is a promise.");

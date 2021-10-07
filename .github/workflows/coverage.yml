@@ -1,23 +1,22 @@
-name: Tests
+name: Coverage
 
 on:
   push:
     branches: [ feature/** ]
 
 jobs:
-  run:
+  check:
 
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [14.x, 16.x]
         package: [ifca, scramjet]
 
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v2
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: 14.x
         cache: 'npm'
-    - run: cd packages/${{ matrix.package }} && npm ci && npm run test
+    - run: cd packages/${{ matrix.package }} && npm ci && npm run coverage:check

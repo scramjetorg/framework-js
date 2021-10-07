@@ -5,3 +5,7 @@ export function isIterable(iterable: any): Boolean {
 export function isAsyncIterable(iterable: any): Boolean {
     return iterable && iterable[Symbol.asyncIterator] && typeof iterable[Symbol.asyncIterator] === "function";
 }
+
+export function isAsyncFunction(func: any): Boolean {
+    return func && func[Symbol.toStringTag] === "AsyncFunction";
+}

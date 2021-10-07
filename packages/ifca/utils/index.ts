@@ -1,8 +1,10 @@
 const SCRAMJET_LOG = process.env.SCRAMJET_LOG;
 
+type ResolvablePromiseObject<T> = {promise: Promise<T>, resolver: () => (T)};
+
 /**
  * Helper function that defers and optionaly returns given output after waiting.
- * 
+ *
  * @param {number} ts Number of milliseconds to wait
  * @param {Object} [out] Optional output
  * @returns {Promise}
@@ -13,8 +15,8 @@ function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void
 
 /**
  * Helper function that prints out debug messages
- * 
- * @param {String} msg Debug message to be printed out 
+ *
+ * @param {String} msg Debug message to be printed out
  * @param {*} [array] Optional array of objects
  */
 function trace (msg:any, ...array: any[]) {
@@ -26,4 +28,14 @@ function trace (msg:any, ...array: any[]) {
     console.log(`${date.valueOf()}: ${msg}`, ...array);
 }
 
-export { defer, trace } ;
+function createResolvablePromiseObject<T>(): ResolvablePromiseObject<T> {
+    let resolver: any;
+
+    const promise = new Promise<T>(res => {
+        resolver = res;
+    });
+
+    return { promise, resolver: resolver as () => (T) };
+}
+
+export { defer, trace, createResolvablePromiseObject, ResolvablePromiseObject };
