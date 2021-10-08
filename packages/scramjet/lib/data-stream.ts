@@ -26,7 +26,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
 
     map<U, W extends any[] = []>(callback: TransformFunction<T, U, W>, ...args: W): DataStream<U> {
         if (args?.length) {
-            this.ifca.addTransform(this.wrapCallback<U, typeof args>(callback, args));
+            this.ifca.addTransform(this.injectArgsToCallback<U, typeof args>(callback, args));
         } else {
             this.ifca.addTransform(callback);
         }
@@ -36,10 +36,10 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
 
 
     filter<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T> {
-        const mapFilteredChunks = (chunk: T, result: Boolean) => result ? chunk : DroppedChunk;
+        const chunksFilter = (chunk: T, result: Boolean) => result ? chunk : DroppedChunk;
 
         this.ifca.addTransform(
-            this.wrapCallbackMap(callback, mapFilteredChunks, args)
+            this.injectArgsToCallbackAndMapResult(callback, chunksFilter, args)
         );
 
         return this;
@@ -153,14 +153,11 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         })();
     }
 
-    private wrapCallback<U, W extends any[]>(
+    private injectArgsToCallback<U, W extends any[]>(
         callback: TransformFunction<T, U, W>,
         args: W
     ): (chunk: T) => Promise<U> | U {
-
-        const isCallbackAsync = isAsyncFunction(callback);
-
-        if (isCallbackAsync) {
+        if (isAsyncFunction(callback)) {
             return async (chunk: T): Promise<U> => {
                 return await callback(chunk, ...args) as unknown as Promise<U>;
             };
@@ -171,22 +168,19 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         };
     }
 
-    private wrapCallbackMap<U, X, W extends any[]>(
+    private injectArgsToCallbackAndMapResult<U, X, W extends any[]>(
         callback: TransformFunction<T, U, W>,
-        mapFn: (chunk: T, result: U) => X,
+        resultMapper: (chunk: T, result: U) => X,
         args: W
     ): (chunk: T) => Promise<X> | X {
-
-        const isCallbackAsync = isAsyncFunction(callback);
-
-        if (isCallbackAsync) {
+        if (isAsyncFunction(callback)) {
             return async (chunk: T): Promise<X> => {
-                return mapFn(chunk, await callback(chunk, ...args)) as unknown as Promise<X>;
+                return resultMapper(chunk, await callback(chunk, ...args)) as unknown as Promise<X>;
             };
         }
 
         return (chunk: T): X => {
-            return mapFn(chunk, callback(chunk, ...args) as U) as X;
+            return resultMapper(chunk, callback(chunk, ...args) as U) as X;
         };
     }
 }
