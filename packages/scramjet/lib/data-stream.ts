@@ -4,6 +4,7 @@ import * as readline from "readline";
 import { BaseStream, BaseStreamCreators } from "./base-stream";
 import { IFCA, TransformFunction, DroppedChunk } from "../../ifca/lib/index";
 import { isIterable, isAsyncIterable, isAsyncFunction } from "./utils";
+
 export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
     constructor() {
         super();
@@ -22,28 +23,24 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
         return dataStream;
     }
 
-    map<U>(callback: TransformFunction<T, U>): DataStream<U> {
-        this.ifca.addTransform(callback);
+
+    map<U, W extends any[] = []>(callback: TransformFunction<T, U, W>, ...args: W): DataStream<U> {
+        if (args?.length) {
+            this.ifca.addTransform(this.injectArgsToCallback<U, typeof args>(callback, args));
+        } else {
+            this.ifca.addTransform(callback);
+        }
+
         return this as unknown as DataStream<U>;
     }
 
-    filter(callback: TransformFunction<T, Boolean>): DataStream<T> {
-        // When wrapping we don't want to make sync callback async to not break IFCA optimization.
-        const isCallbackAsync = isAsyncFunction(callback);
 
-        if (isCallbackAsync) {
-            const newCallback = async (chunk: T): Promise<T | Symbol> => {
-                return await callback(chunk) ? chunk : DroppedChunk;
-            };
+    filter<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T> {
+        const chunksFilter = (chunk: T, result: Boolean) => result ? chunk : DroppedChunk;
 
-            this.ifca.addTransform(newCallback);
-        } else {
-            const newCallback = (chunk: T): T | Symbol => {
-                return callback(chunk) ? chunk : DroppedChunk;
-            };
-
-            this.ifca.addTransform(newCallback);
-        }
+        this.ifca.addTransform(
+            this.injectArgsToCallbackAndMapResult(callback, chunksFilter, args)
+        );
 
         return this;
     }
@@ -94,7 +91,8 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
     // After DataStream will be a subclass of Transform, it can be simply piped to naitve writeStream.
     async toFile(filePath: string): Promise<void> {
         const results: T[] = await this.toArray();
-        await fs.writeFile(filePath, results.map(line => `${line}\n`).join(''));
+
+        await fs.writeFile(filePath, results.map(line => `${line}\n`).join(""));
     }
 
     private startReading() {
@@ -142,9 +140,10 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
     private readFromIterable(iterable: Iterable<T> | AsyncIterable<T>): void {
         // We don't want to return or wait for the result of the async call,
         // it will just run in the background reading chunks as they appear.
-        (async(): Promise<void> => {
+        (async (): Promise<void> => {
             for await (const data of iterable) {
                 const drain = this.ifca.write(data);
+
                 if (drain instanceof Promise) {
                     await drain;
                 }
@@ -152,5 +151,36 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T> {
 
             this.ifca.end();
         })();
+    }
+
+    private injectArgsToCallback<U, W extends any[]>(
+        callback: TransformFunction<T, U, W>,
+        args: W
+    ): (chunk: T) => Promise<U> | U {
+        if (isAsyncFunction(callback)) {
+            return async (chunk: T): Promise<U> => {
+                return await callback(chunk, ...args) as unknown as Promise<U>;
+            };
+        }
+
+        return (chunk: T): U => {
+            return callback(chunk, ...args) as U;
+        };
+    }
+
+    private injectArgsToCallbackAndMapResult<U, X, W extends any[]>(
+        callback: TransformFunction<T, U, W>,
+        resultMapper: (chunk: T, result: U) => X,
+        args: W
+    ): (chunk: T) => Promise<X> | X {
+        if (isAsyncFunction(callback)) {
+            return async (chunk: T): Promise<X> => {
+                return resultMapper(chunk, await callback(chunk, ...args)) as unknown as Promise<X>;
+            };
+        }
+
+        return (chunk: T): X => {
+            return resultMapper(chunk, callback(chunk, ...args) as U) as X;
+        };
     }
 }
