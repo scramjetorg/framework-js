@@ -373,6 +373,43 @@ test("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times
     t.deepEqual(results, [1,2,3,4,5,6,7,8,9,10,11,12], "Should work well");
 });
 
+test("Processing order (chunks and transforms with generator)", async (t) => {
+    const ifca = new IFCA(4, (x: Object) => x);
+
+    function* chunks() {
+        for (let i = 0; i < 4; i++) {
+            yield {id: i, transforms: []};
+        }
+    }
+
+    ifca.addTransform((x: any) => {
+        x.transforms.push("t1");
+        return x;
+    });
+    ifca.addTransform(async (x: any) => {
+        await defer(2);
+        x.transforms.push("t2");
+        return x;
+    });
+
+    for (const chunk of chunks()) {
+        ifca.write(chunk);
+    }
+
+    const reads = [
+        ifca.read(), ifca.read(), ifca.read(), ifca.read()
+    ];
+
+    const results = await Promise.all(reads);
+
+    t.deepEqual(results, [
+        {id: 0, transforms: ["t1","t2"]},
+        {id: 1, transforms: ["t1","t2"]},
+        {id: 2, transforms: ["t1","t2"]},
+        {id: 3, transforms: ["t1","t2"]}],
+        "Chunks should be transformed and returned in the correct order.");
+});
+
 test("Ending IFCA more than once throws an error", async (t) => {
     const ifca = new IFCA(2, (x: number) => x+1);
 
