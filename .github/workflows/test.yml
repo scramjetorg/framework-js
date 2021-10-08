@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [ feature/** ]
+    branches: [ main, feature/** ]
 
 jobs:
   run:
