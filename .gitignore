@@ -112,10 +112,16 @@ dist
 .vscode-test
 
 # yarn v2
+.yarn/
 .yarn/cache
 .yarn/unplugged
 .yarn/build-state.yml
 .yarn/install-state.gz
+.yarnrc
+.yarnrc.yml
 .pnp.*
+
+# Scramjet framework specific
+build
 
 *.DS_Store

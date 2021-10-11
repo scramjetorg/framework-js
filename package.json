@@ -1,58 +1,46 @@
 {
-  "name": "scramjet-page-dev",
-  "version": "independent",
-  "private": true,
-  "description": "A development repo for Scramjet Pages and Panels.",
-  "main": "index.js",
+  "name": "@scramjet/framework",
+  "version": "5.0.0-pre.1",
+  "description": "The implementation of scramjet framework",
+  "main": "./src/index.ts",
   "scripts": {
-    "build": "yarn build:packages",
-    "build:all": "yarn build:packages",
-    "build:packages": "lerna run build",
-    "clean:root": "rimraf -rf ./dist/",
-    "clean:modules": "find -name node_modules -prune -exec rm -rf {} ';' 2> /dev/null",
-    "clean": "lerna run clean && yarn clean:root",
-    "prepack": "lerna run prepack",
-    "lint": "eslint . --ext .ts",
-    "lint:dedupe": "scripts/dedupe.js",
-    "watch": "lerna run watch",
-    "install:clean": "yarn clean && yarn clean:modules && yarn install",
-    "postinstall": "lerna exec yarn && lerna link",
-    "test": "yarn test:parallel && yarn test:bdd",
-    "test:packages": "lerna run test",
-    "test:parallel": "lerna run test --parallel",
-    "test:bdd": "cd bdd && yarn install && yarn run test-bdd"
+    "build": "rm -rf ./build && tsc -p tsconfig.build.json",
+    "build:watch": "npm run build -- -w",
+    "test": "npm run build && ava",
+    "test:watch": "concurrently 'npm run build:watch' 'sleep 8 && npm run test -- -w'",
+    "dist": "rm -rf ./dist && tsc -p tsconfig.dist.json",
+    "coverage": "npm run build && nyc --reporter=html ava",
+    "coverage:check": "npm run build && nyc --check-coverage ava"
   },
   "author": "Scramjet <open-source@scramjet.org>",
   "license": "AGPL-3.0",
   "devDependencies": {
-    "@types/node": "^14.14.25",
-    "@typescript-eslint/eslint-plugin": "^4.14.0",
-    "@typescript-eslint/parser": "^4.14.0",
-    "eslint": "^7.18.0",
-    "eslint-to-editorconfig": "^2.0.0",
-    "glob": "^7.1.6",
-    "lerna": "^3.22.1",
-    "rimraf": "^3.0.2",
-    "semver": "^7.3.5",
-    "ts-loader": "^8.0.15",
-    "ts-node": "^9.1.1",
-    "typescript": "^4.1.3"
+    "@types/assert": "^1.5.5",
+    "@types/node": "^15.14.2",
+    "assert": "^2.0.0",
+    "ava": "^3.15.0",
+    "concurrently": "^6.2.1",
+    "nyc": "^15.1.0",
+    "typedoc": "0.20.28",
+    "typedoc-plugin-markdown": "3.4.5",
+    "typescript": "^4.3.5"
   },
-  "workspaces": {
-    "packages": [
-      "packages/**"
+  "ava": {
+    "extensions": [
+      "js"
+    ],
+    "files": [
+      "build/**/*.spec.js"
     ]
   },
-  "publishConfig": {
-    "registry": "https://repo.int.scp.ovh/repository/npm-scramjet/",
-    "access": "restricted"
+  "nyc": {
+    "branches": 60,
+    "lines": 60,
+    "functions": 60,
+    "statements": 60,
+    "include": "build",
+    "exclude": "build/**/*.spec.js"
   },
-  "husky": {
-    "hooks": {
-      "pre-push": "yarn lint"
-    }
-  },
-  "dependencies": {
-    "scramjet": "^4.35.15"
-  }
+  "private": true,
+  "packageManager": "yarn@3.0.2"
 }
