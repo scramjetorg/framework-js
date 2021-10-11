@@ -30,7 +30,8 @@
       "js"
     ],
     "files": [
-      "build/test/**/*.js"
+      "build/test/**/*.js",
+      "!build/test/**/helpers"
     ]
   },
   "nyc": {

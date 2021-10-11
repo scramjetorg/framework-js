@@ -1,3 +1,7 @@
+# PTS test
+
+**IMPORTANT**: Those test are here for legacy reasons for now. They check how old and new IFCA performs in context or being used by PromiseTransformStream (so the v4 way). Some information below may be outdated.
+
 ## How to run test?
 
 In `pts` directory execute `npm run test`
@@ -43,3 +47,4 @@ Results are shown in the table below:
 | 5       | 4.203s       | 4.279s | 4.219s        |
 |         |              |        |               |
 | Average | 4.212s       | 4.275s | 4.190s        |
+

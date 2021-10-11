@@ -13,7 +13,7 @@ const mkTransform = require("./mk-transform")(shared);
 // const mkRead = require("./mk-read")(shared);
 // const mkWrite = require("./mk-write")(shared);
 const { StreamError } = require("./stream-errors");
-const { trace } = require("../../ifca/utils");
+const { trace } = require("../../../src/utils");
 
 const rename = (ob, fr, to) => {
     if (ob[fr]) {

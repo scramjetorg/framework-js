@@ -1,7 +1,7 @@
 const ignore = () => 0;
 const { StreamError } = require("./stream-errors");
 
-const { trace } = require("../../ifca/utils");
+const { trace } = require("../../../src/utils");
 
 /**
  * Generate transform methods on the stream class.

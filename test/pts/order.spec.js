@@ -1,11 +1,11 @@
 const test = require("ava");
 const { Readable } = require("stream");
-const { trace } = require("../../ifca/utils");
+const { trace } = require("../../src/utils");
 
 const { performance } = require("perf_hooks");
 
-const { PromiseTransformStream: PromiseTransformStreamIFCA } = require("../lib/promise-transform-stream-ifca");
-const { PromiseTransformStream } = require("../lib/promise-transform-stream");
+const { PromiseTransformStream: PromiseTransformStreamIFCA } = require("./helpers/promise-transform-stream-ifca");
+const { PromiseTransformStream } = require("./helpers/promise-transform-stream");
 
 /**
  * Memory snapshot interval in miliseconds defines how often we check memory usage.
@@ -149,8 +149,8 @@ async function code(pts, name, t) {
 
 // Run tests serially and not concurrently. Repeat 5x in order to measure average execution time.
 const algorithms = [
-    { name: "IFCA", class: PromiseTransformStreamIFCA, repeat: 5 },
-    { name: "MK-TRANSFORM", class: PromiseTransformStream, repeat: 5 },
+    { name: "IFCA", class: PromiseTransformStreamIFCA, repeat: 1 },
+    { name: "MK-TRANSFORM", class: PromiseTransformStream, repeat: 1 },
 ];
 
 for (let algo of algorithms) {

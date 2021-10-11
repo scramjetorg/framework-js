@@ -1,10 +1,9 @@
 "use strict";
 
-const { Duplex } = require("stream");
+const { Readable, Duplex } = require("stream");
 const DefaultHighWaterMark = require("os").cpus().length * 2;
-const { IFCA } = require("../../ifca/lib/index");
-const { trace } = require("../../ifca/utils");
-const { Readable } = require("stream");
+const { IFCA } = require("../../../src/ifca");
+const { trace } = require("../../../src/utils");
 
 let seq = 0;
 

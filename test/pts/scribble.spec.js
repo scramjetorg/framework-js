@@ -1,5 +1,5 @@
 const test = require("ava");
-const { PromiseTransformStream } = require("../lib/promise-transform-stream-ifca");
+const { PromiseTransformStream } = require("./helpers/promise-transform-stream-ifca");
 
 /**
  * How many items can be waiting to be flushed
