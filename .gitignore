@@ -118,13 +118,4 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-# scramjet specific
-.work/
-# bdd
-bdd/*report*.html
-
-# pre-runner sample-package
-packages/pre-runner/sample-package/
-
-bdd/dataOut.txt
 *.DS_Store
