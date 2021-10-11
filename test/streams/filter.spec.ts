@@ -1,5 +1,5 @@
 import test from "ava";
-import { DataStream } from "../lib/data-stream";
+import { DataStream } from "../../src/streams/data-stream";
 
 test("DataStream can filter chunks via sync callback", async (t) => {
     const dsNumber = DataStream.from<number>([1, 2, 3, 4, 5, 6, 7]);

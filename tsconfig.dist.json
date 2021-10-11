@@ -7,7 +7,6 @@
     "outDir": "dist"
   },
   "include": [
-    "lib",
-    "utils"
+    "src"
   ]
 }

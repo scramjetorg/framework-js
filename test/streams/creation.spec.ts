@@ -1,7 +1,7 @@
 import test from "ava";
 import { createReadStream } from "fs";
-import { defer } from "../../ifca/utils";
-import { DataStream } from "../lib/data-stream";
+import { defer } from "../../src/utils";
+import { DataStream } from "../../src/streams/data-stream";
 
 test("DataStream can be constructed", (t) => {
     const dsNumber = new DataStream<number>();

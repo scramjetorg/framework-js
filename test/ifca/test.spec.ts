@@ -1,8 +1,8 @@
 /* eslint-disable */
 
 import test from "ava";
-import { IFCA, DroppedChunk } from "../lib/index";
-import { defer } from "../utils";
+import { IFCA, DroppedChunk } from "../../src/ifca";
+import { defer } from "../../src/utils"
 
 type MaybePromise<X> = Promise<X>|X;
 

@@ -1,6 +1,6 @@
 import test from "ava";
-import { IFCA } from "../lib/index";
-import { defer } from "../utils"
+import { IFCA } from "../../src/ifca";
+import { defer } from "../../src/utils"
 
 /**
  * How many items can be waiting to be flushed
