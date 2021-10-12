@@ -7,7 +7,7 @@ type ResolvablePromiseObject<T> = {promise: Promise<T>, resolver: () => (T)};
  *
  * @param {number} ts Number of milliseconds to wait
  * @param {Object} [out] Optional output
- * @returns {Promise}
+ * @returns {Promise} Promise resolved after given timoeut
  */
 function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void> {
     return new Promise((res) => setTimeout(() => res(out), ts));
@@ -19,7 +19,7 @@ function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void
  * @param {String} msg Debug message to be printed out
  * @param {*} [array] Optional array of objects
  */
-function trace (msg:any, ...array: any[]) {
+function trace(msg:any, ...array: any[]) {
     // TODO: make this into a const false on compile
     if (!SCRAMJET_LOG) return;
 
@@ -50,4 +50,12 @@ function isAsyncFunction(func: any): Boolean {
     return func && func[Symbol.toStringTag] === "AsyncFunction";
 }
 
-export { defer, trace, createResolvablePromiseObject, ResolvablePromiseObject, isIterable, isAsyncIterable, isAsyncFunction };
+export {
+    defer,
+    trace,
+    createResolvablePromiseObject,
+    ResolvablePromiseObject,
+    isIterable,
+    isAsyncIterable,
+    isAsyncFunction
+};
