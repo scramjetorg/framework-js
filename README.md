@@ -19,10 +19,15 @@ Refer to [official docs](https://nodejs.org/en/download/). Alternatively you may
 
 ```bash
 npm install -g yarn
-yarn set version berry
 ```
 
 ### Install dependencies
+
+Update yarn to 3.x version:
+
+```bash
+yarn set version berry
+```
 
 Install project dependencies:
 
@@ -72,7 +77,7 @@ Checks code coverage and generates HTML report.
 yarn dist
 ```
 
-Builds dist files - similar to `build` but additionaly generates source maps and TS typings files.
+Builds dist files - similar to `build` but skips `test` folder and additionaly generates source maps and TS typings files.
 
 ```bash
 yarn lint

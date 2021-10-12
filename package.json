@@ -5,10 +5,10 @@
   "main": "./src/index.ts",
   "scripts": {
     "build": "rm -rf ./build && tsc -p tsconfig.build.json",
-    "build:w": "yarn build -- -w",
+    "build:w": "yarn build -w",
     "test": "yarn build && ava",
-    "test:w": "concurrently 'yarn build:watch' 'sleep 8 && yarn test -- -w'",
-    "coverage": "yarn coverage && yarn http-server coverage",
+    "test:w": "concurrently 'yarn build:w' 'sleep 8 && yarn test -w'",
+    "coverage": "yarn coverage:generate && yarn http-server coverage",
     "coverage:check": "yarn build && nyc --check-coverage ava",
     "coverage:generate": "yarn build && nyc --reporter=html ava",
     "dist": "rm -rf ./dist && tsc -p tsconfig.dist.json",
