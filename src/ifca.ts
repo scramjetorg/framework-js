@@ -94,10 +94,12 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      */
     constructor(
         public maxParallel = 2 * cpus().length,
-        initialTransform: TransformFunction<S,T>,
+        initialTransform?: TransformFunction<S,T>,
         options: IFCAOptions = {}
     ) {
-        this.transformHandlers.push([initialTransform])
+        if (initialTransform) {
+            this.transformHandlers.push([initialTransform]);
+        }
         this.strict = !!options.strict;
     }
 
