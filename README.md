@@ -21,7 +21,7 @@ Refer to [official docs](https://nodejs.org/en/download/). Alternatively you may
 npm install -g yarn
 ```
 
-### Install dependencies
+### Setup project
 
 Update yarn to 3.x version:
 
@@ -65,7 +65,7 @@ Checks code coverage, generates HTML report and serves it on 8080 port.
 yarn coverage:check
 ```
 
-Checks code coverage. Will fail if it is belowe a threshold defined in `package.json`. Useful as a CI job.
+Checks code coverage. Will fail if it is below a threshold defined in `package.json`. Useful as a CI job.
 
 ```bash
 yarn coverage:generate
@@ -89,7 +89,7 @@ Lints `src` and `test` dirs. Used as a `pre-commit` hook.
 yarn prepare
 ```
 
-Installs husky hooks. Necessary only for development, Needs to be run only once after repo checkout.
+Installs husky hooks. Necessary only for development. Needs to be run only once after repo checkout.
 
 ## Publish
 
@@ -97,7 +97,7 @@ Installs husky hooks. Necessary only for development, Needs to be run only once 
 
 ## Documentation
 
-Project structure looks a below:
+Project structure:
 
 * `src/` - directory with all the source code
 * `test/` - directory with test
