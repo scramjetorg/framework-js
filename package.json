@@ -11,7 +11,8 @@
     "dist": "rm -rf ./dist && tsc -p tsconfig.dist.json",
     "coverage": "npm run build && nyc --reporter=html ava",
     "coverage:check": "npm run build && nyc --check-coverage ava",
-    "lint": "eslint src/ test/ --ext .ts"
+    "lint": "eslint src/ test/ --ext .ts",
+    "prepare": "husky install"
   },
   "author": "Scramjet <open-source@scramjet.org>",
   "license": "AGPL-3.0",
@@ -24,6 +25,7 @@
     "ava": "^3.15.0",
     "concurrently": "^6.2.1",
     "eslint": "^8.0.0",
+    "husky": "^7.0.2",
     "nyc": "^15.1.0",
     "typedoc": "0.20.28",
     "typedoc-plugin-markdown": "3.4.5",

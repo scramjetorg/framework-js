@@ -384,6 +384,7 @@ __metadata:
     ava: ^3.15.0
     concurrently: ^6.2.1
     eslint: ^8.0.0
+    husky: ^7.0.2
     nyc: ^15.1.0
     typedoc: 0.20.28
     typedoc-plugin-markdown: 3.4.5
@@ -2419,6 +2420,15 @@ fsevents@~2.3.2:
   dependencies:
     ms: ^2.0.0
   checksum: 9c7a74a2827f9294c009266c82031030eae811ca87b0da3dceb8d6071b9bde22c9f3daef0469c3c533cc67a97d8a167cd9fc0389350e5f415f61a79b171ded16
+  languageName: node
+  linkType: hard
+
+"husky@npm:^7.0.2":
+  version: 7.0.2
+  resolution: "husky@npm:7.0.2"
+  bin:
+    husky: lib/bin.js
+  checksum: 2ccfe6ddc51dc05ae8ea1e2fbb893344e93a813e00c595d6b5f5e704b7b998d6b0e2adda7c57f99b5e46a60dc07c7d860269a2ea91661c6bacef0eca8e0b8e96
   languageName: node
   linkType: hard
 
