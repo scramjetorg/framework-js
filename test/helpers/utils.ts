@@ -7,7 +7,7 @@ import { IFCA, DroppedChunk } from "../../src/ifca";
  * @param {Object} [out] Optional output
  * @returns {Promise} Promise resolved after given timoeut
  */
- async function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void> {
+async function defer<X extends any | undefined>(ts: number, out?: X): Promise<X | void> {
     return new Promise((res) => setTimeout(() => res(out), ts));
 }
 
