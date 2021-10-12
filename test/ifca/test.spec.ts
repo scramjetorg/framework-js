@@ -3,6 +3,7 @@
 import test from "ava";
 import { IFCA, DroppedChunk } from "../../src/ifca";
 import { defer } from "../../src/utils"
+import { transforms } from "../helpers/utils";
 
 type MaybePromise<X> = Promise<X>|X;
 
@@ -745,12 +746,4 @@ function markWhenResolved(items: Array<any>, index: number) {
 
 function mapDrainsArray(drains: Array<any>) {
     return drains.map(drain => drain instanceof Promise ? "Promise" : drain);
-}
-
-const transforms = {
-    initial: (x: number) => x,
-    filter: (x: number) => x % 2 ? x : DroppedChunk,
-    filterAsync: async (x: number) => { await defer(2); return Promise.resolve(x % 2 ? x : DroppedChunk); },
-    logger: (into: any[]) => { return (x: number) => { into.push(x); return x; }},
-    loggerAsync: (into: any[]) => { return async (x: number) => { await defer(2); into.push(x); return Promise.resolve(x); }},
 }

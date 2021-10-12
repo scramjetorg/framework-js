@@ -91,6 +91,26 @@ yarn prepare
 
 Installs husky hooks. Necessary only for development. Needs to be run only once after repo checkout.
 
+### Running single test file or specific tests
+
+Single test file can be run by passing its path to `test` command:
+
+```bash
+yarn test build/test/ifca/common.spec.js
+```
+
+While specific test cases can be run using `-m` (match) option:
+
+```bash
+yarn test -m "*default*"
+```
+
+Both can be mixed to run specific tests from a given file or folder:
+
+```bash
+yarn test build/test/ifca/common.spec.js -m "*default*"
+```
+
 ## Publish
 
 **To be done** as we don't have publishing workflow in place at the moment.
