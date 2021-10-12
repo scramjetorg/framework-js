@@ -2,8 +2,7 @@
 
 import test from "ava";
 import { IFCA, DroppedChunk } from "../../src/ifca";
-import { defer } from "../../src/utils"
-import { transforms } from "../helpers/utils";
+import { defer, transforms } from "../helpers/utils";
 
 type MaybePromise<X> = Promise<X>|X;
 

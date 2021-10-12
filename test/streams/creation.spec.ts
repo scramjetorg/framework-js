@@ -1,6 +1,6 @@
 import test from "ava";
 import { createReadStream } from "fs";
-import { defer } from "../../src/utils";
+import { defer } from "../helpers/utils";
 import { DataStream } from "../../src/streams/data-stream";
 
 test("DataStream can be constructed", (t) => {
