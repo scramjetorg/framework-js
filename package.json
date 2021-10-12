@@ -10,16 +10,20 @@
     "test:watch": "concurrently 'npm run build:watch' 'sleep 8 && npm run test -- -w'",
     "dist": "rm -rf ./dist && tsc -p tsconfig.dist.json",
     "coverage": "npm run build && nyc --reporter=html ava",
-    "coverage:check": "npm run build && nyc --check-coverage ava"
+    "coverage:check": "npm run build && nyc --check-coverage ava",
+    "lint": "eslint src/ test/ --ext .ts"
   },
   "author": "Scramjet <open-source@scramjet.org>",
   "license": "AGPL-3.0",
   "devDependencies": {
     "@types/assert": "^1.5.5",
     "@types/node": "^15.14.2",
+    "@typescript-eslint/eslint-plugin": "^5.0.0",
+    "@typescript-eslint/parser": "^5.0.0",
     "assert": "^2.0.0",
     "ava": "^3.15.0",
     "concurrently": "^6.2.1",
+    "eslint": "^8.0.0",
     "nyc": "^15.1.0",
     "typedoc": "0.20.28",
     "typedoc-plugin-markdown": "3.4.5",
