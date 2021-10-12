@@ -155,6 +155,6 @@ const algorithms = [
 
 for (let algo of algorithms) {
     for (let count = 1; count <= algo.repeat; count++) {
-        test.serial(`KM1.3 ${algo.name} run: ${count}`, code.bind(null, algo.class, `IFCA-${count}`));
+        test.skip(`KM1.3 ${algo.name} run: ${count}`, code.bind(null, algo.class, `IFCA-${count}`));
     }
 }
