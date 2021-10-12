@@ -1,161 +1,98 @@
-# Scramjet Cloud Server Instance (CSI)
+# Scramjet Framework JS/TS
 
 ## Table of contents
 
 - [Installation](#installation)
-- [Publish](#publish)
 - [Commands](#commands)
-- [How to run components](#howto-run-components)
-- [How to run tests](#how-to-run-tests)
-  - [BDD test](#bdd-test)
+- [Publish](#publish)
 - [Documentation](#documentation)
 
 ## Installation
 
-```bash
-npm install -g lerna yarn
-```
+Setup necessary tooling and install dependencies first:
+
+### Node.js (14.x)
+
+Refer to [official docs](https://nodejs.org/en/download/). Alternatively you may use Node version manager like [nvm](https://github.com/nvm-sh/nvm).
+
+### Yarn (3.x)
 
 ```bash
-yarn link
+npm install -g yarn
+yarn set version berry
 ```
+
+### Install dependencies
+
+Install project dependencies:
 
 ```bash
 yarn install
 ```
 
-It'll install all dependencies at once.
-
-## Publish
-
-Create a new release of the packages that have been updated.
-Prompts for a new version and updates all the packages on git and npm.
+Setup husky:
 
 ```bash
-lerna publish
-```
-
-```bash
-yarn publish
+yarn prepare
 ```
 
 ## Commands
 
-Build all packages
-
 ```bash
-yarn build
+yarn build[:w]
 ```
 
-Remove all files in `*dist/*` directory
+Transpiles `.ts` sources and tests (`src` and `test` dirs) and outputs JS files to `build` directory. When run with `:w` it will watch for changes and rebuild automatically.
 
 ```bash
-yarn clean
+yarn test[:w]
 ```
 
-Check and fix syntax
+Runs all tests from `test` folder. It runs `build` internally so it doesn't have to be run manually. When run with `:w` it will watch for changes, rebuild and rerun test automatically.
+
+```bash
+yarn coverage
+```
+
+Checks code coverage, generates HTML report and serves it on 8080 port.
+
+```bash
+yarn coverage:check
+```
+
+Checks code coverage. Will fail if it is belowe a threshold defined in `package.json`. Useful as a CI job.
+
+```bash
+yarn coverage:generate
+```
+
+Checks code coverage and generates HTML report.
+
+```bash
+yarn dist
+```
+
+Builds dist files - similar to `build` but additionaly generates source maps and TS typings files.
 
 ```bash
 yarn lint
 ```
 
-Watch files
+Lints `src` and `test` dirs. Used as a `pre-commit` hook.
 
 ```bash
-yarn watch
+yarn prepare
 ```
 
-Test files
+Installs husky hooks. Necessary only for development, Needs to be run only once after repo checkout.
 
-```bash
-yarn test
-```
+## Publish
 
-Test files parallel
+**To be done** as we don't have publishing workflow in place at the moment.
 
-```bash
-yarn test:parallel
-```
+## Documentation
 
-BDD Test
+Project structure looks a below:
 
-```bash
-yarn test:bdd
-```
-
-Run script excluding package
-
-```bash
-lerna run --ignore @scramjet/<package_name> build
-```
-
-```bash
-lerna run --ignore @scramjet/<package_name> build && @scramjet/<package_name> build
-```
-
-Run script only in one package
-
-```bash
-lerna run --scope @scramjet/<package_name> <script-name>
-```
-
-Run script to check if there are packages to deduplicate:
-
-```bash
-yarn lint:dedupe
-```
-
-<!--
-- `npm run build` - build all services, samples etc.,
-- `npm run build:supervisor` - build only supervisor,
-- `npm run clean` - remove all files in *dist/* directory,
-- `npm run lint` - check files
- -->
-
----
-
-Add new package
-
-```bash
-lerna create package_name
-```
-
-List all of the public packages in the current Lerna repo.
-
-```bash
-lerna ls
-```
-
-Bootstrap the packages in the current Lerna repo. Installing all their dependencies and linking any cross-dependencies.
-
-```bash
-lerna bootstrap
-```
-
-Add external dependency
-
-```bash
-lerna add <dependency_name> --scope=@scope_name/package_name
-```
-
-Add internal dependency
-
-```bash
-lerna add @scope_name/package_name --scope=@scope_name/package_name
-```
-
-Import the package in the local path `<pathToRepo>` into `packages/<directory-name>` with commit history.
-
-```bash
-lerna import <pathToRepo>
-```
-
-Run an npm script in each package that contains that script.
-
-```bash
-lerna run [script]
-```
-
-## How to run components
-
-## How to run tests
+* `src/` - directory with all the source code
+* `test/` - directory with test
