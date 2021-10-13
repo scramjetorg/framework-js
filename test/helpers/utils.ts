@@ -27,9 +27,21 @@ async function readX(ifca: IFCA<any, any, any>, numberOfReads: number): Promise<
     return Promise.all(reads);
 }
 
+async function readAwaitX(ifca: IFCA<any, any, any>, numberOfReads: number): Promise<any[]> {
+    const reads = [];
+
+    for (let i = 0; i < numberOfReads; i++) {
+        reads.push(await ifca.read());
+    }
+
+    return reads;
+}
+
 const transforms = {
     initial: (x: number) => x,
     prepend: (x: string) => `foo-${x}`,
+    delay: async (x: number) => defer(x * 5, x),
+    delayOdd: async (x: number) => { return x % 2 === 1 ? await defer(10 + x, x) : x; },
     filter: (x: number) => x % 2 ? x : DroppedChunk,
     filterAsync: async (x: number) => { await defer(2); return Promise.resolve(x % 2 ? x : DroppedChunk); },
     logger: (into: any[]) => { return (x: number) => { into.push(x); return x; }; },
@@ -46,5 +58,6 @@ export {
     defer,
     writeInput,
     readX,
+    readAwaitX,
     transforms
 };
