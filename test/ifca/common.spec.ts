@@ -15,6 +15,8 @@ const sampleObjectInput: Array<ObjectChunk> = [
     { id: 0, time: 0 }, { id: 1, time: 0 }, { id: 2, time: 0 }, { id: 3, time: 0 }
 ];
 
+// Basics
+
 test("Passthrough by default", async (t) => {
     const inputSize = sampleNumericInput1.length;
     const ifca = new IFCA(inputSize);
@@ -80,6 +82,8 @@ test("Concurrent processing", async (t) => {
     t.true(chunkProcessingTimeMax * processingTimeMargin > processingTime, "Total processing time should be close to a single chunk longest processing time");
 });
 
+// Ordering
+
 test("Result order with odd chunks delayed", async (t) => {
     const inputSize = sampleNumericInput1.length;
     const ifca = new IFCA(inputSize, transforms.delayOdd);
@@ -144,4 +148,46 @@ test("Reads before writes", async (t) => {
     const results = await Promise.all(reads);
 
     t.deepEqual(results, sampleNumericInput2);
+});
+
+// Filtering
+
+test("Support for dropping chunks", async (t) => {
+    const input = [...sampleNumericInput1, ...sampleNumericInput2];
+    const inputSize = input.length;
+    const ifca = new IFCA(inputSize / 2, transforms.filter);
+
+    writeInput(ifca, input);
+
+    const results = await readX(ifca, inputSize / 2);
+
+    t.deepEqual(results, [1, 3, 5, 1, 3, 5]);
+});
+
+test("Reads before filtering", async (t) => {
+    const input = [...sampleNumericInput1, ...sampleNumericInput2];
+    const inputSize = input.length;
+    const ifca = new IFCA(inputSize / 2, transforms.filter);
+    const reads = readX(ifca, inputSize / 2);
+
+    writeInput(ifca, input);
+
+    const results = await reads;
+
+    t.deepEqual(results, [1, 3, 5, 1, 3, 5]);
+});
+
+test("Dropping chunks in the middle of chain", async (t) => {
+    const inputSize = sampleNumericInput1.length;
+    const ifca = new IFCA<number, any, any>(inputSize);
+    const unfilteredChunks: number[] = [];
+
+    ifca.addTransform(transforms.filterAll);
+    ifca.addTransform(transforms.logger(unfilteredChunks));
+
+    writeInput(ifca, sampleNumericInput1);
+
+    await ifca.end();
+
+    t.true(unfilteredChunks.length === 0);
 });
