@@ -121,7 +121,8 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     get state() {
         return {
-            pending: this.processingQueue.length
+            all: this.processingQueue.length,
+            pending: this.processingQueue.pendingLength
         }
     }
 
@@ -282,17 +283,18 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
             this.attachErrorHandlerToChunkResult(currentChunkResult)
         ])
             .then(([, result]) => {
-                trace("IFCA ON-CHUNK-RESOLVED", this.processingQueue.length, this.maxParallel, this.drain);
-                if (this.processingQueue.length < this.maxParallel && this.drain !== undefined) {
-                    this.drain.resolver();
-                    this.drain = undefined;
-                }
-
                 return result;
             })
             .catch(e => {
                 if (typeof e === "undefined") return;
                 throw e;
+            })
+            .finally(() => {
+                trace("IFCA ON-CHUNK-RESOLVED", this.processingQueue.length, this.maxParallel, this.drain);
+                if (this.processingQueue.length < this.maxParallel && this.drain !== undefined) {
+                    this.drain.resolver();
+                    this.drain = undefined;
+                }
             });
     }
 
@@ -417,6 +419,13 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
      * @returns {MaybePromise|null}
      */
     read(): MaybePromise<T|null> {
+        // Hanlde the case when IFCA is ended (with queue above maxParallel) and then after some time
+        // read is called. If queue length drops below maxParallel, this.drain should resolve.
+        if (this.ended && this.processingQueue.length < this.maxParallel && this.drain !== undefined) {
+            this.drain.resolver();
+            this.drain = undefined;
+        }
+
         return this.processingQueue.read();
     }
 
