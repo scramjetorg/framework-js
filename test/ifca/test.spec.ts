@@ -605,7 +605,7 @@ test("Drain is resolved correctly on end only after reads", async (t) => {
 // We can't predict what data will be there thus can't emit 'null's for filtered items.
 
 test("Dropped chunks are filtered out correctly (strict, sync chain)", async (t) => {
-    const ifca = new IFCA(4, transforms.initial, { strict: true });
+    const ifca = new IFCA(4, transforms.identity, { strict: true });
     const transformChunks: number[] = [];
 
     ifca.addTransform(transforms.filter);
@@ -629,7 +629,7 @@ test("Dropped chunks are filtered out correctly (strict, sync chain)", async (t)
 });
 
 test("Dropped chunks are filtered out correctly (strict, async chain, sync filter )", async (t) => {
-    const ifca = new IFCA(4, transforms.initial, { strict: true });
+    const ifca = new IFCA(4, transforms.identity, { strict: true });
     const transformChunks: number[] = [];
 
     ifca.addTransform(transforms.filter);
@@ -653,7 +653,7 @@ test("Dropped chunks are filtered out correctly (strict, async chain, sync filte
 });
 
 test("Dropped chunks are filtered out correctly (strict, async chain, async filter)", async (t) => {
-    const ifca = new IFCA(4, transforms.initial, { strict: true });
+    const ifca = new IFCA(4, transforms.identity, { strict: true });
     const transformChunks: number[] = [];
 
     ifca.addTransform(transforms.filterAsync);
@@ -677,7 +677,7 @@ test("Dropped chunks are filtered out correctly (strict, async chain, async filt
 });
 
 test("Dropped chunks are filtered out correctly (sync chain)", async (t) => {
-    const ifca = new IFCA(4, transforms.initial);
+    const ifca = new IFCA(4, transforms.identity);
     const transformChunks: number[] = [];
 
     ifca.addTransform(transforms.filter);
@@ -701,7 +701,7 @@ test("Dropped chunks are filtered out correctly (sync chain)", async (t) => {
 });
 
 test("Dropped chunks are filtered out correctly (sync filter to async chain)", async (t) => {
-    const ifca = new IFCA(4, transforms.initial);
+    const ifca = new IFCA(4, transforms.identity);
     const transformChunks: number[] = [];
 
     ifca.addTransform(transforms.filter);
@@ -725,7 +725,7 @@ test("Dropped chunks are filtered out correctly (sync filter to async chain)", a
 });
 
 test("Dropped chunks are filtered out correctly (async chain)", async (t) => {
-    const ifca = new IFCA(4, transforms.initial);
+    const ifca = new IFCA(4, transforms.identity);
     const transformChunks: number[] = [];
 
     ifca.addTransform(transforms.filterAsync);
@@ -749,7 +749,7 @@ test("Dropped chunks are filtered out correctly (async chain)", async (t) => {
 });
 
 test("IFCA ends correctly if all values are filtered out", async (t) => {
-    const ifca = new IFCA(4, transforms.initial);
+    const ifca = new IFCA(4, transforms.identity);
     const transformChunks: number[] = [];
 
     ifca.addTransform((x: number) => DroppedChunk);

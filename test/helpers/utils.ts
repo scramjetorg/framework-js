@@ -38,17 +38,17 @@ async function readAwaitX(ifca: IFCA<any, any, any>, numberOfReads: number): Pro
 }
 
 const transforms = {
-    initial: (x: number) => x,
+    identity: (x: number) => x,
     prepend: (x: string) => `foo-${x}`,
     delay: async (x: number) => defer(x * 5, x),
     delayOdd: async (x: number) => { return x % 2 === 1 ? await defer(10 + x, x) : x; },
     filter: (x: number) => x % 2 ? x : DroppedChunk,
-    filterAsync: async (x: number) => { await defer(2); return Promise.resolve(x % 2 ? x : DroppedChunk); },
+    filterAsync: async (x: number) => { await defer(5); return Promise.resolve(x % 2 ? x : DroppedChunk); },
     filterAll: () => DroppedChunk,
     logger: (into: any[]) => { return (x: number) => { into.push(x); return x; }; },
     loggerAsync: (into: any[]) => {
         return async (x: number) => {
-            await defer(2);
+            await defer(5);
             into.push(x);
             return Promise.resolve(x);
         };
