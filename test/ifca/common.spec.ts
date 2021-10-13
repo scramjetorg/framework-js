@@ -191,3 +191,70 @@ test("Dropping chunks in the middle of chain", async (t) => {
 
     t.true(unfilteredChunks.length === 0);
 });
+
+// Limits
+
+test("Unrestricted writing below limit", async (t) => {
+    const inputSize = 4;
+    const ifca = new IFCA(inputSize);
+    const drains = [];
+
+    for (let i = 0; i < inputSize - 1; i++) {
+        drains.push(ifca.write(i));
+    }
+
+    t.true(drains.every(drain => drain === undefined));
+});
+
+test("Drain pending when limit reached", async (t) => {
+    const inputSize = 4;
+    const ifca = new IFCA(inputSize);
+    const drains = [];
+
+    for (let i = 0; i < inputSize; i++) {
+        drains.push(ifca.write(i));
+    }
+
+    const lastDrain = drains.pop() as Promise<void>;
+
+    let lastDrainResolved = false;
+
+    lastDrain.then(() => {
+        lastDrainResolved = true;
+    });
+
+    t.true(drains.every(drain => drain === undefined), "Drain values up to N write calls are plain values.");
+    t.true(lastDrain instanceof Promise, "Drain value of N write call is awaitable.");
+
+    // Wait a bit to make sure drain promise is still pending.
+    await defer(10);
+
+    t.false(lastDrainResolved, "Drain value of N write call is pending.");
+});
+
+test("Drain resolved when drops below limit", async (t) => {
+    const inputSize = 4;
+    const ifca = new IFCA(inputSize);
+    const drains = [];
+    const awaitingDrains: Array<Promise<void>> = [];
+
+    for (let i = 0; i < inputSize + 2; i++) {
+        if (i >= inputSize - 1) {
+            awaitingDrains.push(ifca.write(i) as Promise<void>);
+        } else {
+            drains.push(ifca.write(i));
+        }
+    }
+
+    t.true(drains.every(drain => drain === undefined), "Drain values up to N write calls are plain values.");
+    t.true(awaitingDrains.every(drain => drain instanceof Promise), "Drain values starting from Nth write call are awaitables.");
+
+    await Promise.all([ifca.read(), ifca.read(), ifca.read()]);
+
+    // If reads above doesn't resolve drain promise, this test will fail with timeout.
+    await Promise.all(awaitingDrains);
+
+    t.pass();
+});
+
+// Ending
