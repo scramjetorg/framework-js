@@ -475,28 +475,41 @@ test("Drain is emitted and resolved correctly", async (t) => {
     markWhenResolved(drains1, 3);
 
     // processing queue [0, 1, 2, 3]
-    t.deepEqual({pending: 4}, ifca.state);
+    // ready queue []
+    t.like(ifca.state, {pending: 4});
     t.deepEqual(mapDrainsArray(drains1), [undefined, "Promise", "Promise", "Promise"]);
 
     // read first chunk
     t.deepEqual(await ifca.read(), 0);
 
     // processing queue [1, 2, 3]
-    t.deepEqual({pending: 3}, ifca.state);
+    // ready queue []
+    t.like(ifca.state, {pending: 3});
     t.deepEqual(mapDrainsArray(drains1), [undefined, "Promise", "Promise", "Promise"]);
 
     // read second chunk
     t.deepEqual(await ifca.read(), 10);
 
     // processing queue [2, 3]
-    t.deepEqual({pending: 2}, ifca.state);
+    // ready queue []
+    t.like(ifca.state, {pending: 2});
     t.deepEqual(mapDrainsArray(drains1), [undefined, "Promise", "Promise", "Promise"]);
 
     // read third chunk
     t.deepEqual(await ifca.read(), 20);
 
-    // processing queue [3]
-    t.deepEqual({pending: 1}, ifca.state);
+    // We need to await here for the next tick since 'ifca.read()' above triggers drain promise resolution. However,
+    // since it is a promise it will be resolved on the end of the next tick so after any sync code after read call is run.
+    //
+    // Theoretically, we could think about solving this in IFCA internally but I doubt it can be done efficently, because
+    // the only way to qurantte it will happen together with read promise resolution is to internally wait for drain promise
+    // resolution in read and then resolve read awaitng promise with value. However, this will slow things down and since
+    // read should not depend on drain I think it is acceptable how it works now.
+    await defer(0);
+
+    // processing queue []
+    // ready queue [3]
+    t.like(ifca.state, {pending: 0, all: 1});
     t.deepEqual(mapDrainsArray(drains1), [undefined, "ResolvedPromise", "ResolvedPromise", "ResolvedPromise"]);
 
     const drains2: Array<Promise<void> | void | string> = [];
@@ -508,40 +521,48 @@ test("Drain is emitted and resolved correctly", async (t) => {
     markWhenResolved(drains2, 1);
     markWhenResolved(drains2, 2);
 
-    // processing queue [3, 100, 101, 102]
-    t.deepEqual({pending: 4}, ifca.state);
+    // processing queue [100, 101, 102]
+    // ready queue [3]
+    t.like(ifca.state, {pending: 3, all: 4});
     t.deepEqual(mapDrainsArray(drains2), ["Promise", "Promise", "Promise"]);
 
     // read fourth chunk
     t.deepEqual(await ifca.read(), 30);
 
     // processing queue [100, 101, 102]
-    t.deepEqual({pending: 3}, ifca.state);
+    // ready queue []
+    t.like(ifca.state, {pending: 3});
     t.deepEqual(mapDrainsArray(drains2), ["Promise", "Promise", "Promise"]);
 
     // read fifth chunk
     t.deepEqual(await ifca.read(), 1000);
 
     // processing queue [101, 102]
-    t.deepEqual({pending: 2}, ifca.state);
+    // ready queue []
+    t.like(ifca.state, {pending: 2});
     t.deepEqual(mapDrainsArray(drains2), ["Promise", "Promise", "Promise"]);
 
     // read sixth chunk
     t.deepEqual(await ifca.read(), 1010);
 
-    // processing queue [102]
-    t.deepEqual({pending: 1}, ifca.state);
+    // Same reason for awaiting as the "defer(0)" above.
+    await defer(0);
+
+    // processing queue []
+    // ready queue [102]
+    t.like(ifca.state, {pending: 0, all: 1});
     t.deepEqual(mapDrainsArray(drains2), ["ResolvedPromise", "ResolvedPromise", "ResolvedPromise"]);
 
     // read last chunk
     t.deepEqual(await ifca.read(), 1020);
 
     // processing queue []
-    t.deepEqual({pending: 0}, ifca.state);
+    // ready queue []
+    t.like(ifca.state, {pending: 0});
     t.deepEqual(mapDrainsArray(drains2), ["ResolvedPromise", "ResolvedPromise", "ResolvedPromise"]);
 });
 
-test("Drain is resolved correctly on end", async (t) => {
+test("Drain is resolved correctly on end only after reads", async (t) => {
     const ifca = new IFCA(2, (x: number) => x*10);
 
     const drains1: Array<Promise<void> | void | string> = [];
@@ -554,13 +575,27 @@ test("Drain is resolved correctly on end", async (t) => {
     markWhenResolved(drains1, 3);
 
     // processing queue [0, 1, 2, 3]
-    t.deepEqual({pending: 4}, ifca.state);
+    // ready queue []
+    t.deepEqual({pending: 4, all: 4}, ifca.state);
     t.deepEqual(mapDrainsArray(drains1), [undefined, "Promise", "Promise", "Promise"]);
 
     await ifca.end();
 
     // processing queue []
-    t.deepEqual({pending: 0}, ifca.state);
+    // ready queue [0, 1, 2, 3]
+    t.deepEqual({pending: 0, all: 4}, ifca.state);
+    t.deepEqual(mapDrainsArray(drains1), [undefined, "Promise", "Promise", "Promise"]);
+
+    for (let i = 0; i < 4; i++) {
+        ifca.read();
+    }
+
+    // Since drain will be resolved async we need to wait.
+    await defer(0);
+
+    // processing queue []
+    // ready queue []
+    t.deepEqual({pending: 0, all: 0}, ifca.state);
     t.deepEqual(mapDrainsArray(drains1), [undefined, "ResolvedPromise", "ResolvedPromise", "ResolvedPromise"]);
 });
 
