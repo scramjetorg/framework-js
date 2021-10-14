@@ -263,3 +263,62 @@ test("Drain resolved when drops below limit", async (t) => {
 });
 
 // Ending
+
+test("Reading from empty Ifca", async (t) => {
+    const ifca = new IFCA(2);
+
+    ifca.end();
+
+    const result = await ifca.read();
+
+    t.true(result === null);
+});
+
+test("End with pending reads", async (t) => {
+    const ifca = new IFCA(2);
+    const reads = [ifca.read(), ifca.read(), ifca.read()];
+
+    ifca.end();
+
+    const results = await Promise.all(reads);
+
+    t.deepEqual(results, [null, null, null]);
+});
+
+test("Write after end errors", async (t) => {
+    const ifca = new IFCA(2);
+
+    ifca.end();
+
+    let errorMsg = "";
+
+    try {
+        ifca.write("foo");
+    } catch (err) {
+        errorMsg = err as Error.message;
+    }
+
+    t.true(errorMsg === "Write after end");
+});
+
+test("Multiple ends error", async (t) => {
+    const ifca = new IFCA(2);
+
+    let errorMsg = "";
+
+    try {
+        ifca.end();
+    } catch (err) {
+        errorMsg = err as Error.message;
+    }
+
+    t.true(errorMsg === "", "First end call does not throw error");
+
+    try {
+        ifca.end();
+    } catch (err) {
+        errorMsg = err as Error.message;
+    }
+
+    t.true(errorMsg === "End called multiple times", "Second end call throws error");
+});
