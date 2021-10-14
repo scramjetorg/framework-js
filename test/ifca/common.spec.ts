@@ -197,7 +197,7 @@ test("Dropping chunks in the middle of chain", async (t) => {
 
     await ifca.end();
 
-    t.true(unfilteredChunks.length === 0);
+    t.is(unfilteredChunks.length, 0);
 });
 
 // Limits
@@ -274,7 +274,7 @@ test("Reading from empty Ifca", async (t) => {
 
     const result = await ifca.read();
 
-    t.true(result === null);
+    t.is(result, null);
 });
 
 test("End with pending reads", async (t) => {
@@ -301,7 +301,7 @@ test("Write after end errors", async (t) => {
         errorMsg = (err as Error).message;
     }
 
-    t.true(errorMsg === "Write after end");
+    t.is(errorMsg, "Write after end");
 });
 
 test("Multiple ends error", async (t) => {
@@ -315,7 +315,7 @@ test("Multiple ends error", async (t) => {
         errorMsg = (err as Error).message;
     }
 
-    t.true(errorMsg === "", "First end call does not throw error");
+    t.is(errorMsg, "", "First end call does not throw error");
 
     try {
         ifca.end();
@@ -323,5 +323,5 @@ test("Multiple ends error", async (t) => {
         errorMsg = (err as Error).message;
     }
 
-    t.true(errorMsg === "End called multiple times", "Second end call throws error");
+    t.is(errorMsg, "End called multiple times", "Second end call throws error");
 });
