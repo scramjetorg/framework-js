@@ -81,7 +81,7 @@ test("Concurrent processing", async (t) => {
     await readNTimesConcurrently(ifca, inputSize);
 
     const processingTime = performance.now() - startTime;
-    const processingTimeMargin = 1.1; // We assume processing time could be longer than a single chunk longest processing time of a margin of 10% only.
+    const processingTimeMargin = 1.2; // We assume processing time could be longer than a single chunk longest processing time of a margin of 10% only.
 
     t.true(processingTime < chunkProcessingTimeSum,
         `Total processing time (${processingTime}) is lower than a sum of all chunks processing times (${chunkProcessingTimeSum}).`);
