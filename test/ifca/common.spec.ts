@@ -1,19 +1,16 @@
 import test from "ava";
 import { performance } from "perf_hooks";
 import { IFCA } from "../../src/ifca";
-import { defer, writeInput, readX, readAwaitX, transforms } from "../helpers/utils";
+import { defer, writeInput, readNTimes, readNTimesConcurrently, transforms } from "../helpers/utils";
 
 // This file implements all the common scenarios described in
 // https://github.com/scramjetorg/scramjet-framework-shared/blob/93965135ca23cb2e07dcb679280b584d5d97a906/tests/spec/ifca.md
 
-type ObjectChunk = {id: number, time: number};
+type ObjectChunk = {id: number, startTime: number};
 
 const sampleNumericInput1 = [0, 1, 2, 3, 4, 5];
 const sampleNumericInput2 = [1, 3, 2, 6, 4, 5];
 const sampleStringInput = ["a", "b", "c"];
-const sampleObjectInput: Array<ObjectChunk> = [
-    { id: 0, time: 0 }, { id: 1, time: 0 }, { id: 2, time: 0 }, { id: 3, time: 0 }
-];
 
 // Basics
 
@@ -23,7 +20,7 @@ test("Passthrough by default", async (t) => {
 
     writeInput(ifca, sampleNumericInput1);
 
-    const results = await readX(ifca, inputSize);
+    const results = await readNTimesConcurrently(ifca, inputSize);
 
     t.deepEqual(results, sampleNumericInput1);
 });
@@ -34,13 +31,19 @@ test("Simple transformation", async (t) => {
 
     writeInput(ifca, sampleStringInput);
 
-    const results = await readX(ifca, inputSize);
+    const results = await readNTimesConcurrently(ifca, inputSize);
 
     t.deepEqual(results, ["foo-a", "foo-b", "foo-c"]);
 });
 
 test("Concurrent processing", async (t) => {
-    const inputSize = sampleObjectInput.length;
+    const input: Array<ObjectChunk> = [
+        { id: 0, startTime: 0 },
+        { id: 1, startTime: 0 },
+        { id: 2, startTime: 0 },
+        { id: 3, startTime: 0 }
+    ];
+    const inputSize = input.length;
     const ifca = new IFCA<ObjectChunk, any, any>(inputSize);
     const started: Array<ObjectChunk> = [];
 
@@ -49,16 +52,18 @@ test("Concurrent processing", async (t) => {
     let chunkProcessingTimeMax: number = 0;
 
     ifca.addTransform(async (x: ObjectChunk): Promise<ObjectChunk> => {
+        x.startTime = performance.now();
         started.push(x);
         return defer(x.id * 15, x) as Promise<ObjectChunk>;
     });
 
     ifca.addTransform((x: ObjectChunk): ObjectChunk => {
-        x.time = performance.now() - startTime;
-        chunkProcessingTimeSum += x.time;
+        const processingTime = performance.now() - x.startTime;
 
-        if (chunkProcessingTimeMax < x.time) {
-            chunkProcessingTimeMax = x.time;
+        chunkProcessingTimeSum += processingTime;
+
+        if (chunkProcessingTimeMax < processingTime) {
+            chunkProcessingTimeMax = processingTime;
         }
 
         return x;
@@ -66,14 +71,14 @@ test("Concurrent processing", async (t) => {
 
     startTime = performance.now();
 
-    writeInput(ifca, sampleObjectInput);
+    writeInput(ifca, input);
 
     // Wait for the next tick since transforms are started asynchronously.
     await defer(0);
 
     t.deepEqual(started.length, inputSize, "All chunks processing should start immediately.");
 
-    await readX(ifca, inputSize);
+    await readNTimesConcurrently(ifca, inputSize);
 
     const processingTime = performance.now() - startTime;
     const processingTimeMargin = 1.1; // We assume processing time could be longer than a single chunk longest processing time of a margin of 10% only.
@@ -90,7 +95,7 @@ test("Result order with odd chunks delayed", async (t) => {
 
     writeInput(ifca, sampleNumericInput1);
 
-    const results = await readAwaitX(ifca, inputSize);
+    const results = await readNTimes(ifca, inputSize);
 
     t.deepEqual(results, sampleNumericInput1);
 });
@@ -101,7 +106,7 @@ test("Result order with varying processing time", async (t) => {
 
     writeInput(ifca, sampleNumericInput2);
 
-    const results = await readAwaitX(ifca, inputSize);
+    const results = await readNTimes(ifca, inputSize);
 
     t.deepEqual(results, sampleNumericInput2);
 });
@@ -127,7 +132,7 @@ test("Multiple concurrent reads", async (t) => {
 
     writeInput(ifca, sampleNumericInput2);
 
-    const results = await readX(ifca, inputSize);
+    const results = await readNTimesConcurrently(ifca, inputSize);
 
     t.deepEqual(results, sampleNumericInput2);
 });
@@ -159,7 +164,7 @@ test("Support for dropping chunks", async (t) => {
 
     writeInput(ifca, input);
 
-    const results = await readX(ifca, inputSize / 2);
+    const results = await readNTimesConcurrently(ifca, inputSize / 2);
 
     t.deepEqual(results, [1, 3, 5, 1, 3, 5]);
 });
@@ -168,7 +173,7 @@ test("Reads before filtering", async (t) => {
     const input = [...sampleNumericInput1, ...sampleNumericInput2];
     const inputSize = input.length;
     const ifca = new IFCA(inputSize / 2, transforms.filter);
-    const reads = readX(ifca, inputSize / 2);
+    const reads = readNTimesConcurrently(ifca, inputSize / 2);
 
     writeInput(ifca, input);
 

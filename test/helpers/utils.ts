@@ -17,17 +17,7 @@ function writeInput(ifca: IFCA<any, any, any>, input: any[]): void {
     }
 }
 
-async function readX(ifca: IFCA<any, any, any>, numberOfReads: number): Promise<any[]> {
-    const reads = [];
-
-    for (let i = 0; i < numberOfReads; i++) {
-        reads.push(ifca.read());
-    }
-
-    return Promise.all(reads);
-}
-
-async function readAwaitX(ifca: IFCA<any, any, any>, numberOfReads: number): Promise<any[]> {
+async function readNTimes(ifca: IFCA<any, any, any>, numberOfReads: number): Promise<any[]> {
     const reads = [];
 
     for (let i = 0; i < numberOfReads; i++) {
@@ -35,6 +25,16 @@ async function readAwaitX(ifca: IFCA<any, any, any>, numberOfReads: number): Pro
     }
 
     return reads;
+}
+
+async function readNTimesConcurrently(ifca: IFCA<any, any, any>, numberOfReads: number): Promise<any[]> {
+    const reads = [];
+
+    for (let i = 0; i < numberOfReads; i++) {
+        reads.push(ifca.read());
+    }
+
+    return Promise.all(reads);
 }
 
 const transforms = {
@@ -58,7 +58,7 @@ const transforms = {
 export {
     defer,
     writeInput,
-    readX,
-    readAwaitX,
+    readNTimes,
+    readNTimesConcurrently,
     transforms
 };
