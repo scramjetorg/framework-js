@@ -295,7 +295,7 @@ test("Write after end errors", async (t) => {
     try {
         ifca.write("foo");
     } catch (err) {
-        errorMsg = err as Error.message;
+        errorMsg = (err as Error).message;
     }
 
     t.true(errorMsg === "Write after end");
@@ -309,7 +309,7 @@ test("Multiple ends error", async (t) => {
     try {
         ifca.end();
     } catch (err) {
-        errorMsg = err as Error.message;
+        errorMsg = (err as Error).message;
     }
 
     t.true(errorMsg === "", "First end call does not throw error");
@@ -317,7 +317,7 @@ test("Multiple ends error", async (t) => {
     try {
         ifca.end();
     } catch (err) {
-        errorMsg = err as Error.message;
+        errorMsg = (err as Error).message;
     }
 
     t.true(errorMsg === "End called multiple times", "Second end call throws error");
