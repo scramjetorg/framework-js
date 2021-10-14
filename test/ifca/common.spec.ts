@@ -83,8 +83,11 @@ test("Concurrent processing", async (t) => {
     const processingTime = performance.now() - startTime;
     const processingTimeMargin = 1.1; // We assume processing time could be longer than a single chunk longest processing time of a margin of 10% only.
 
-    t.true(processingTime < chunkProcessingTimeSum, "Processing time is lower than a sum of all chunks processing time");
-    t.true(chunkProcessingTimeMax * processingTimeMargin > processingTime, "Total processing time should be close to a single chunk longest processing time");
+    t.true(processingTime < chunkProcessingTimeSum,
+        `Total processing time (${processingTime}) is lower than a sum of all chunks processing times (${chunkProcessingTimeSum}).`);
+
+    t.true(chunkProcessingTimeMax * processingTimeMargin > processingTime,
+        `Total processing time (${processingTime}) should be close to a single chunk longest processing time (${chunkProcessingTimeMax}).`);
 });
 
 // Ordering
