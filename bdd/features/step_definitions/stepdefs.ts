@@ -1,15 +1,19 @@
-const assert = require("assert");
-const { Given, When, Then } = require("@cucumber/cucumber");
+import assert from "assert";
+import { Given, When, Then } from "@cucumber/cucumber";
+
+const context = {
+    actualAnswer: ""
+};
 
 Given("no initial conditions", () => {
     console.log("no initial conditions");
 });
 
 When("I ask whether it works", () => {
-    this.actualAnswer = "It works!";
+    context.actualAnswer = "It works!";
     console.log("I ask whether it works");
 });
 
 Then("I should be told {string}", (expectedAnswer) => {
-    assert.strictEqual(this.actualAnswer, expectedAnswer);
+    assert.strictEqual(context.actualAnswer, expectedAnswer);
 });
