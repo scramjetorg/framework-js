@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [ main, feature/** ]
+    branches: [ main, feature/**, task/** ]
 
 jobs:
   run:
@@ -12,12 +12,14 @@ jobs:
     strategy:
       matrix:
         node-version: [14.x, 16.x]
-        package: [ifca, scramjet]
 
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v2
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: cd packages/${{ matrix.package }} && npm ci && npm run test
+        cache: 'yarn'
+    - run: yarn set version berry
+    - run: yarn -v
+    - run: yarn install --frozen-lockfile
+    - run: yarn test

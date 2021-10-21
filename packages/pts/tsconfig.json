@@ -1,4 +1,0 @@
-{
-  "files": ["*.js"],
-  "extends": "../../tsconfig.base.json"
-}

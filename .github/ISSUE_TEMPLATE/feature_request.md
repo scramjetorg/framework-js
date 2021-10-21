@@ -7,5 +7,6 @@ assignees: ''
 
 ---
 
-**Feature description**
+## Feature description
+
 A clear and concise description of the feature
