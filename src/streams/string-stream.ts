@@ -1,7 +1,7 @@
 import { Readable } from "stream";
 import { DataStream } from "./data-stream";
 
-export class StringStream<T extends string = string> extends DataStream<T> {
+export class StringStream extends DataStream<string> {
 
     // This errors with "Class static side
     // > 'typeof StringStream' incorrectly extends base class static side 'typeof DataStream'."
@@ -13,8 +13,8 @@ export class StringStream<T extends string = string> extends DataStream<T> {
     // https://stackoverflow.com/questions/60158391/typescript-override-generic-method:
     // > In TypeScript's type system an instance of a subclass should be able
     // > to do everything an instance of a superclass can.
-    static from<U extends string = string>(input: Iterable<U> | AsyncIterable<U> | Readable): StringStream<U> {
-        const stringStream = new StringStream<U>();
+    static from<U extends string = string>(input: Iterable<U> | AsyncIterable<U> | Readable): StringStream {
+        const stringStream = new StringStream();
 
         stringStream.read(input);
 
@@ -26,26 +26,26 @@ export class StringStream<T extends string = string> extends DataStream<T> {
     }
 
     private getSplitter(splitBy: string) {
-        let prevValue: T;
+        let prevValue: string;
         let isLastSplitEmpty: boolean = false;
 
-        return (chunk: T): T[] => {
+        return (chunk: string): string[] => {
             const endsWithSplit = chunk.endsWith(splitBy);
             const tmpChunk = prevValue.length ? prevValue + chunk : chunk;
 
             if (!tmpChunk.includes(splitBy)) {
-                prevValue = tmpChunk as T;
+                prevValue = tmpChunk;
                 return this.ifca.hasEnded ? [prevValue] : [];
             }
 
-            const chunks = chunk.split(splitBy) as T[];
+            const chunks = chunk.split(splitBy);
 
             if (isLastSplitEmpty && chunks[0] === "") {
                 chunks.shift();
             }
 
             if (!endsWithSplit) {
-                prevValue = chunks.pop() as T;
+                prevValue = chunks.pop();
                 isLastSplitEmpty = false;
             } else {
                 isLastSplitEmpty = true;
