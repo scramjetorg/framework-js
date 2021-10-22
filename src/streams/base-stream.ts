@@ -9,8 +9,9 @@ import { TransformFunction } from "../ifca";
 // thus the workaround with BaseStream and BaseStreamCreators used below.
 
 export interface BaseStream<T extends any> {
-    map<U>(callback: TransformFunction<T, U>): BaseStream<U>;
-    filter(callback: TransformFunction<T, Boolean>): BaseStream<T>;
+    map<U, W extends any[]>(callback: TransformFunction<T, U, W>, ...args: W): BaseStream<U>;
+    flatMap<U, W extends any[]>(callback: TransformFunction<T, U[], W>, ...args: W): BaseStream<U>;
+    filter<W extends any[]>(callback: TransformFunction<T, Boolean, W>, ...args: W): BaseStream<T>;
 }
 
 export abstract class BaseStreamCreators {
