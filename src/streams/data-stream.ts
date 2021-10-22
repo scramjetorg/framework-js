@@ -58,6 +58,35 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
         return this;
     }
 
+    flatMap<U, W extends any[] = []>(callback: TransformFunction<T, Array<U>, W>, ...args: W): DataStream<U> {
+        const intermediateStream = this
+            .map<Array<U>, W>(callback, ...args)
+            .filter(chunk => chunk.length > 0);
+        const input = async function*() {
+            if (intermediateStream.corked) {
+                intermediateStream._uncork();
+            }
+
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                let chunks = intermediateStream.ifca.read();
+
+                if (chunks instanceof Promise) {
+                    chunks = await chunks;
+                }
+                if (chunks === null) {
+                    break;
+                }
+
+                for (const chunk of chunks) {
+                    yield chunk as U;
+                }
+            }
+        };
+
+        return DataStream.from<U>(input());
+    }
+
     async toArray(): Promise<T[]> {
         if (this.corked) {
             this._uncork();
