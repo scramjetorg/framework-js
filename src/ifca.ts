@@ -126,6 +126,10 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         }
     }
 
+    get hasEnded() {
+        return this.ended;
+    }
+
     /**
      * Write (add chunk)
      *

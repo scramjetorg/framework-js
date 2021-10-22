@@ -13,8 +13,8 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
         this.corked = createResolvablePromiseObject<void>();
     }
 
-    private ifca: IFCA<T, T, any>;
-    private corked: ResolvablePromiseObject<void> | null;
+    protected ifca: IFCA<T, T, any>;
+    protected corked: ResolvablePromiseObject<void> | null;
 
     static from<U extends any>(input: Iterable<U> | AsyncIterable<U> | Readable): DataStream<U> {
         const dataStream = new DataStream<U>();

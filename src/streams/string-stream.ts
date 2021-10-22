@@ -34,7 +34,7 @@ export class StringStream<T extends string = string> extends DataStream<T> {
 
             if (!tmpChunk.includes(splitBy)) {
                 prevValue = tmpChunk as T;
-                return [];
+                return this.ifca.hasEnded ? [prevValue] : [];
             }
 
             const chunks = chunk.split(splitBy) as T[];
