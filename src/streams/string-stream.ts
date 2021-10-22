@@ -27,6 +27,7 @@ export class StringStream<T extends string = string> extends DataStream<T> {
 
     private getSplitter(splitBy: string) {
         let prevValue: T;
+        let isLastSplitEmpty: boolean = false;
 
         return (chunk: T): T[] => {
             const endsWithSplit = chunk.endsWith(splitBy);
@@ -39,8 +40,15 @@ export class StringStream<T extends string = string> extends DataStream<T> {
 
             const chunks = chunk.split(splitBy) as T[];
 
+            if (isLastSplitEmpty && chunks[0] === "") {
+                chunks.shift();
+            }
+
             if (!endsWithSplit) {
                 prevValue = chunks.pop() as T;
+                isLastSplitEmpty = false;
+            } else {
+                isLastSplitEmpty = true;
             }
 
             return chunks;
