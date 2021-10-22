@@ -1,5 +1,5 @@
 import test from "ava";
-import { DataStream } from "../../src/streams/data-stream";
+import { DataStream } from "../../../src/streams/data-stream";
 
 test("DataStream can be iterated with 'for await..of'", async (t) => {
     const result = [];
