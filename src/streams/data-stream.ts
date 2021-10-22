@@ -147,7 +147,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
     }
 
     // Native node readables also implement AsyncIterable interface.
-    private read(iterable: Iterable<T> | AsyncIterable<T>): void {
+    protected read(iterable: Iterable<T> | AsyncIterable<T>): void {
         // We don't want to return or wait for the result of the async call,
         // it will just run in the background reading chunks as they appear.
         (async (): Promise<void> => {
@@ -171,7 +171,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
         })();
     }
 
-    private injectArgsToCallback<U, W extends any[]>(
+    protected injectArgsToCallback<U, W extends any[]>(
         callback: TransformFunction<T, U, W>,
         args: W
     ): (chunk: T) => Promise<U> | U {
@@ -186,7 +186,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
         };
     }
 
-    private injectArgsToCallbackAndMapResult<U, X, W extends any[]>(
+    protected injectArgsToCallbackAndMapResult<U, X, W extends any[]>(
         callback: TransformFunction<T, U, W>,
         resultMapper: (chunk: T, result: U) => X,
         args: W
