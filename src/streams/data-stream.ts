@@ -17,7 +17,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
     protected corked: ResolvablePromiseObject<void> | null;
 
     static from<U extends any>(input: Iterable<U> | AsyncIterable<U> | Readable): DataStream<U> {
-        const dataStream = new DataStream<U>();
+        const dataStream = new this<U>();
 
         dataStream.read(input);
 
