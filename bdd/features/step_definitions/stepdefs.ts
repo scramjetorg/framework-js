@@ -5,7 +5,7 @@ const context = {
     actualAnswer: ""
 };
 
-Given("no initial conditions", () => {
+Given("I have {DataStream} of type {String}", () => {
     console.log("no initial conditions");
 });
 
