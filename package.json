@@ -4,7 +4,7 @@
   "description": "The implementation of scramjet framework",
   "main": "./src/index.ts",
   "scripts": {
-    "build": "rm -rf ./build && tsc -p tsconfig.build.json",
+    "build": "rm -rf ./build && copyfiles -f bdd/features/*.feature build/bdd/features && tsc -p tsconfig.build.json",
     "build:w": "yarn build -w",
     "test": "yarn build && ava",
     "test:w": "concurrently 'yarn build:w' 'sleep 8 && yarn test -w'",
@@ -12,7 +12,6 @@
     "dist": "rm -rf ./dist && tsc -p tsconfig.dist.json",
     "lint": "eslint src/ test/ --ext .ts",
     "prepare": "husky install",
-    "postbuild": "copyfiles -f bdd/features/*.feature build/bdd/features",
     "coverage": "yarn coverage:generate && yarn http-server coverage",
     "coverage:generate": "yarn build && yarn coverage:unit && yarn coverage:bdd && yarn coverage:report",
     "coverage:check": "yarn build && yarn coverage:unit && yarn coverage:bdd && nyc report --check-coverage",
