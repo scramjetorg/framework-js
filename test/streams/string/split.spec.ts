@@ -28,3 +28,10 @@ test("StringStream split works correctly if there are only split sequences in in
 
     t.deepEqual(result, ["", "", "", "", ""]);
 });
+
+test("StringStream split works correctly if single split sequence is split across mulriple chunks", async (t) => {
+    const stringStream = StringStream.from(["f", "o", "o", "barf", "oobaz123", "f", "ozfo", "ooobax", "12f", "oo"]) as StringStream;
+    const result = await stringStream.split("foo").toArray();
+
+    t.deepEqual(result, ["", "bar", "baz123foz", "oobax12", ""]);
+});
