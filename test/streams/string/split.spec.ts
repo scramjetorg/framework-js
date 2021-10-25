@@ -29,9 +29,30 @@ test("StringStream split works correctly if there are only split sequences in in
     t.deepEqual(result, ["", "", "", "", ""]);
 });
 
-test("StringStream split works correctly if single split sequence is split across mulriple chunks", async (t) => {
+test("StringStream split works correctly if single split sequence is split across multiple chunks", async (t) => {
     const stringStream = StringStream.from(["f", "o", "o", "barf", "oobaz123", "f", "ozfo", "ooobax", "12f", "oo"]) as StringStream;
     const result = await stringStream.split("foo").toArray();
 
     t.deepEqual(result, ["", "bar", "baz123foz", "oobax12", ""]);
+});
+
+test("StringStream split works correctly with single chunk split two multiple ones", async (t) => {
+    const stringStream = StringStream.from(["this-is-single-chunk"]) as StringStream;
+    const result = await stringStream.split("-").toArray();
+
+    t.deepEqual(result, ["this", "is", "single", "chunk"]);
+});
+
+test("StringStream split can handle empty stream", async (t) => {
+    const stringStream = StringStream.from([]) as unknown as StringStream;
+    const result = await stringStream.split("-").toArray();
+
+    t.deepEqual(result, []);
+});
+
+test("StringStream split can stream with only one split value", async (t) => {
+    const stringStream = StringStream.from(["-"]) as unknown as StringStream;
+    const result = await stringStream.split("-").toArray();
+
+    t.deepEqual(result, ["", ""]);
 });
