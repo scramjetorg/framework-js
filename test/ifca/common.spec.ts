@@ -238,6 +238,13 @@ test("Drain pending when limit reached", async (t) => {
     await defer(10);
 
     t.false(lastDrainResolved, "Drain value of N write call is pending.");
+
+    await ifca.read();
+
+    // If read above doesn't resolve drain promise, this test will fail with timeout.
+    await lastDrain;
+
+    t.pass();
 });
 
 test("Drain resolved when drops below limit", async (t) => {
