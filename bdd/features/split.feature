@@ -1,7 +1,7 @@
 Feature: DataStream split function
 
     Scenario: Chunks can be splitted by line endings
-        Given I have DataStream of type "string" created from
+        Given I have StringStream created from
             """
             Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam finibus odio
             euismod libero sagittis ultrices. Suspendisse at ornare odio. Phasellus nec
@@ -13,6 +13,6 @@ Feature: DataStream split function
             velit, tristique a ipsum eu, auctor mattis odio. Vestibulum vestibulum pharetra volutpat.
             Nulla dapibus ipsum vitae quam iaculis, non gravida magna efficitur.
             """
-        When I call split function with "\n" param
+        When I call split function with EOL character
         Then It should result with 9 chunks as output
         And Chunk nr 5 is "id dolor tristique pellentesque."

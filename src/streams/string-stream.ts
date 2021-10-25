@@ -65,13 +65,13 @@ export class StringStream extends DataStream<string> {
 
         const splitter = (chunk: string): string[] => {
             const tmpChunk = prevValue.length ? prevValue + chunk : chunk;
-            const startsWithSplit = tmpChunk.startsWith(splitBy);
             const endsWithSplit = tmpChunk.endsWith(splitBy);
+
+            result.emitLastValue = true;
 
             if (!tmpChunk.includes(splitBy)) {
                 prevValue = tmpChunk;
                 result.lastValue = prevValue;
-                result.emitLastValue = true;
                 return [];
             }
 
@@ -79,11 +79,9 @@ export class StringStream extends DataStream<string> {
 
             if (endsWithSplit) {
                 chunks.pop();
-                result.emitLastValue = true;
                 prevValue = "";
             } else {
                 prevValue = chunks.length ? chunks.pop() as string : "";
-                result.emitLastValue = startsWithSplit;
             }
 
             result.lastValue = prevValue;
