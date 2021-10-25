@@ -22,44 +22,77 @@ export class StringStream extends DataStream<string> {
     // }
 
     split(splitBy: string) {
-        return this.flatMap(this.getSplitter(splitBy));
+        const splitter = this.getSplitter(splitBy);
+        const intermediateStream = this
+            .map<Array<string>>(splitter.fn)
+            .filter(chunk => chunk.length > 0) as unknown as StringStream;
+        const input = async function*() {
+            if (intermediateStream.corked) {
+                intermediateStream._uncork();
+            }
+
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                let chunks = intermediateStream.ifca.read();
+
+                if (chunks instanceof Promise) {
+                    chunks = await chunks;
+                }
+                if (chunks === null) {
+                    if (splitter.emitLastValue) {
+                        yield splitter.lastValue as string;
+                    }
+                    break;
+                }
+
+                for (const chunk of chunks) {
+                    yield chunk as string;
+                }
+            }
+        };
+
+        return StringStream.from(input());
     }
 
-    private getSplitter(splitBy: string) {
-        let prevValue: string = "";
-        let isLastSplitEmpty: boolean = false;
-        let ctr = 0;
 
-        return (chunk: string): string[] => {
+    private getSplitter(splitBy: string) {
+        const result: any = {
+            emitLastValue: false,
+            lastValue: ""
+        };
+
+        let prevValue: string = "";
+
+        const splitter = (chunk: string): string[] => {
+            const startsWithSplit = chunk.startsWith(splitBy);
             const endsWithSplit = chunk.endsWith(splitBy);
             const tmpChunk = prevValue.length ? prevValue + chunk : chunk;
 
-            console.log(ctr, chunk);
-            console.log(ctr, tmpChunk);
-            console.log(ctr, prevValue);
-            console.log(this.ifca.hasEnded);
-            ctr++;
-
             if (!tmpChunk.includes(splitBy)) {
                 prevValue = tmpChunk;
-                return this.ifca.hasEnded ? [prevValue] : []; // even on the last chunk ifca is marked as ended a bit later
+                result.lastValue = prevValue;
+                result.emitLastValue = true;
+                return [];
             }
 
             const chunks = tmpChunk.split(splitBy);
 
-            if (isLastSplitEmpty && chunks[0] === "") {
-                chunks.shift();
+            if (endsWithSplit) {
+                chunks.pop();
+                result.emitLastValue = true;
+                prevValue = "";
+            } else {
+                prevValue = chunks.length ? chunks.pop() as string : "";
+                result.emitLastValue = startsWithSplit;
             }
 
-            if (!endsWithSplit) {
-                prevValue = chunks.length ? chunks.pop() as string : "";
-                isLastSplitEmpty = false;
-            } else {
-                prevValue = "";
-                isLastSplitEmpty = true;
-            }
+            result.lastValue = prevValue;
 
             return chunks;
         };
+
+        result.fn = splitter;
+
+        return result;
     }
 }
