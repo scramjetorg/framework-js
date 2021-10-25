@@ -64,9 +64,9 @@ export class StringStream extends DataStream<string> {
         let prevValue: string = "";
 
         const splitter = (chunk: string): string[] => {
-            const startsWithSplit = chunk.startsWith(splitBy);
-            const endsWithSplit = chunk.endsWith(splitBy);
             const tmpChunk = prevValue.length ? prevValue + chunk : chunk;
+            const startsWithSplit = tmpChunk.startsWith(splitBy);
+            const endsWithSplit = tmpChunk.endsWith(splitBy);
 
             if (!tmpChunk.includes(splitBy)) {
                 prevValue = tmpChunk;
