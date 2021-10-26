@@ -3,7 +3,7 @@ import { createReadStream, promises as fs } from "fs";
 import * as readline from "readline";
 import { BaseStream } from "./base-stream";
 import { IFCA } from "../ifca";
-import { Constructor, DroppedChunk, ResolvablePromiseObject, TransformFunction } from "../types";
+import { AnyIterable, Constructor, DroppedChunk, ResolvablePromiseObject, TransformFunction } from "../types";
 import { createResolvablePromiseObject, isAsyncFunction } from "../utils";
 export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     constructor() {
@@ -55,10 +55,9 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         return this;
     }
 
-    flatMap<U, W extends any[] = []>(callback: TransformFunction<T, Array<U>, W>, ...args: W): DataStream<U> {
+    flatMap<U, W extends any[] = []>(callback: TransformFunction<T, AnyIterable<U>, W>, ...args: W): DataStream<U> {
         const intermediateStream = this
-            .map<Array<U>, W>(callback, ...args)
-            .filter(chunk => chunk.length > 0);
+            .map<AnyIterable<U>, W>(callback, ...args);
         const input = async function*() {
             if (intermediateStream.corked) {
                 intermediateStream._uncork();
@@ -75,7 +74,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
                     break;
                 }
 
-                for (const chunk of chunks) {
+                for await (const chunk of chunks) {
                     yield chunk as U;
                 }
             }
