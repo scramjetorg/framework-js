@@ -3,24 +3,6 @@ import { DataStream } from "./data-stream";
 
 export class StringStream extends DataStream<string> {
 
-    // This errors with "Class static side
-    // > 'typeof StringStream' incorrectly extends base class static side 'typeof DataStream'."
-    //
-    // Not sure how to handle this for now. Refs:
-    // https://stackoverflow.com/a/51522619/646871
-    // https://github.com/Microsoft/TypeScript/issues/5863
-    //
-    // https://stackoverflow.com/questions/60158391/typescript-override-generic-method:
-    // > In TypeScript's type system an instance of a subclass should be able
-    // > to do everything an instance of a superclass can.
-    // static from<U extends string = string>(input: Iterable<U> | AsyncIterable<U> | Readable): StringStream {
-    //     const stringStream = new StringStream();
-
-    //     stringStream.read(input);
-
-    //     return stringStream;
-    // }
-
     split(splitBy: string) {
         const splitter = this.getSplitter(splitBy);
         const intermediateStream = this

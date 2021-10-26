@@ -8,9 +8,7 @@ test("StringStream can be constructed", (t) => {
 });
 
 test("StringStream can be created via static from method", (t) => {
-    const stringStream = StringStream.from<string>(["1", "2", "3", "4"]);
-    const stringStreamAny = StringStream.from(["1", "2", "3", "4"]);
+    const stringStream = StringStream.from(["1", "2", "3", "4"]);
 
     t.true(stringStream instanceof StringStream);
-    t.true(stringStreamAny instanceof StringStream);
 });
