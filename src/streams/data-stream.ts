@@ -5,6 +5,7 @@ import { BaseStream, BaseStreamCreators } from "./base-stream";
 import { IFCA, TransformFunction, DroppedChunk } from "../ifca";
 import { createResolvablePromiseObject, ResolvablePromiseObject, isAsyncFunction } from "../utils";
 
+type Constructor<T> = { new (): T };
 export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, AsyncIterable<T> {
     constructor() {
         super();
@@ -16,12 +17,12 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
     protected ifca: IFCA<T, T, any>;
     protected corked: ResolvablePromiseObject<void> | null;
 
-    static from<U extends any>(input: Iterable<U> | AsyncIterable<U> | Readable): DataStream<U> {
-        const dataStream = new this<U>();
+    static from<U extends any, W extends DataStream<U>>(this: Constructor<W>, input: Iterable<U> | AsyncIterable<U> | Readable): W {
+        const stream = new this();
 
-        dataStream.read(input);
+        stream.read(input);
 
-        return dataStream;
+        return stream;
     }
 
     [Symbol.asyncIterator]() {
@@ -84,7 +85,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
             }
         };
 
-        return DataStream.from<U>(input());
+        return DataStream.from(input());
     }
 
     async toArray(): Promise<T[]> {

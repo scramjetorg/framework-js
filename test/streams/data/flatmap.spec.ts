@@ -2,28 +2,28 @@ import test from "ava";
 import { DataStream } from "../../../src/streams/data-stream";
 
 test("DataStream can flat-map chunks via sync callback (to same type)", async (t) => {
-    const dsNumber = DataStream.from<number>([1, 2, 3, 4]);
+    const dsNumber = DataStream.from([1, 2, 3, 4]);
     const result = await dsNumber.flatMap<number>(chunk => [chunk * 2]).toArray();
 
     t.deepEqual(result, [2, 4, 6, 8]);
 });
 
 test("DataStream can flat-map chunks via async callback (to same type)", async (t) => {
-    const dsString = DataStream.from<string>(["it's Sunny in", "", "California"]);
+    const dsString = DataStream.from(["it's Sunny in", "", "California"]);
     const result = await dsString.flatMap<string>(chunk => chunk.split(" ")).toArray();
 
     t.deepEqual(result, ["it's", "Sunny", "in", "", "California"]);
 });
 
 test("DataStream flatMap flattens only one level", async (t) => {
-    const dsNumber = DataStream.from<number>([1, 2, 3, 4]);
+    const dsNumber = DataStream.from([1, 2, 3, 4]);
     const result = await dsNumber.flatMap<number[]>(chunk => [[chunk * 2]]).toArray();
 
     t.deepEqual(result, [[2], [4], [6], [8]]);
 });
 
 test("DataStream flatMap filters and duplicates chunks correctly", async (t) => {
-    const dsNumber = DataStream.from<number>([5, 4, -3, 20, 17, -33, -4, 18]);
+    const dsNumber = DataStream.from([5, 4, -3, 20, 17, -33, -4, 18]);
     const result = await dsNumber.flatMap<number>(chunk => {
         if (chunk < 0) {
             return [];
@@ -35,7 +35,7 @@ test("DataStream flatMap filters and duplicates chunks correctly", async (t) => 
 });
 
 test("DataStream flatMap passes typed variadic args", async (t) => {
-    const dsNumber = DataStream.from<number>([1, 2, 3, 4]);
+    const dsNumber = DataStream.from([1, 2, 3, 4]);
     const result = await dsNumber
         .flatMap<number, number[]>((chunk, multiplier) => [chunk * multiplier], 3)
         .flatMap<string, string[]>(async (chunk, postfix, text) => {
