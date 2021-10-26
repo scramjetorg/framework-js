@@ -56,9 +56,14 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     }
 
     flatMap<U, W extends any[] = []>(callback: TransformFunction<T, AnyIterable<U>, W>, ...args: W): DataStream<U> {
-        const intermediateStream = this
-            .map<AnyIterable<U>, W>(callback, ...args);
+        const intermediateStream = this.map<AnyIterable<U>, W>(callback, ...args);
         const input = async function*() {
+            // for await (const chunks of intermediateStream) {
+            //     for await (const chunk of chunks) {
+            //         yield chunk as U;
+            //     }
+            // }
+
             if (intermediateStream.corked) {
                 intermediateStream._uncork();
             }
@@ -84,26 +89,9 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     }
 
     async toArray(): Promise<T[]> {
-        if (this.corked) {
-            this._uncork();
-        }
-
         const chunks: Array<T> = [];
 
-        let value;
-
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-            value = this.ifca.read();
-            if (value instanceof Promise) {
-                value = await value;
-            }
-            if (value === null) {
-                break;
-            }
-
-            chunks.push(value as T);
-        }
+        await (this.getReader(true, chunk => { chunks.push(chunk); }))();
 
         return chunks;
     }
@@ -140,6 +128,36 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
             this.corked.resolver();
             this.corked = null;
         }
+    }
+
+    // For now this method assumes both callbacks are sync ones.
+    protected getReader(
+        uncork: boolean,
+        onChunkCallback: (chunk: T) => void,
+        onEndCallback?: Function
+    ): () => Promise<void> {
+        return async () => {
+            if (uncork && this.corked) {
+                this._uncork();
+            }
+
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                let chunk = this.ifca.read();
+
+                if (chunk instanceof Promise) {
+                    chunk = await chunk;
+                }
+                if (chunk === null) {
+                    if (onEndCallback) {
+                        onEndCallback.call(this);
+                    }
+                    break;
+                }
+
+                onChunkCallback(chunk);
+            }
+        };
     }
 
     // Native node readables also implement AsyncIterable interface.
