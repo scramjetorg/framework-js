@@ -4,7 +4,7 @@
   "description": "The implementation of scramjet framework",
   "main": "./src/index.ts",
   "scripts": {
-    "build": "rm -rf ./build && copyfiles -f bdd/features/*.feature build/bdd/features && tsc -p tsconfig.build.json",
+    "build": "rm -rf ./build && yarn copy && tsc -p tsconfig.build.json",
     "build:w": "yarn build -w",
     "test": "yarn build && ava",
     "test:w": "concurrently 'yarn build:w' 'sleep 8 && yarn test -w'",
@@ -17,7 +17,8 @@
     "coverage:check": "yarn build && yarn coverage:unit && yarn coverage:bdd && nyc report --check-coverage",
     "coverage:unit": "nyc --silent yarn ava",
     "coverage:bdd": "nyc --silent --no-clean yarn cucumber-js build/bdd/features",
-    "coverage:report": "nyc report --reporter=html"
+    "coverage:report": "nyc report --reporter=html",
+    "copy": "copyfiles -f bdd/features/*.feature build/bdd/features && copyfiles -f test/assets/* build/test/assets"
   },
   "author": "Scramjet <open-source@scramjet.org>",
   "license": "AGPL-3.0",

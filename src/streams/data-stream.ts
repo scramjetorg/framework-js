@@ -1,10 +1,10 @@
 import { Readable } from "stream";
 import { createReadStream, promises as fs } from "fs";
-import * as readline from "readline";
 import { BaseStream } from "./base-stream";
 import { IFCA } from "../ifca";
 import { AnyIterable, Constructor, DroppedChunk, ResolvablePromiseObject, TransformFunction } from "../types";
 import { createResolvablePromiseObject, isAsyncFunction } from "../utils";
+
 export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     constructor() {
         this.ifca = new IFCA<T, T, any>(2, (chunk: T) => chunk);
@@ -19,6 +19,14 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         input: Iterable<U> | AsyncIterable<U> | Readable
     ): W {
         return (new this()).read(input);
+    }
+
+    static fromFile<U extends any, W extends DataStream<U>>(
+        this: Constructor<W>,
+        path: string,
+        options?: any
+    ): W {
+        return (new this()).read(createReadStream(path, options?.readStream));
     }
 
     [Symbol.asyncIterator]() {
@@ -94,18 +102,6 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         await (this.getReader(true, chunk => { chunks.push(chunk); }))();
 
         return chunks;
-    }
-
-    // TODO
-    // Helper created to be used in E2E test.
-    // Reads line-by-line which should not be default behaviour.
-    static fromFile(filePath: string): DataStream<string> {
-        const fileStream = createReadStream(filePath);
-        const lineStream = readline.createInterface({
-            input: fileStream
-        });
-
-        return DataStream.from(lineStream);
     }
 
     // TODO

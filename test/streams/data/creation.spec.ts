@@ -78,9 +78,19 @@ test("DataStream can read from another scramjet stream", async (t) => {
 });
 
 test("DataStream can read from readable", async (t) => {
-    const readable = createReadStream("./test/helpers/sample.txt", "utf8");
+    const readable = createReadStream("./build/test/assets/sample.txt", "utf8");
     const dsString = DataStream.from<string, DataStream<string>>(readable);
     const result = await dsString.toArray();
+
+    t.deepEqual(result, ["foo\nbar\nbaz\nbax\n"]);
+});
+
+test("DataStream can be constructed from file", async (t) => {
+    const ds = DataStream.fromFile<string, DataStream<string>>("./build/test/assets/sample.txt", { readStream: { encoding: "utf8" } });
+
+    t.true(ds instanceof DataStream);
+
+    const result = await ds.toArray();
 
     t.deepEqual(result, ["foo\nbar\nbaz\nbax\n"]);
 });
@@ -105,7 +115,7 @@ test("DataStream will not start reading until 'output' transfomration is called 
 });
 
 test("DataStream will not start reading until 'output' transfomration is called (readable)", async (t) => {
-    const readable = createReadStream("./test/helpers/sample.txt", "utf8");
+    const readable = createReadStream("./build/test/assets/sample.txt", "utf8");
     const dsString = DataStream.from<string, DataStream<string>>(readable);
 
     // Since readable will be read at once, if it's not ended means reading haven't started yet.
