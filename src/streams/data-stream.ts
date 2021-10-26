@@ -2,10 +2,9 @@ import { Readable } from "stream";
 import { createReadStream, promises as fs } from "fs";
 import * as readline from "readline";
 import { BaseStream, BaseStreamCreators } from "./base-stream";
-import { IFCA, TransformFunction, DroppedChunk } from "../ifca";
-import { createResolvablePromiseObject, ResolvablePromiseObject, isAsyncFunction } from "../utils";
-
-type Constructor<T> = { new (): T };
+import { IFCA } from "../ifca";
+import { Constructor, DroppedChunk, ResolvablePromiseObject, TransformFunction } from "../types";
+import { createResolvablePromiseObject, isAsyncFunction } from "../utils";
 export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, AsyncIterable<T> {
     constructor() {
         super();

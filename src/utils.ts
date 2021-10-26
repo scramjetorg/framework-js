@@ -1,6 +1,6 @@
-const SCRAMJET_LOG = process.env.SCRAMJET_LOG;
+import { ResolvablePromiseObject, TransformHandler } from "./types";
 
-type ResolvablePromiseObject<T> = {promise: Promise<T>, resolver: () => (T)};
+const SCRAMJET_LOG = process.env.SCRAMJET_LOG;
 
 /**
  * Helper function that prints out debug messages
@@ -39,11 +39,15 @@ function isAsyncFunction(func: any): Boolean {
     return func && func[Symbol.toStringTag] === "AsyncFunction";
 }
 
+function isAsyncTransformHandler(func: TransformHandler<any, any>): Boolean {
+    return isAsyncFunction(func[0]) || isAsyncFunction(func[1]);
+}
+
 export {
     trace,
     createResolvablePromiseObject,
-    ResolvablePromiseObject,
     isIterable,
     isAsyncIterable,
-    isAsyncFunction
+    isAsyncFunction,
+    isAsyncTransformHandler
 };

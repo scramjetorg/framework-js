@@ -1,5 +1,5 @@
 import { Readable } from "stream";
-import { TransformFunction } from "../ifca";
+import { TransformFunction } from "../types";
 
 // There is no support for static methods in interfaces (or abstract classes) in TS, see:
 //
