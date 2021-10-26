@@ -17,12 +17,11 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
     protected ifca: IFCA<T, T, any>;
     protected corked: ResolvablePromiseObject<void> | null;
 
-    static from<U extends any, W extends DataStream<U>>(this: Constructor<W>, input: Iterable<U> | AsyncIterable<U> | Readable): W {
-        const stream = new this();
-
-        stream.read(input);
-
-        return stream;
+    static from<U extends any, W extends DataStream<U>>(
+        this: Constructor<W>,
+        input: Iterable<U> | AsyncIterable<U> | Readable
+    ): W {
+        return (new this()).read(input);
     }
 
     [Symbol.asyncIterator]() {
@@ -148,7 +147,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
     }
 
     // Native node readables also implement AsyncIterable interface.
-    protected read(iterable: Iterable<T> | AsyncIterable<T>): void {
+    protected read(iterable: Iterable<T> | AsyncIterable<T>): this {
         // We don't want to return or wait for the result of the async call,
         // it will just run in the background reading chunks as they appear.
         (async (): Promise<void> => {
@@ -170,6 +169,8 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
 
             this.ifca.end();
         })();
+
+        return this;
     }
 
     protected injectArgsToCallback<U, W extends any[]>(
