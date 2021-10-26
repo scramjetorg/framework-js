@@ -1,5 +1,6 @@
 import test from "ava";
 import { DataStream } from "../../../src/streams/data-stream";
+import { defer } from "../../helpers/utils";
 
 test("DataStream can flat-map chunks via sync callback (to same type)", async (t) => {
     const dsNumber = DataStream.from([1, 2, 3, 4]);
@@ -13,6 +14,32 @@ test("DataStream can flat-map chunks via async callback (to same type)", async (
     const result = await dsString.flatMap<string>(chunk => chunk.split(" ")).toArray();
 
     t.deepEqual(result, ["it's", "Sunny", "in", "", "California"]);
+});
+
+test("DataStream can flat-map chunks returned as sync iterator (to different type)", async (t) => {
+    const dsNumber = DataStream.from([1, 2, 3, 4]);
+    const result = await dsNumber.flatMap(chunk => {
+        return (function * () {
+            yield `${chunk * 2}`;
+            yield `${chunk * 10}`;
+        })();
+    }).toArray();
+
+    t.deepEqual(result, ["2", "10", "4", "20", "6", "30", "8", "40"]);
+});
+
+test("DataStream can flat-map chunks returned as async iterator (to different type)", async (t) => {
+    const dsNumber = DataStream.from([1, 2, 3, 4]);
+    const result = await dsNumber.flatMap(chunk => {
+        return (async function * () {
+            await defer(chunk * 2);
+            yield `${chunk * 2}`;
+            await defer(chunk * 10);
+            yield `${chunk * 10}`;
+        })();
+    }).toArray();
+
+    t.deepEqual(result, ["2", "10", "4", "20", "6", "30", "8", "40"]);
 });
 
 test("DataStream flatMap flattens only one level", async (t) => {

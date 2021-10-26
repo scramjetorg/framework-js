@@ -1,5 +1,7 @@
 export type Constructor<T> = { new (): T };
 
+export type AnyIterable<T> = T[] | Iterable<T> | AsyncIterable<T>;
+
 export type MaybePromise<S> = Promise<S> | S;
 export type ResolvablePromiseObject<T> = {promise: Promise<T>, resolver: () => (T)};
 export type ErrorWithReason = Error & { cause?: Error };

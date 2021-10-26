@@ -1,13 +1,11 @@
-// import { Readable } from "stream";
 import { DataStream } from "./data-stream";
+import { AnyIterable } from "../types";
 
 export class StringStream extends DataStream<string> {
 
     split(splitBy: string) {
         const splitter = this.getSplitter(splitBy);
-        const intermediateStream = this
-            .map<Array<string>>(splitter.fn)
-            .filter(chunk => chunk.length > 0) as unknown as StringStream;
+        const intermediateStream = this.map<AnyIterable<string>>(splitter.fn) as unknown as StringStream;
         const input = async function*() {
             if (intermediateStream.corked) {
                 intermediateStream._uncork();
@@ -27,7 +25,7 @@ export class StringStream extends DataStream<string> {
                     break;
                 }
 
-                for (const chunk of chunks) {
+                for await (const chunk of chunks) {
                     yield chunk as string;
                 }
             }
