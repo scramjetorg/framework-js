@@ -1,21 +1,9 @@
 /* eslint-disable */
 import { cpus } from "os";
-import { trace, createResolvablePromiseObject, ResolvablePromiseObject } from "./utils";
+import { DroppedChunk, MaybePromise, ResolvablePromiseObject, TransformFunction, TransformErrorHandler, TransformHandler } from "./types"
+import { trace, createResolvablePromiseObject, isAsyncTransformHandler } from "./utils";
 
-export type TransformFunction<V, U, W extends any[] = []> = (chunk: V, ...args: W) => (Promise<U>|U)
-export type TransformErrorHandler<S, T> = (err: ErrorWithReason|undefined, chunk?: S) => MaybePromise<T|undefined>;
-export type IFCAOptions = Partial<{ strict: boolean }>
-export type ErrorWithReason = Error & { cause?: Error };
-export type TransformArray<S, T> = [TransformFunction<S, T>] | [
-    TransformFunction<S, any>,
-    TransformFunction<any, T>,
-    ...TransformFunction<any, any>[]
-];
-export const DroppedChunk = Symbol("DroppedChunk");
-
-const isSync = (func: any[]) => !!(func.length && (
-    func[0] && func[0][Symbol.toStringTag] !== 'AsyncFunction' ||
-    func[1] && func[1][Symbol.toStringTag] !== 'AsyncFunction'));
+export type IFCAOptions = Partial<{ strict: boolean }>;
 
 export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
     // TODO: This may need a setter if maxParallel is increased so that chunks are not waiting for drain.
@@ -71,9 +59,7 @@ export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
     removeTransform(): I;
 }
 
-type TransformHandler<S,T> = [TransformFunction<S,T>, TransformErrorHandler<S,T>?] | [undefined, TransformErrorHandler<S,T>];
 type ChunkResolver<S> = [TransformFunction<S|null,void>, TransformErrorHandler<S,void>?];
-type MaybePromise<S> = Promise<S> | S;
 
 export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
@@ -224,7 +210,7 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
         // If next transform is of different type, previous group is transformed into chain.
         while (funcs.length)  {
             const func = funcs.shift() as TransformHandler<any, any>;
-            const isFuncSync = isSync(func);
+            const isFuncSync = !isAsyncTransformHandler(func);
 
             if (transforms.length && isFuncSync !== isPrevFuncSync) {
                 value = this.mergeTransformChains(value, transforms, _chunk, isPrevFuncSync);

@@ -1,6 +1,6 @@
 import test from "ava";
 import { isAsyncFunction } from "../src/utils";
-import { TransformFunction } from "../src/ifca";
+import { TransformFunction } from "../src/types";
 
 test("isAsyncFunction correctly detects sync function (function declaration)", t => {
     function sync() {
