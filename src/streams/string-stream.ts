@@ -61,35 +61,22 @@ export class StringStream extends DataStream<string> {
             lastValue: ""
         };
 
-        let prevValue: string = "";
-
-        const splitter = (chunk: string): string[] => {
-            const tmpChunk = prevValue.length ? prevValue + chunk : chunk;
-            const endsWithSplit = tmpChunk.endsWith(splitBy);
+        result.fn = (chunk: string): string[] => {
+            const tmpChunk = `${result.lastValue}${chunk}`;
 
             result.emitLastValue = true;
 
             if (!tmpChunk.includes(splitBy)) {
-                prevValue = tmpChunk;
-                result.lastValue = prevValue;
+                result.lastValue = tmpChunk;
                 return [];
             }
 
             const chunks = tmpChunk.split(splitBy);
 
-            if (endsWithSplit) {
-                chunks.pop();
-                prevValue = "";
-            } else {
-                prevValue = chunks.length ? chunks.pop() as string : "";
-            }
-
-            result.lastValue = prevValue;
+            result.lastValue = chunks.pop() as string;
 
             return chunks;
         };
-
-        result.fn = splitter;
 
         return result;
     }
