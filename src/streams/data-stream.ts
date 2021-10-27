@@ -64,36 +64,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     }
 
     flatMap<U, W extends any[] = []>(callback: TransformFunction<T, AnyIterable<U>, W>, ...args: W): DataStream<U> {
-        const intermediateStream = this.map<AnyIterable<U>, W>(callback, ...args);
-        const input = async function*() {
-            // for await (const chunks of intermediateStream) {
-            //     for await (const chunk of chunks) {
-            //         yield chunk as U;
-            //     }
-            // }
-
-            if (intermediateStream.corked) {
-                intermediateStream._uncork();
-            }
-
-            // eslint-disable-next-line no-constant-condition
-            while (true) {
-                let chunks = intermediateStream.ifca.read();
-
-                if (chunks instanceof Promise) {
-                    chunks = await chunks;
-                }
-                if (chunks === null) {
-                    break;
-                }
-
-                for await (const chunk of chunks) {
-                    yield chunk as U;
-                }
-            }
-        };
-
-        return DataStream.from(input());
+        return this.asNewFlattenedStream(this.map<AnyIterable<U>, W>(callback, ...args));
     }
 
     async toArray(): Promise<T[]> {
@@ -124,6 +95,25 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
             this.corked.resolver();
             this.corked = null;
         }
+    }
+
+    protected asNewFlattenedStream<U, W extends DataStream<AnyIterable<U>>>(
+        fromStream: W,
+        onEndYield?: () => { yield: boolean, value?: U }
+    ): DataStream<U> {
+        return DataStream.from((async function * (stream){
+            for await (const chunks of stream) {
+                yield* chunks;
+            }
+
+            if (onEndYield) {
+                const yieldValue = onEndYield();
+
+                if (yieldValue.yield) {
+                    yield yieldValue.value as U;
+                }
+            }
+        })(fromStream));
     }
 
     // For now this method assumes both callbacks are sync ones.
