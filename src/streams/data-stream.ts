@@ -53,6 +53,17 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         return this as unknown as DataStream<U>;
     }
 
+    // TODO // batch/aggregate - if null/undefined skipped?
+    remap<U, W extends any[] = []>(callback: TransformFunction<T, U, W>, ...args: W): DataStream<U> {
+        if (args?.length) {
+            this.ifca.addTransform(this.injectArgsToCallback<U, typeof args>(callback, args));
+        } else {
+            this.ifca.addTransform(callback);
+        }
+
+        return this as unknown as DataStream<U>;
+    }
+
     filter<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T> {
         const chunksFilter = (chunk: T, result: Boolean) => result ? chunk : DroppedChunk;
 
