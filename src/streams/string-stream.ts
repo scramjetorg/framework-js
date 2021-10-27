@@ -5,35 +5,13 @@ export class StringStream extends DataStream<string> {
 
     split(splitBy: string) {
         const splitter = this.getSplitter(splitBy);
-        const intermediateStream = this.map<AnyIterable<string>>(splitter.fn) as unknown as StringStream;
-        const input = async function*() {
-            if (intermediateStream.corked) {
-                intermediateStream._uncork();
-            }
+        const onEndYield = () => ({ yield: splitter.emitLastValue, value: splitter.lastValue });
 
-            // eslint-disable-next-line no-constant-condition
-            while (true) {
-                let chunks = intermediateStream.ifca.read();
-
-                if (chunks instanceof Promise) {
-                    chunks = await chunks;
-                }
-                if (chunks === null) {
-                    if (splitter.emitLastValue) {
-                        yield splitter.lastValue as string;
-                    }
-                    break;
-                }
-
-                for await (const chunk of chunks) {
-                    yield chunk as string;
-                }
-            }
-        };
-
-        return StringStream.from(input());
+        return this.asNewFlattenedStream<string, DataStream<AnyIterable<string>>>(
+            this.map<AnyIterable<string>>(splitter.fn),
+            onEndYield
+        ) as StringStream;
     }
-
 
     private getSplitter(splitBy: string) {
         const result: any = {
