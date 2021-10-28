@@ -2,9 +2,10 @@ import { Readable } from "stream";
 import { createReadStream, promises as fs } from "fs";
 import { BaseStream } from "./base-stream";
 import { IFCA } from "../ifca";
-import { AnyIterable, Constructor, DroppedChunk, ResolvablePromiseObject, TransformFunction } from "../types";
+import { AnyIterable, Constructor, DroppedChunk, ResolvablePromiseObject, TransformFunction, MaybePromise } from "../types";
 import { createResolvablePromiseObject, isAsyncFunction } from "../utils";
 
+type Reducer<T, U> = { isAsync: boolean, value?: U, initFn: Function, reduceFn: (chunk: T) => MaybePromise<void> };
 export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     constructor() {
         this.ifca = new IFCA<T, T, any>(2, (chunk: T) => chunk);
@@ -67,7 +68,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         return this.asNewFlattenedStream(this.map<AnyIterable<U>, W>(callback, ...args));
     }
 
-    async reduce<U = T>(callback: (previousValue: U, currentChunk: T) => Promise<U> | U, initial?: U): Promise<U> {
+    async reduce<U = T>(callback: (previousValue: U, currentChunk: T) => MaybePromise<U>, initial?: U): Promise<U> {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce#parameters
         //
         // initialValue (optional):
@@ -76,31 +77,12 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         // value in the array. If initialValue is not specified, previousValue is initialized to the first
         // value in the array, and currentValue is initialized to the second value in the array.
 
-        const values: { prev?: U } = { prev: initial };
-        const initFn = async (chunk: T): Promise<void> => {
-            if (initial === undefined) {
-                // Here we should probably check if typeof chunk is U.
-                values.prev = chunk as unknown as U;
-            } else {
-                values.prev = await callback(values.prev as U, chunk);
-            }
-        };
+        const reducer = this.getReducer<U>(callback, initial);
+        const reader = reducer.isAsync
+            ? this.getReaderAsyncCallback(true, reducer.reduceFn as (chunk: T) => Promise<void>, reducer.initFn)
+            : this.getReader(true, reducer.reduceFn, reducer.initFn);
 
-        if (isAsyncFunction(callback)) {
-            const reducerFn = async (chunk: T): Promise<void> => {
-                values.prev = await callback(values.prev as U, chunk) as U;
-            };
-
-            await (this.getReaderAsyncCallback(true, reducerFn, () => {}, initFn))();
-        } else {
-            const reducerFn = (chunk: T): void => {
-                values.prev = callback(values.prev as U, chunk) as U;
-            };
-
-            await (this.getReader(true, reducerFn, () => {}, initFn))();
-        }
-
-        return Promise.resolve(values.prev as U);
+        return reader().then(() => reducer.value as U);
     }
 
     async toArray(): Promise<T[]> {
@@ -133,6 +115,37 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         }
     }
 
+    protected getReducer<U>(
+        callback: (previousValue: U, currentChunk: T) => MaybePromise<U>,
+        initial?: U
+    ): Reducer<T, U> {
+        const reducer: any = {
+            isAsync: isAsyncFunction(callback),
+            value: initial
+        };
+
+        reducer.initFn = async (chunk: T): Promise<void> => {
+            if (initial === undefined) {
+                // Here we should probably check if typeof chunk is U.
+                reducer.value = chunk as unknown as U;
+            } else {
+                reducer.value = await callback(reducer.value as U, chunk);
+            }
+        };
+
+        if (reducer.isAsync) {
+            reducer.reduceFn = async (chunk: T): Promise<void> => {
+                reducer.value = await callback(reducer.value as U, chunk) as U;
+            };
+        } else {
+            reducer.reduceFn = (chunk: T): void => {
+                reducer.value = callback(reducer.value as U, chunk) as U;
+            };
+        }
+
+        return reducer as Reducer<T, U>;
+    }
+
     protected asNewFlattenedStream<U, W extends DataStream<AnyIterable<U>>>(
         fromStream: W,
         onEndYield?: () => { yield: boolean, value?: U }
@@ -156,8 +169,8 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     protected getReader(
         uncork: boolean,
         onChunkCallback: (chunk: T) => void,
-        onEndCallback?: Function,
-        onFirstChunkCallback?: Function
+        onFirstChunkCallback?: Function,
+        onEndCallback?: Function
     ): () => Promise<void> {
         return async () => {
             if (uncork && this.corked) {
@@ -206,8 +219,8 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     protected getReaderAsyncCallback(
         uncork: boolean,
         onChunkCallback: (chunk: T) => Promise<void>,
-        onEndCallback?: Function,
-        onFirstChunkCallback?: Function
+        onFirstChunkCallback?: Function,
+        onEndCallback?: Function
     ): () => Promise<void> {
         return async () => {
             if (uncork && this.corked) {
