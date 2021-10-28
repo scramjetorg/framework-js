@@ -20,12 +20,10 @@ test("DataStream aggregate can make sentences from words (async)", async (t) => 
     t.deepEqual(result, [["foo", "bar."], ["baz", "bax", "."], ["foo"]]);
 });
 
-test("DataStream aggregate can bu used to batch by amount", async (t) => {
-    let counter = 0;
-
+test("DataStream aggregate can bu used to batch by amount (via variadic arg counter)", async (t) => {
     const result = await DataStream
         .from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
-        .aggregate(() => { counter++; return counter % 3 === 0; })
+        .aggregate((chunk, counter) => { counter.i++; return counter.i % 3 === 0; }, { i: 0 })
         .toArray();
 
     t.deepEqual(result, [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9]]);
