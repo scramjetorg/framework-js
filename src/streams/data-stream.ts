@@ -168,8 +168,8 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
 
             let chunk = this.ifca.read();
 
-            // A bit of code duplication but we don't want to have unnecessary if inside of while
-            // or wrap it inside another function due to performance concerns.
+            // A bit of code duplication but we don't want to have unnecessary if inside a while loop
+            // which is called for every chunk or wrap the common code inside another function due to performance.
             if (onFirstChunkCallback) {
                 if (chunk instanceof Promise) {
                     chunk = await chunk;

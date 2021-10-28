@@ -43,7 +43,7 @@
         /* best practises */
         "accessor-pairs" : 1,
         "block-scoped-var" : 2,
-        "complexity" : [1, 9],
+        "complexity" : [1, 10],
         "consistent-return" : 2,
         "curly" : 0, //TODO
         "default-case" : 1,
