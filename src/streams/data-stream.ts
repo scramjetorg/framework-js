@@ -64,7 +64,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     //     return this as unknown as DataStream<U>;
     // }
 
-    async reduce<U = T>(callback: (previousValue: U, currentChunk: T) => U, initial?: U): Promise<U> {
+    async reduce<U = T>(callback: (previousValue: U, currentChunk: T) => Promise<U> | U, initial?: U): Promise<U> {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce#parameters
         //
         // initialValue (optional):
@@ -74,19 +74,28 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         // value in the array, and currentValue is initialized to the second value in the array.
 
         const values: { prev?: U } = { prev: initial };
-        const initFn = (chunk: T): void => {
+        const initFn = async (chunk: T): Promise<void> => {
             if (initial === undefined) {
                 // Here we should probably check if typeof chunk is U.
                 values.prev = chunk as unknown as U;
             } else {
-                values.prev = callback(values.prev as U, chunk);
+                values.prev = await callback(values.prev as U, chunk);
             }
         };
-        const reducerFn = (chunk: T): void => {
-            values.prev = callback(values.prev as U, chunk);
-        };
 
-        await (this.getReader(true, reducerFn, () => {}, initFn))();
+        if (isAsyncFunction(callback)) {
+            const reducerFn = async (chunk: T): Promise<void> => {
+                values.prev = await callback(values.prev as U, chunk) as U;
+            };
+
+            await (this.getReaderAsyncCallback(true, reducerFn, () => {}, initFn))();
+        } else {
+            const reducerFn = (chunk: T): void => {
+                values.prev = callback(values.prev as U, chunk) as U;
+            };
+
+            await (this.getReader(true, reducerFn, () => {}, initFn))();
+        }
 
         return Promise.resolve(values.prev as U);
     }
@@ -164,7 +173,6 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         }
     }
 
-    // For now this method assumes both callbacks are sync ones.
     protected getReader(
         uncork: boolean,
         onChunkCallback: (chunk: T) => void,
@@ -186,7 +194,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
                 }
 
                 if (chunk !== null) {
-                    onFirstChunkCallback(chunk);
+                    await onFirstChunkCallback(chunk);
                     chunk = this.ifca.read();
                 }
             }
@@ -207,7 +215,54 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
             }
 
             if (onEndCallback) {
-                onEndCallback.call(this);
+                await onEndCallback.call(this);
+            }
+        };
+    }
+
+    protected getReaderAsyncCallback(
+        uncork: boolean,
+        onChunkCallback: (chunk: T) => Promise<void>,
+        onEndCallback?: Function,
+        onFirstChunkCallback?: Function
+    ): () => Promise<void> {
+        return async () => {
+            if (uncork && this.corked) {
+                this._uncork();
+            }
+
+            let chunk = this.ifca.read();
+
+            // A bit of code duplication but we don't want to have unnecessary if inside a while loop
+            // which is called for every chunk or wrap the common code inside another function due to performance.
+            if (onFirstChunkCallback) {
+                if (chunk instanceof Promise) {
+                    chunk = await chunk;
+                }
+
+                if (chunk !== null) {
+                    await onFirstChunkCallback(chunk);
+                    chunk = this.ifca.read();
+                }
+            }
+
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                if (chunk instanceof Promise) {
+                    chunk = await chunk;
+                }
+
+                if (chunk === null) {
+                    break;
+                }
+
+                await onChunkCallback(chunk);
+
+                chunk = this.ifca.read();
+            }
+
+            if (onEndCallback) {
+                await onEndCallback.call(this);
             }
         };
     }
