@@ -1,5 +1,6 @@
 import test from "ava";
 import { DataStream } from "../../../src/streams/data-stream";
+import { deferReturn } from "../../helpers/utils";
 
 test("DataStream reduce can be use to calculate sum", async (t) => {
     const result = await DataStream
@@ -21,6 +22,30 @@ test("DataStream reduce can be use to concate numbers to string", async (t) => {
     const result = await DataStream
         .from([1, 2, 3, 4, 5, 6, 7, 8, 9, 0])
         .reduce((a, b) => `${a}${b}`, "");
+
+    t.deepEqual(result, "1234567890");
+});
+
+test("DataStream reduce can be use to calculate sum (async)", async (t) => {
+    const result = await DataStream
+        .from([1, 2, 3, 4, 0, 0, 20, 10, 2, 2])
+        .reduce(async (a, b) => deferReturn(5, a + b));
+
+    t.deepEqual(result, 44);
+});
+
+test("DataStream reduce can be use to calculate sum (initial provided, async)", async (t) => {
+    const result = await DataStream
+        .from([1, 2, 3, 4, 0, 0, 20, 10, 2, 2])
+        .reduce(async (a, b) => deferReturn(5, a + b), 0);
+
+    t.deepEqual(result, 44);
+});
+
+test("DataStream reduce can be use to concate numbers to string (async)", async (t) => {
+    const result = await DataStream
+        .from([1, 2, 3, 4, 5, 6, 7, 8, 9, 0])
+        .reduce(async (a, b) => deferReturn(5, `${a}${b}`), "");
 
     t.deepEqual(result, "1234567890");
 });
