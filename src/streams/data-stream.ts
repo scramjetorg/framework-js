@@ -200,6 +200,9 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         };
     }
 
+    // This is duplicated '.getReader()' method with the only difference that 'onChunkCallback'
+    // is an async function so we have to 'await' on it for each chunk. Since it has significant effect
+    // on processing time (and makes it asynchronous) I have extracted it as a separate method.
     protected getReaderAsyncCallback(
         uncork: boolean,
         onChunkCallback: (chunk: T) => Promise<void>,
