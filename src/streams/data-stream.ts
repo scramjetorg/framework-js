@@ -53,6 +53,44 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         return this as unknown as DataStream<U>;
     }
 
+    // TODO // batch/aggregate - if null/undefined skipped?
+    // remap<U, W extends any[] = []>(callback: TransformFunction<T, U, W>, ...args: W): DataStream<U> {
+    //     if (args?.length) {
+    //         this.ifca.addTransform(this.injectArgsToCallback<U, typeof args>(callback, args));
+    //     } else {
+    //         this.ifca.addTransform(callback);
+    //     }
+
+    //     return this as unknown as DataStream<U>;
+    // }
+
+    async reduce<U = T>(callback: (previousValue: U, currentChunk: T) => U, initial?: U): Promise<U> {
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce#parameters
+        //
+        // initialValue (optional):
+        // A value to which previousValue is initialized the first time the callback is called.
+        // If initialValue is specified, that also causes currentValue to be initialized to the first
+        // value in the array. If initialValue is not specified, previousValue is initialized to the first
+        // value in the array, and currentValue is initialized to the second value in the array.
+
+        const values: { prev?: U } = { prev: initial };
+        const initFn = (chunk: T): void => {
+            if (initial === undefined) {
+                // Here we should probably check if typeof chunk is U.
+                values.prev = chunk as unknown as U;
+            } else {
+                values.prev = callback(values.prev as U, chunk);
+            }
+        };
+        const reducerFn = (chunk: T): void => {
+            values.prev = callback(values.prev as U, chunk);
+        };
+
+        await (this.getReader(true, reducerFn, () => {}, initFn))();
+
+        return Promise.resolve(values.prev as U);
+    }
+
     filter<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T> {
         const chunksFilter = (chunk: T, result: Boolean) => result ? chunk : DroppedChunk;
 
@@ -120,28 +158,46 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     protected getReader(
         uncork: boolean,
         onChunkCallback: (chunk: T) => void,
-        onEndCallback?: Function
+        onEndCallback?: Function,
+        onFirstChunkCallback?: Function
     ): () => Promise<void> {
         return async () => {
             if (uncork && this.corked) {
                 this._uncork();
             }
 
-            // eslint-disable-next-line no-constant-condition
-            while (true) {
-                let chunk = this.ifca.read();
+            let chunk = this.ifca.read();
 
+            // A bit of code duplication but we don't want to have unnecessary if inside of while
+            // or wrap it inside another function due to performance concerns.
+            if (onFirstChunkCallback) {
                 if (chunk instanceof Promise) {
                     chunk = await chunk;
                 }
+
+                if (chunk !== null) {
+                    onFirstChunkCallback(chunk);
+                    chunk = this.ifca.read();
+                }
+            }
+
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                if (chunk instanceof Promise) {
+                    chunk = await chunk;
+                }
+
                 if (chunk === null) {
-                    if (onEndCallback) {
-                        onEndCallback.call(this);
-                    }
                     break;
                 }
 
                 onChunkCallback(chunk);
+
+                chunk = this.ifca.read();
+            }
+
+            if (onEndCallback) {
+                onEndCallback.call(this);
             }
         };
     }
