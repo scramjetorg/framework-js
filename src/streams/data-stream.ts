@@ -53,16 +53,19 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         return this as unknown as DataStream<U>;
     }
 
-    // TODO // batch/aggregate - if null/undefined skipped?
-    // remap<U, W extends any[] = []>(callback: TransformFunction<T, U, W>, ...args: W): DataStream<U> {
-    //     if (args?.length) {
-    //         this.ifca.addTransform(this.injectArgsToCallback<U, typeof args>(callback, args));
-    //     } else {
-    //         this.ifca.addTransform(callback);
-    //     }
+    filter<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T> {
+        const chunksFilter = (chunk: T, result: Boolean) => result ? chunk : DroppedChunk;
 
-    //     return this as unknown as DataStream<U>;
-    // }
+        this.ifca.addTransform(
+            this.injectArgsToCallbackAndMapResult(callback, chunksFilter, args)
+        );
+
+        return this;
+    }
+
+    flatMap<U, W extends any[] = []>(callback: TransformFunction<T, AnyIterable<U>, W>, ...args: W): DataStream<U> {
+        return this.asNewFlattenedStream(this.map<AnyIterable<U>, W>(callback, ...args));
+    }
 
     async reduce<U = T>(callback: (previousValue: U, currentChunk: T) => Promise<U> | U, initial?: U): Promise<U> {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce#parameters
@@ -98,20 +101,6 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         }
 
         return Promise.resolve(values.prev as U);
-    }
-
-    filter<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T> {
-        const chunksFilter = (chunk: T, result: Boolean) => result ? chunk : DroppedChunk;
-
-        this.ifca.addTransform(
-            this.injectArgsToCallbackAndMapResult(callback, chunksFilter, args)
-        );
-
-        return this;
-    }
-
-    flatMap<U, W extends any[] = []>(callback: TransformFunction<T, AnyIterable<U>, W>, ...args: W): DataStream<U> {
-        return this.asNewFlattenedStream(this.map<AnyIterable<U>, W>(callback, ...args));
     }
 
     async toArray(): Promise<T[]> {
