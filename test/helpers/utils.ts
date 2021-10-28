@@ -12,6 +12,10 @@ async function defer<X extends any | undefined>(ts: number, out?: X): Promise<X 
     return new Promise((res) => setTimeout(() => res(out), ts));
 }
 
+async function deferReturn<X extends any>(ts: number, out: X): Promise<X> {
+    return new Promise((res) => setTimeout(() => res(out), ts));
+}
+
 function writeInput(ifca: IFCA<any, any, any>, input: any[]): void {
     for (const i of input) {
         ifca.write(i);
@@ -58,6 +62,7 @@ const transforms = {
 
 export {
     defer,
+    deferReturn,
     writeInput,
     readNTimes,
     readNTimesConcurrently,
