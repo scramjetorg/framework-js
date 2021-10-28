@@ -53,53 +53,6 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         return this as unknown as DataStream<U>;
     }
 
-    // TODO // batch/aggregate - if null/undefined skipped?
-    // remap<U, W extends any[] = []>(callback: TransformFunction<T, U, W>, ...args: W): DataStream<U> {
-    //     if (args?.length) {
-    //         this.ifca.addTransform(this.injectArgsToCallback<U, typeof args>(callback, args));
-    //     } else {
-    //         this.ifca.addTransform(callback);
-    //     }
-
-    //     return this as unknown as DataStream<U>;
-    // }
-
-    async reduce<U = T>(callback: (previousValue: U, currentChunk: T) => Promise<U> | U, initial?: U): Promise<U> {
-        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce#parameters
-        //
-        // initialValue (optional):
-        // A value to which previousValue is initialized the first time the callback is called.
-        // If initialValue is specified, that also causes currentValue to be initialized to the first
-        // value in the array. If initialValue is not specified, previousValue is initialized to the first
-        // value in the array, and currentValue is initialized to the second value in the array.
-
-        const values: { prev?: U } = { prev: initial };
-        const initFn = async (chunk: T): Promise<void> => {
-            if (initial === undefined) {
-                // Here we should probably check if typeof chunk is U.
-                values.prev = chunk as unknown as U;
-            } else {
-                values.prev = await callback(values.prev as U, chunk);
-            }
-        };
-
-        if (isAsyncFunction(callback)) {
-            const reducerFn = async (chunk: T): Promise<void> => {
-                values.prev = await callback(values.prev as U, chunk) as U;
-            };
-
-            await (this.getReaderAsyncCallback(true, reducerFn, () => {}, initFn))();
-        } else {
-            const reducerFn = (chunk: T): void => {
-                values.prev = callback(values.prev as U, chunk) as U;
-            };
-
-            await (this.getReader(true, reducerFn, () => {}, initFn))();
-        }
-
-        return Promise.resolve(values.prev as U);
-    }
-
     filter<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T> {
         const chunksFilter = (chunk: T, result: Boolean) => result ? chunk : DroppedChunk;
 
@@ -141,6 +94,42 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         };
 
         return DataStream.from(input());
+    }
+
+    async reduce<U = T>(callback: (previousValue: U, currentChunk: T) => Promise<U> | U, initial?: U): Promise<U> {
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce#parameters
+        //
+        // initialValue (optional):
+        // A value to which previousValue is initialized the first time the callback is called.
+        // If initialValue is specified, that also causes currentValue to be initialized to the first
+        // value in the array. If initialValue is not specified, previousValue is initialized to the first
+        // value in the array, and currentValue is initialized to the second value in the array.
+
+        const values: { prev?: U } = { prev: initial };
+        const initFn = async (chunk: T): Promise<void> => {
+            if (initial === undefined) {
+                // Here we should probably check if typeof chunk is U.
+                values.prev = chunk as unknown as U;
+            } else {
+                values.prev = await callback(values.prev as U, chunk);
+            }
+        };
+
+        if (isAsyncFunction(callback)) {
+            const reducerFn = async (chunk: T): Promise<void> => {
+                values.prev = await callback(values.prev as U, chunk) as U;
+            };
+
+            await (this.getReaderAsyncCallback(true, reducerFn, () => {}, initFn))();
+        } else {
+            const reducerFn = (chunk: T): void => {
+                values.prev = callback(values.prev as U, chunk) as U;
+            };
+
+            await (this.getReader(true, reducerFn, () => {}, initFn))();
+        }
+
+        return Promise.resolve(values.prev as U);
     }
 
     async toArray(): Promise<T[]> {
