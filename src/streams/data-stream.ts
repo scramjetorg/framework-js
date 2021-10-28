@@ -68,6 +68,45 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         return this.asNewFlattenedStream(this.map<AnyIterable<U>, W>(callback, ...args));
     }
 
+    aggregate<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T[]> {
+        let batch: T[] = [];
+        let aggregator: TransformFunction<T, T[], W>;
+
+        if (isAsyncFunction(callback)) {
+            aggregator = async (chunk: T, ...args1: W): Promise<T[]> => {
+                batch.push(chunk);
+
+                let result: T[] = [];
+
+                if (await callback(chunk, ...args1)) {
+                    result = [...batch];
+                    batch = [];
+                }
+
+                return result;
+            };
+        } else {
+            aggregator = (chunk: T, ...args1: W): T[] => {
+                batch.push(chunk);
+
+                let result: T[] = [];
+
+                if (callback(chunk, ...args1)) {
+                    result = [...batch];
+                    batch = [];
+                }
+
+                return result;
+            };
+        }
+
+        const onEnd = () => {
+            return { yield: batch.length > 0, value: batch };
+        };
+
+        return this.asNewStream(this.map<T[], W>(aggregator, ...args).filter(chunk => chunk.length > 0), onEnd);
+    }
+
     async reduce<U = T>(callback: (previousValue: U, currentChunk: T) => MaybePromise<U>, initial?: U): Promise<U> {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce#parameters
         //
@@ -144,6 +183,25 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         }
 
         return reducer as Reducer<T, U>;
+    }
+
+    protected asNewStream<U, W extends DataStream<U>>(
+        fromStream: W,
+        onEndYield?: () => { yield: boolean, value?: U }
+    ): DataStream<U> {
+        return DataStream.from((async function * (stream){
+            for await (const chunk of stream) {
+                yield chunk;
+            }
+
+            if (onEndYield) {
+                const yieldValue = onEndYield();
+
+                if (yieldValue.yield) {
+                    yield yieldValue.value as U;
+                }
+            }
+        })(fromStream));
     }
 
     protected asNewFlattenedStream<U, W extends DataStream<AnyIterable<U>>>(
