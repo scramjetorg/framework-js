@@ -74,32 +74,32 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         return this.asNewFlattenedStream(this.map<AnyIterable<U>, W>(callback, ...args));
     }
 
-    aggregate<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T[]> {
-        let batch: T[] = [];
+    batch<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T[]> {
+        let currentBatch: T[] = [];
         let aggregator: TransformFunction<T, T[], W>;
 
         if (isAsyncFunction(callback)) {
             aggregator = async (chunk: T, ...args1: W): Promise<T[]> => {
-                batch.push(chunk);
+                currentBatch.push(chunk);
 
                 let result: T[] = [];
 
                 if (await callback(chunk, ...args1)) {
-                    result = [...batch];
-                    batch = [];
+                    result = [...currentBatch];
+                    currentBatch = [];
                 }
 
                 return result;
             };
         } else {
             aggregator = (chunk: T, ...args1: W): T[] => {
-                batch.push(chunk);
+                currentBatch.push(chunk);
 
                 let result: T[] = [];
 
                 if (callback(chunk, ...args1)) {
-                    result = [...batch];
-                    batch = [];
+                    result = [...currentBatch];
+                    currentBatch = [];
                 }
 
                 return result;
@@ -107,7 +107,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         }
 
         const onEnd = () => {
-            return { yield: batch.length > 0, value: batch };
+            return { yield: currentBatch.length > 0, value: currentBatch };
         };
 
         return this.asNewStream(this.map<T[], W>(aggregator, ...args).filter(chunk => chunk.length > 0), onEnd);
