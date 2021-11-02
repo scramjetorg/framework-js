@@ -165,13 +165,13 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         })(fromStream));
     }
 
-    // For now this method assumes both callbacks are sync ones.
     protected getReader(
         uncork: boolean,
         onChunkCallback: (chunk: T) => void,
         onFirstChunkCallback?: Function,
         onEndCallback?: Function
     ): () => Promise<void> {
+        /* eslint-disable complexity */
         return async () => {
             if (uncork && this.corked) {
                 this._uncork();
@@ -211,6 +211,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
                 await onEndCallback.call(this);
             }
         };
+        /* eslint-enable complexity */
     }
 
     // This is duplicated '.getReader()' method with the only difference that 'onChunkCallback'
@@ -222,6 +223,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         onFirstChunkCallback?: Function,
         onEndCallback?: Function
     ): () => Promise<void> {
+        /* eslint-disable complexity */
         return async () => {
             if (uncork && this.corked) {
                 this._uncork();
@@ -261,6 +263,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
                 await onEndCallback.call(this);
             }
         };
+        /* eslint-enable complexity */
     }
 
     // Native node readables also implement AsyncIterable interface.
