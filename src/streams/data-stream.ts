@@ -5,7 +5,13 @@ import { IFCA } from "../ifca";
 import { AnyIterable, Constructor, DroppedChunk, ResolvablePromiseObject, TransformFunction, MaybePromise } from "../types";
 import { createResolvablePromiseObject, isAsyncFunction } from "../utils";
 
-type Reducer<T, U> = { isAsync: boolean, value?: U, initFn: Function, reduceFn: (chunk: T) => MaybePromise<void> };
+type Reducer<T, U> = {
+    isAsync: boolean,
+    value?: U,
+    onFirstChunkCallback: Function,
+    onChunkCallback: (chunk: T) => MaybePromise<void>
+};
+
 export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     constructor() {
         this.ifca = new IFCA<T, T, any>(2, (chunk: T) => chunk);
@@ -79,8 +85,8 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
 
         const reducer = this.getReducer<U>(callback, initial);
         const reader = reducer.isAsync
-            ? this.getReaderAsyncCallback(true, reducer.reduceFn as (chunk: T) => Promise<void>, reducer.initFn)
-            : this.getReader(true, reducer.reduceFn, reducer.initFn);
+            ? this.getReaderAsyncCallback(true, reducer)
+            : this.getReader(true, reducer);
 
         return reader().then(() => reducer.value as U);
     }
@@ -88,7 +94,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     async toArray(): Promise<T[]> {
         const chunks: Array<T> = [];
 
-        await (this.getReader(true, chunk => { chunks.push(chunk); }))();
+        await (this.getReader(true, { onChunkCallback: chunk => { chunks.push(chunk); } }))();
 
         return chunks;
     }
@@ -124,7 +130,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
             value: initial
         };
 
-        reducer.initFn = async (chunk: T): Promise<void> => {
+        reducer.onFirstChunkCallback = async (chunk: T): Promise<void> => {
             if (initial === undefined) {
                 // Here we should probably check if typeof chunk is U.
                 reducer.value = chunk as unknown as U;
@@ -134,11 +140,11 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         };
 
         if (reducer.isAsync) {
-            reducer.reduceFn = async (chunk: T): Promise<void> => {
+            reducer.onChunkCallback = async (chunk: T): Promise<void> => {
                 reducer.value = await callback(reducer.value as U, chunk) as U;
             };
         } else {
-            reducer.reduceFn = (chunk: T): void => {
+            reducer.onChunkCallback = (chunk: T): void => {
                 reducer.value = callback(reducer.value as U, chunk) as U;
             };
         }
@@ -167,61 +173,11 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
 
     protected getReader(
         uncork: boolean,
-        onChunkCallback: (chunk: T) => void,
-        onFirstChunkCallback?: Function,
-        onEndCallback?: Function
-    ): () => Promise<void> {
-        /* eslint-disable complexity */
-        return async () => {
-            if (uncork && this.corked) {
-                this._uncork();
-            }
-
-            let chunk = this.ifca.read();
-
-            // A bit of code duplication but we don't want to have unnecessary if inside of while
-            // or wrap it inside another function due to performance concerns.
-            if (onFirstChunkCallback) {
-                if (chunk instanceof Promise) {
-                    chunk = await chunk;
-                }
-
-                if (chunk !== null) {
-                    await onFirstChunkCallback(chunk);
-                    chunk = this.ifca.read();
-                }
-            }
-
-            // eslint-disable-next-line no-constant-condition
-            while (true) {
-                if (chunk instanceof Promise) {
-                    chunk = await chunk;
-                }
-
-                if (chunk === null) {
-                    break;
-                }
-
-                onChunkCallback(chunk);
-
-                chunk = this.ifca.read();
-            }
-
-            if (onEndCallback) {
-                await onEndCallback.call(this);
-            }
-        };
-        /* eslint-enable complexity */
-    }
-
-    // This is duplicated '.getReader()' method with the only difference that 'onChunkCallback'
-    // is an async function so we have to 'await' on it for each chunk. Since it has significant effect
-    // on processing time (and makes it asynchronous) I have extracted it as a separate method.
-    protected getReaderAsyncCallback(
-        uncork: boolean,
-        onChunkCallback: (chunk: T) => Promise<void>,
-        onFirstChunkCallback?: Function,
-        onEndCallback?: Function
+        callbacks: {
+            onChunkCallback: (chunk: T) => void,
+            onFirstChunkCallback?: Function,
+            onEndCallback?: Function
+        }
     ): () => Promise<void> {
         /* eslint-disable complexity */
         return async () => {
@@ -233,13 +189,13 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
 
             // A bit of code duplication but we don't want to have unnecessary if inside a while loop
             // which is called for every chunk or wrap the common code inside another function due to performance.
-            if (onFirstChunkCallback) {
+            if (callbacks.onFirstChunkCallback) {
                 if (chunk instanceof Promise) {
                     chunk = await chunk;
                 }
 
                 if (chunk !== null) {
-                    await onFirstChunkCallback(chunk);
+                    await callbacks.onFirstChunkCallback(chunk);
                     chunk = this.ifca.read();
                 }
             }
@@ -254,13 +210,67 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
                     break;
                 }
 
-                await onChunkCallback(chunk);
+                callbacks.onChunkCallback(chunk);
 
                 chunk = this.ifca.read();
             }
 
-            if (onEndCallback) {
-                await onEndCallback.call(this);
+            if (callbacks.onEndCallback) {
+                await callbacks.onEndCallback.call(this);
+            }
+        };
+        /* eslint-enable complexity */
+    }
+
+    // This is duplicated '.getReader()' method with the only difference that 'onChunkCallback'
+    // is an async function so we have to 'await' on it for each chunk. Since it has significant effect
+    // on processing time (and makes it asynchronous) I have extracted it as a separate method.
+    protected getReaderAsyncCallback(
+        uncork: boolean,
+        callbacks: {
+            onChunkCallback: (chunk: T) => MaybePromise<void>,
+            onFirstChunkCallback?: Function,
+            onEndCallback?: Function
+        }
+    ): () => Promise<void> {
+        /* eslint-disable complexity */
+        return async () => {
+            if (uncork && this.corked) {
+                this._uncork();
+            }
+
+            let chunk = this.ifca.read();
+
+            // A bit of code duplication but we don't want to have unnecessary if inside a while loop
+            // which is called for every chunk or wrap the common code inside another function due to performance.
+            if (callbacks.onFirstChunkCallback) {
+                if (chunk instanceof Promise) {
+                    chunk = await chunk;
+                }
+
+                if (chunk !== null) {
+                    await callbacks.onFirstChunkCallback(chunk);
+                    chunk = this.ifca.read();
+                }
+            }
+
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                if (chunk instanceof Promise) {
+                    chunk = await chunk;
+                }
+
+                if (chunk === null) {
+                    break;
+                }
+
+                await callbacks.onChunkCallback(chunk);
+
+                chunk = this.ifca.read();
+            }
+
+            if (callbacks.onEndCallback) {
+                await callbacks.onEndCallback.call(this);
             }
         };
         /* eslint-enable complexity */
