@@ -1,9 +1,7 @@
 {
-  "extends": "./tsconfig.base.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "target": "es2017",
     "sourceMap": false,
-    "declaration": false,
     "outDir": "build"
   },
   "watchOptions": {

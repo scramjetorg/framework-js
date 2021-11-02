@@ -4,19 +4,19 @@
   "description": "The implementation of scramjet framework",
   "main": "./src/index.ts",
   "scripts": {
-    "build": "rm -rf ./build && yarn copy && tsc -p tsconfig.build.json",
-    "build:w": "yarn build -w",
-    "test": "yarn build && ava",
-    "test:w": "concurrently 'yarn build:w' 'sleep 8 && yarn test -w'",
-    "bdd": "yarn build && yarn cucumber-js build/bdd/features",
-    "dist": "rm -rf ./dist && tsc -p tsconfig.dist.json",
+    "build": "rm -rf ./build && npm run copy && tsc -p tsconfig.build.json",
+    "build:w": "npm run build -- -w",
+    "test": "npm run build && ava",
+    "test:w": "concurrently 'npm run build:w' 'sleep 8 && npm test -- -w'",
+    "bdd": "npm run build && npx cucumber-js build/bdd/features",
+    "dist": "rm -rf ./dist && tsc",
     "lint": "eslint src/ test/ --ext .ts",
     "prepare": "husky install",
-    "coverage": "yarn coverage:generate && yarn http-server coverage",
-    "coverage:generate": "yarn build && yarn coverage:unit && yarn coverage:bdd && yarn coverage:report",
-    "coverage:check": "yarn build && yarn coverage:unit && yarn coverage:bdd && nyc report --check-coverage",
-    "coverage:unit": "nyc --silent yarn ava",
-    "coverage:bdd": "nyc --silent --no-clean yarn cucumber-js build/bdd/features",
+    "coverage": "npm run coverage:generate && npx http-server coverage",
+    "coverage:generate": "npm run build && npm run coverage:unit && npm run coverage:bdd && npm run coverage:report",
+    "coverage:check": "npm run build && npm run coverage:unit && npm run coverage:bdd && nyc report --check-coverage",
+    "coverage:unit": "nyc --silent ava",
+    "coverage:bdd": "nyc --silent --no-clean cucumber-js build/bdd/features",
     "coverage:report": "nyc report --reporter=html",
     "copy": "copyfiles -f bdd/features/*.feature build/bdd/features && copyfiles -f test/assets/* build/test/assets"
   },
@@ -25,7 +25,7 @@
   "devDependencies": {
     "@cucumber/cucumber": "^8.0.0-rc.1",
     "@types/assert": "^1.5.5",
-    "@types/node": "^15.14.2",
+    "@types/node": "^15.14.9",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "assert": "^2.0.0",
@@ -57,6 +57,5 @@
     "include": "build/src/",
     "exclude": "build/test/**/*.js"
   },
-  "private": true,
-  "packageManager": "yarn@3.1.0"
+  "private": true
 }
