@@ -1,10 +1,10 @@
 import test from "ava";
-import { DataStream } from "../../src/streams/data-stream";
+import { DataStream } from "../../../src/streams/data-stream";
 
 test("DataStream can be iterated with 'for await..of'", async (t) => {
     const result = [];
     const dsString = DataStream
-        .from<string>(["1", "2", "3", "4", "5", "6"])
+        .from(["1", "2", "3", "4", "5", "6"])
         .map<number, number[]>(parseInt, 10)
         .filter(chunk => !!(chunk % 2));
 

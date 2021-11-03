@@ -56,6 +56,12 @@ yarn test[:w]
 Runs all tests from `test` folder. It runs `build` internally so it doesn't have to be run manually. When run with `:w` it will watch for changes, rebuild and rerun test automatically.
 
 ```bash
+yarn bdd
+```
+
+Runs all BDD tests from `bdd` directory. It runs `build` internally so it doesn't have to be run manually.
+
+```bash
 yarn coverage
 ```
 
@@ -72,6 +78,18 @@ yarn coverage:generate
 ```
 
 Checks code coverage and generates HTML report.
+
+```bash
+yarn coverage:[unit|bdd]
+```
+
+Generates code coverage for given set of tests. _It's a subtask and should not be run separately_.
+
+```bash
+yarn coverage:report
+```
+
+Creates coverage report based on generated coverage files from unit and bdd tests. _It's a subtask and should not be run separately_.
 
 ```bash
 yarn dist

@@ -1,4 +1,5 @@
-import { IFCA, DroppedChunk } from "../../src/ifca";
+import { IFCA } from "../../src/ifca";
+import { DroppedChunk } from "../../src/types";
 
 /**
  * Helper function that defers and optionaly returns given output after waiting.

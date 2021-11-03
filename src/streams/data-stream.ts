@@ -1,27 +1,32 @@
 import { Readable } from "stream";
 import { createReadStream, promises as fs } from "fs";
-import * as readline from "readline";
-import { BaseStream, BaseStreamCreators } from "./base-stream";
-import { IFCA, TransformFunction, DroppedChunk } from "../ifca";
-import { createResolvablePromiseObject, ResolvablePromiseObject, isAsyncFunction } from "../utils";
+import { BaseStream } from "./base-stream";
+import { IFCA } from "../ifca";
+import { AnyIterable, Constructor, DroppedChunk, ResolvablePromiseObject, TransformFunction } from "../types";
+import { createResolvablePromiseObject, isAsyncFunction } from "../utils";
 
-export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, AsyncIterable<T> {
+export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     constructor() {
-        super();
-
         this.ifca = new IFCA<T, T, any>(2, (chunk: T) => chunk);
         this.corked = createResolvablePromiseObject<void>();
     }
 
-    private ifca: IFCA<T, T, any>;
-    private corked: ResolvablePromiseObject<void> | null;
+    protected ifca: IFCA<T, T, any>;
+    protected corked: ResolvablePromiseObject<void> | null;
 
-    static from<U extends any>(input: Iterable<U> | AsyncIterable<U> | Readable): DataStream<U> {
-        const dataStream = new DataStream<U>();
+    static from<U extends any, W extends DataStream<U>>(
+        this: Constructor<W>,
+        input: Iterable<U> | AsyncIterable<U> | Readable
+    ): W {
+        return (new this()).read(input);
+    }
 
-        dataStream.read(input);
-
-        return dataStream;
+    static fromFile<U extends any, W extends DataStream<U>>(
+        this: Constructor<W>,
+        path: string,
+        options?: any
+    ): W {
+        return (new this()).read(createReadStream(path, options?.readStream));
     }
 
     [Symbol.asyncIterator]() {
@@ -58,41 +63,16 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
         return this;
     }
 
-    async toArray(): Promise<T[]> {
-        if (this.corked) {
-            this._uncork();
-        }
-
-        const chunks: Array<T> = [];
-
-        let value;
-
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-            value = this.ifca.read();
-            if (value instanceof Promise) {
-                value = await value;
-            }
-            if (value === null) {
-                break;
-            }
-
-            chunks.push(value as T);
-        }
-
-        return chunks;
+    flatMap<U, W extends any[] = []>(callback: TransformFunction<T, AnyIterable<U>, W>, ...args: W): DataStream<U> {
+        return this.asNewFlattenedStream(this.map<AnyIterable<U>, W>(callback, ...args));
     }
 
-    // TODO
-    // Helper created to be used in E2E test.
-    // Reads line-by-line which should not be default behaviour.
-    static fromFile(filePath: string): DataStream<string> {
-        const fileStream = createReadStream(filePath);
-        const lineStream = readline.createInterface({
-            input: fileStream
-        });
+    async toArray(): Promise<T[]> {
+        const chunks: Array<T> = [];
 
-        return DataStream.from(lineStream);
+        await (this.getReader(true, chunk => { chunks.push(chunk); }))();
+
+        return chunks;
     }
 
     // TODO
@@ -117,8 +97,57 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
         }
     }
 
+    protected asNewFlattenedStream<U, W extends DataStream<AnyIterable<U>>>(
+        fromStream: W,
+        onEndYield?: () => { yield: boolean, value?: U }
+    ): DataStream<U> {
+        return DataStream.from((async function * (stream){
+            for await (const chunks of stream) {
+                yield* chunks;
+            }
+
+            if (onEndYield) {
+                const yieldValue = onEndYield();
+
+                if (yieldValue.yield) {
+                    yield yieldValue.value as U;
+                }
+            }
+        })(fromStream));
+    }
+
+    // For now this method assumes both callbacks are sync ones.
+    protected getReader(
+        uncork: boolean,
+        onChunkCallback: (chunk: T) => void,
+        onEndCallback?: Function
+    ): () => Promise<void> {
+        return async () => {
+            if (uncork && this.corked) {
+                this._uncork();
+            }
+
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                let chunk = this.ifca.read();
+
+                if (chunk instanceof Promise) {
+                    chunk = await chunk;
+                }
+                if (chunk === null) {
+                    if (onEndCallback) {
+                        onEndCallback.call(this);
+                    }
+                    break;
+                }
+
+                onChunkCallback(chunk);
+            }
+        };
+    }
+
     // Native node readables also implement AsyncIterable interface.
-    private read(iterable: Iterable<T> | AsyncIterable<T>): void {
+    protected read(iterable: Iterable<T> | AsyncIterable<T>): this {
         // We don't want to return or wait for the result of the async call,
         // it will just run in the background reading chunks as they appear.
         (async (): Promise<void> => {
@@ -140,9 +169,11 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
 
             this.ifca.end();
         })();
+
+        return this;
     }
 
-    private injectArgsToCallback<U, W extends any[]>(
+    protected injectArgsToCallback<U, W extends any[]>(
         callback: TransformFunction<T, U, W>,
         args: W
     ): (chunk: T) => Promise<U> | U {
@@ -157,7 +188,7 @@ export class DataStream<T> extends BaseStreamCreators implements BaseStream<T>, 
         };
     }
 
-    private injectArgsToCallbackAndMapResult<U, X, W extends any[]>(
+    protected injectArgsToCallbackAndMapResult<U, X, W extends any[]>(
         callback: TransformFunction<T, U, W>,
         resultMapper: (chunk: T, result: U) => X,
         args: W
