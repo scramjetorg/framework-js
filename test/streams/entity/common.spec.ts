@@ -1,14 +1,14 @@
 import test from "ava";
-import { HTMLStream } from "../../../src/streams/html-stream";
+import { EntityStream, Entity } from "../../../src/streams/entity-stream";
 
-test("HTMLStream can do magic", async (t) => {
+test("EntityStream can do magic", async (t) => {
     function * urls() {
         for (let i = 1; i < 6; i++) {
-            yield `https://news.ycombinator.com/news?p=${i}`;
+            yield { url: `https://news.ycombinator.com/news?p=${i}` } as Entity;
         }
     }
 
-    const stream = HTMLStream.from(urls()) as HTMLStream<string>;
+    const stream = EntityStream.from(urls());
     const result = await stream
         .log()
         .fetch()
