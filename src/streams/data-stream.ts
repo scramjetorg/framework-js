@@ -2,8 +2,15 @@ import { Readable } from "stream";
 import { createReadStream, promises as fs } from "fs";
 import { BaseStream } from "./base-stream";
 import { IFCA } from "../ifca";
-import { AnyIterable, Constructor, DroppedChunk, ResolvablePromiseObject, TransformFunction } from "../types";
+import { AnyIterable, Constructor, DroppedChunk, ResolvablePromiseObject, TransformFunction, MaybePromise } from "../types";
 import { createResolvablePromiseObject, isAsyncFunction } from "../utils";
+
+type Reducer<T, U> = {
+    isAsync: boolean,
+    value?: U,
+    onFirstChunkCallback: Function,
+    onChunkCallback: (chunk: T) => MaybePromise<void>
+};
 
 export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     constructor() {
@@ -67,10 +74,27 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         return this.asNewFlattenedStream(this.map<AnyIterable<U>, W>(callback, ...args));
     }
 
+    async reduce<U = T>(callback: (previousValue: U, currentChunk: T) => MaybePromise<U>, initial?: U): Promise<U> {
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce#parameters
+        //
+        // initialValue (optional):
+        // A value to which previousValue is initialized the first time the callback is called.
+        // If initialValue is specified, that also causes currentValue to be initialized to the first
+        // value in the array. If initialValue is not specified, previousValue is initialized to the first
+        // value in the array, and currentValue is initialized to the second value in the array.
+
+        const reducer = this.getReducer<U>(callback, initial);
+        const reader = reducer.isAsync
+            ? this.getReaderAsyncCallback(true, reducer)
+            : this.getReader(true, reducer);
+
+        return reader().then(() => reducer.value as U);
+    }
+
     async toArray(): Promise<T[]> {
         const chunks: Array<T> = [];
 
-        await (this.getReader(true, chunk => { chunks.push(chunk); }))();
+        await (this.getReader(true, { onChunkCallback: chunk => { chunks.push(chunk); } }))();
 
         return chunks;
     }
@@ -97,6 +121,37 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         }
     }
 
+    protected getReducer<U>(
+        callback: (previousValue: U, currentChunk: T) => MaybePromise<U>,
+        initial?: U
+    ): Reducer<T, U> {
+        const reducer: any = {
+            isAsync: isAsyncFunction(callback),
+            value: initial
+        };
+
+        reducer.onFirstChunkCallback = async (chunk: T): Promise<void> => {
+            if (initial === undefined) {
+                // Here we should probably check if typeof chunk is U.
+                reducer.value = chunk as unknown as U;
+            } else {
+                reducer.value = await callback(reducer.value as U, chunk);
+            }
+        };
+
+        if (reducer.isAsync) {
+            reducer.onChunkCallback = async (chunk: T): Promise<void> => {
+                reducer.value = await callback(reducer.value as U, chunk) as U;
+            };
+        } else {
+            reducer.onChunkCallback = (chunk: T): void => {
+                reducer.value = callback(reducer.value as U, chunk) as U;
+            };
+        }
+
+        return reducer as Reducer<T, U>;
+    }
+
     protected asNewFlattenedStream<U, W extends DataStream<AnyIterable<U>>>(
         fromStream: W,
         onEndYield?: () => { yield: boolean, value?: U }
@@ -116,34 +171,109 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         })(fromStream));
     }
 
-    // For now this method assumes both callbacks are sync ones.
     protected getReader(
         uncork: boolean,
-        onChunkCallback: (chunk: T) => void,
-        onEndCallback?: Function
+        callbacks: {
+            onChunkCallback: (chunk: T) => void,
+            onFirstChunkCallback?: Function,
+            onEndCallback?: Function
+        }
     ): () => Promise<void> {
+        /* eslint-disable complexity */
         return async () => {
             if (uncork && this.corked) {
                 this._uncork();
             }
 
-            // eslint-disable-next-line no-constant-condition
-            while (true) {
-                let chunk = this.ifca.read();
+            let chunk = this.ifca.read();
 
+            // A bit of code duplication but we don't want to have unnecessary if inside a while loop
+            // which is called for every chunk or wrap the common code inside another function due to performance.
+            if (callbacks.onFirstChunkCallback) {
                 if (chunk instanceof Promise) {
                     chunk = await chunk;
                 }
+
+                if (chunk !== null) {
+                    await callbacks.onFirstChunkCallback(chunk);
+                    chunk = this.ifca.read();
+                }
+            }
+
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                if (chunk instanceof Promise) {
+                    chunk = await chunk;
+                }
+
                 if (chunk === null) {
-                    if (onEndCallback) {
-                        onEndCallback.call(this);
-                    }
                     break;
                 }
 
-                onChunkCallback(chunk);
+                callbacks.onChunkCallback(chunk);
+
+                chunk = this.ifca.read();
+            }
+
+            if (callbacks.onEndCallback) {
+                await callbacks.onEndCallback.call(this);
             }
         };
+        /* eslint-enable complexity */
+    }
+
+    // This is duplicated '.getReader()' method with the only difference that 'onChunkCallback'
+    // is an async function so we have to 'await' on it for each chunk. Since it has significant effect
+    // on processing time (and makes it asynchronous) I have extracted it as a separate method.
+    protected getReaderAsyncCallback(
+        uncork: boolean,
+        callbacks: {
+            onChunkCallback: (chunk: T) => MaybePromise<void>,
+            onFirstChunkCallback?: Function,
+            onEndCallback?: Function
+        }
+    ): () => Promise<void> {
+        /* eslint-disable complexity */
+        return async () => {
+            if (uncork && this.corked) {
+                this._uncork();
+            }
+
+            let chunk = this.ifca.read();
+
+            // A bit of code duplication but we don't want to have unnecessary if inside a while loop
+            // which is called for every chunk or wrap the common code inside another function due to performance.
+            if (callbacks.onFirstChunkCallback) {
+                if (chunk instanceof Promise) {
+                    chunk = await chunk;
+                }
+
+                if (chunk !== null) {
+                    await callbacks.onFirstChunkCallback(chunk);
+                    chunk = this.ifca.read();
+                }
+            }
+
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                if (chunk instanceof Promise) {
+                    chunk = await chunk;
+                }
+
+                if (chunk === null) {
+                    break;
+                }
+
+                await callbacks.onChunkCallback(chunk);
+
+                chunk = this.ifca.read();
+            }
+
+            if (callbacks.onEndCallback) {
+                await callbacks.onEndCallback.call(this);
+            }
+        };
+        /* eslint-enable complexity */
     }
 
     // Native node readables also implement AsyncIterable interface.
