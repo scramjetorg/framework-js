@@ -7,7 +7,9 @@ export class StringStream extends DataStream<string> {
         return new StringStream();
     }
 
-    split(splitBy: string) {
+    split(splitBy: string): StringStream;
+    split(splitBy: RegExp): StringStream;
+    split(splitBy: string | RegExp): StringStream {
         const splitter = this.getSplitter(splitBy);
         const onEndYield = () => ({ yield: splitter.emitLastValue, value: splitter.lastValue });
 
@@ -28,18 +30,20 @@ export class StringStream extends DataStream<string> {
         return super.flatMap(callback, ...args) as StringStream;
     }
 
-    private getSplitter(splitBy: string) {
+    private getSplitter(splitBy: string | RegExp) {
         const result: any = {
             emitLastValue: false,
             lastValue: ""
         };
+        const testFn = toString.call(splitBy) === "[object RegExp]"
+            ? (chunk: string) => (splitBy as RegExp).test(chunk) : (chunk: string) => chunk.includes(splitBy as string);
 
         result.fn = (chunk: string): string[] => {
             const tmpChunk = `${result.lastValue}${chunk}`;
 
             result.emitLastValue = true;
 
-            if (!tmpChunk.includes(splitBy)) {
+            if (!testFn(tmpChunk)) {
                 result.lastValue = tmpChunk;
                 return [];
             }
