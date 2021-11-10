@@ -12,6 +12,7 @@
     "test:bdd": "npm run build && npm run test:run:bdd",
     "dist": "rm -rf ./dist && tsc",
     "lint": "eslint src/ test/ --ext .ts",
+    "lint:f": "eslint src/ test/ --ext .ts --fix",
     "prepare": "husky install",
     "coverage": "npm run coverage:generate && npx http-server coverage",
     "coverage:generate": "npm run build && npm run coverage:unit && npm run coverage:bdd && npm run coverage:report",
