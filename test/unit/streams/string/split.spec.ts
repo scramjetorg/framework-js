@@ -1,5 +1,5 @@
 import test from "ava";
-import { StringStream } from "../../../src/streams/string-stream";
+import { StringStream } from "../../../../src/streams/string-stream";
 
 test("StringStream can split chunks by given split sequence #1", async (t) => {
     const stringStream = StringStream.from(["foo1bar", "baz111bax", "123", "345", "011", "201"]);

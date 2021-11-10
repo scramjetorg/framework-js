@@ -1,7 +1,7 @@
 // This is a sample file demonstarting the approached used for "polymorphic this"
 // for generic method inheritance. It can be run with:
 //
-//     npm run build && node build/samples/generic-this-1.js"
+//     npm run build && node build/test/samples/generic-this-1.js
 
 class BaseClass<T> {
     public value: T;

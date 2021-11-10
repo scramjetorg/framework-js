@@ -1,6 +1,6 @@
 import test from "ava";
-import { DataStream } from "../../../src/streams/data-stream";
-import { deferReturn } from "../../helpers/utils";
+import { DataStream } from "../../../../src/streams/data-stream";
+import { deferReturn } from "../../../_helpers/utils";
 
 test("DataStream batch can make sentences from words", async (t) => {
     const result = await DataStream

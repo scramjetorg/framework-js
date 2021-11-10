@@ -12,7 +12,5 @@
   "include": [
     "src",
     "test",
-    "bdd",
-    "samples"
   ]
 }

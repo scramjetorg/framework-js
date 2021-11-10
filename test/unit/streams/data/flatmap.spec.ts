@@ -1,6 +1,6 @@
 import test from "ava";
-import { DataStream } from "../../../src/streams/data-stream";
-import { defer } from "../../helpers/utils";
+import { DataStream } from "../../../../src/streams/data-stream";
+import { defer } from "../../../_helpers/utils";
 
 test("DataStream can flat-map chunks via sync callback (to same type)", async (t) => {
     const dsNumber = DataStream.from([1, 2, 3, 4]);

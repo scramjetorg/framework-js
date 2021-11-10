@@ -1,7 +1,7 @@
 import test from "ava";
 import { performance } from "perf_hooks";
-import { IFCA } from "../../src/ifca";
-import { defer, writeInput, readNTimes, readNTimesConcurrently, transforms } from "../helpers/utils";
+import { IFCA } from "../../../src/ifca";
+import { defer, writeInput, readNTimes, readNTimesConcurrently, transforms } from "../../_helpers/utils";
 
 // This file implements all the common scenarios described in
 // https://github.com/scramjetorg/scramjet-framework-shared/blob/93965135ca23cb2e07dcb679280b584d5d97a906/tests/spec/ifca.md

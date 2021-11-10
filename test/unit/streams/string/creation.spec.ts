@@ -1,5 +1,5 @@
 import test from "ava";
-import { StringStream } from "../../../src/streams/string-stream";
+import { StringStream } from "../../../../src/streams/string-stream";
 
 test("StringStream can be constructed", (t) => {
     const stringStream = new StringStream();

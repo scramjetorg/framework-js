@@ -2,8 +2,8 @@
 
 const { Readable, Duplex } = require("stream");
 const DefaultHighWaterMark = require("os").cpus().length * 2;
-const { IFCA } = require("../../../src/ifca");
-const { trace } = require("../../../src/utils");
+const { IFCA } = require("../../../../src/ifca");
+const { trace } = require("../../../../src/utils");
 
 let seq = 0;
 
