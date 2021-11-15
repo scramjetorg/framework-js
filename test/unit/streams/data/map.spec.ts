@@ -1,5 +1,5 @@
 import test from "ava";
-import { DataStream } from "../../../src/streams/data-stream";
+import { DataStream } from "../../../../src/streams/data-stream";
 
 test("DataStream can map chunks via sync callback (to same type)", async (t) => {
     const dsNumber = DataStream.from([1, 2, 3, 4, 5]);

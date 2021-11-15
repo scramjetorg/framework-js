@@ -1,7 +1,7 @@
 import test from "ava";
 import { createReadStream } from "fs";
-import { defer } from "../../helpers/utils";
-import { DataStream } from "../../../src/streams/data-stream";
+import { defer } from "../../../_helpers/utils";
+import { DataStream } from "../../../../src/streams/data-stream";
 
 test("DataStream can be constructed", (t) => {
     const dsNumber = new DataStream<number>();
@@ -78,7 +78,7 @@ test("DataStream can read from another scramjet stream", async (t) => {
 });
 
 test("DataStream can read from readable", async (t) => {
-    const readable = createReadStream("./build/test/assets/sample.txt", "utf8");
+    const readable = createReadStream("./build/test/_assets/sample.txt", "utf8");
     const dsString = DataStream.from<string, DataStream<string>>(readable);
     const result = await dsString.toArray();
 
@@ -86,7 +86,7 @@ test("DataStream can read from readable", async (t) => {
 });
 
 test("DataStream can be constructed from file", async (t) => {
-    const ds = DataStream.fromFile<string, DataStream<string>>("./build/test/assets/sample.txt", { readStream: { encoding: "utf8" } });
+    const ds = DataStream.fromFile<string, DataStream<string>>("./build/test/_assets/sample.txt", { readStream: { encoding: "utf8" } });
 
     t.true(ds instanceof DataStream);
 
@@ -115,7 +115,7 @@ test("DataStream will not start reading until 'output' transfomration is called 
 });
 
 test("DataStream will not start reading until 'output' transfomration is called (readable)", async (t) => {
-    const readable = createReadStream("./build/test/assets/sample.txt", "utf8");
+    const readable = createReadStream("./build/test/_assets/sample.txt", "utf8");
     const dsString = DataStream.from<string, DataStream<string>>(readable);
 
     // Since readable will be read at once, if it's not ended means reading haven't started yet.

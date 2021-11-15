@@ -1,6 +1,6 @@
 const test = require("ava");
 const { Readable } = require("stream");
-const { trace } = require("../../src/utils");
+const { trace } = require("../../../src/utils");
 
 const { performance } = require("perf_hooks");
 

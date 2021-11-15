@@ -33,16 +33,22 @@ npm run build[:w]
 Transpiles `.ts` sources and tests (`src` and `test` dirs) and outputs JS files to `build` directory. When run with `:w` it will watch for changes and rebuild automatically.
 
 ```bash
-npm run test[:w]
+npm run test
 ```
 
 Runs all tests from `test` folder. It runs `build` internally so it doesn't have to be run manually. When run with `:w` it will watch for changes, rebuild and rerun test automatically.
 
 ```bash
-npm run bdd
+npm run test:unit[:w]
 ```
 
-Runs all BDD tests from `bdd` directory. It runs `build` internally so it doesn't have to be run manually.
+Runs all unit tests (`test/unit` folder). It runs `build` internally so it doesn't have to be run manually. When run with `:w` it will watch for changes, rebuild and rerun test automatically. To run unit tests wihtout rebuilding the project use `npm run test:run:unit`.
+
+```bash
+npm run test:bdd
+```
+
+Runs all BDD tests (`test/bdd` folder). It runs `build` internally so it doesn't have to be run manually. To run BDD tests wihtout rebuilding the project use `npm run test:run:bdd`.
 
 ```bash
 npm run coverage
@@ -85,6 +91,12 @@ npm run lint
 ```
 
 Lints `src` and `test` dirs. Used as a `pre-commit` hook.
+
+```bash
+npm run lint:f
+```
+
+Fixes lint warnings/errors in `src` and `test` files.
 
 ```bash
 npm run prepare

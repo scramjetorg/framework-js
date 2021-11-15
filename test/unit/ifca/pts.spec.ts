@@ -1,8 +1,8 @@
 /* eslint-disable */
 import test from "ava";
-import { IFCA } from "../../src/ifca";
-import { TransformFunction } from "../../src/types";
-import { defer } from "../helpers/utils";
+import { IFCA } from "../../../src/ifca";
+import { TransformFunction } from "../../../src/types";
+import { defer } from "../../_helpers/utils";
 
 type Dict = { [k: string]: number; };
 
