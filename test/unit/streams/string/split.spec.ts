@@ -64,3 +64,17 @@ test("StringStream split can stream with only one split value", async (t) => {
 
     t.deepEqual(result, ["", ""]);
 });
+
+test("StringStream can split chunks by given regexp #1", async (t) => {
+    const stringStream = StringStream.from(["foo1bar", "baz111bax", "123", "345", "011", "201"]);
+    const result = await stringStream.split(/1+/).toArray();
+
+    t.deepEqual(result, ["foo", "barbaz", "bax", "233450", "20", ""]);
+});
+
+test("StringStream can split chunks by given regexp #2", async (t) => {
+    const stringStream = StringStream.from(["foo1bar", "baz111bax", "123", "345", "011", "201"]);
+    const result = await stringStream.split(/1{1,2}/).toArray();
+
+    t.deepEqual(result, ["foo", "barbaz", "", "bax", "233450", "20", ""]);
+});
