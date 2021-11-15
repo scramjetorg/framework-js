@@ -50,6 +50,12 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         };
     }
 
+    create(): DataStream<T>;
+    create<U>(): DataStream<U>;
+    create<U>(): DataStream<U> {
+        return new DataStream<U>();
+    }
+
     map<U, W extends any[] = []>(callback: TransformFunction<T, U, W>, ...args: W): DataStream<U> {
         if (args?.length) {
             this.ifca.addTransform(this.injectArgsToCallback<U, typeof args>(callback, args));
@@ -70,6 +76,8 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         return this;
     }
 
+    flatMap<W extends any[] = []>(callback: TransformFunction<T, AnyIterable<T>, W>, ...args: W): DataStream<T>;
+    flatMap<U, W extends any[] = []>(callback: TransformFunction<T, AnyIterable<U>, W>, ...args: W): DataStream<U>
     flatMap<U, W extends any[] = []>(callback: TransformFunction<T, AnyIterable<U>, W>, ...args: W): DataStream<U> {
         return this.asNewFlattenedStream(this.map<AnyIterable<U>, W>(callback, ...args));
     }
@@ -214,7 +222,9 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         fromStream: W,
         onEndYield?: () => { yield: boolean, value?: U }
     ): DataStream<U> {
-        return DataStream.from((async function * (stream){
+        const newStream = this.create<U>();
+
+        newStream.read((async function * (stream){
             for await (const chunks of stream) {
                 yield* chunks;
             }
@@ -227,6 +237,8 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
                 }
             }
         })(fromStream));
+
+        return newStream;
     }
 
     protected getReader(
