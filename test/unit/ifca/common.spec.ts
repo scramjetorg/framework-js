@@ -16,7 +16,7 @@ const sampleStringInput = ["a", "b", "c"];
 
 test("Passthrough by default", async (t) => {
     const inputSize = sampleNumericInput1.length;
-    const ifca = new IFCA(inputSize);
+    const ifca = new IFCA({ maxParallel: inputSize });
 
     writeInput(ifca, sampleNumericInput1);
 
@@ -27,7 +27,9 @@ test("Passthrough by default", async (t) => {
 
 test("Simple transformation", async (t) => {
     const inputSize = sampleStringInput.length;
-    const ifca = new IFCA(inputSize, transforms.prepend);
+    const ifca = new IFCA<string, string, any>({ maxParallel: inputSize });
+
+    ifca.addTransform(transforms.prepend);
 
     writeInput(ifca, sampleStringInput);
 
@@ -44,7 +46,7 @@ test("Concurrent processing", async (t) => {
         { id: 3, startTime: 0 }
     ];
     const inputSize = input.length;
-    const ifca = new IFCA<ObjectChunk, any, any>(inputSize);
+    const ifca = new IFCA<ObjectChunk, any, any>({ maxParallel: inputSize });
     const started: Array<ObjectChunk> = [];
 
     let startTime: number;
@@ -95,7 +97,9 @@ test("Concurrent processing", async (t) => {
 
 test("Result order with odd chunks delayed", async (t) => {
     const inputSize = sampleNumericInput1.length;
-    const ifca = new IFCA(inputSize, transforms.delayOdd);
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize });
+
+    ifca.addTransform(transforms.delayOdd);
 
     writeInput(ifca, sampleNumericInput1);
 
@@ -106,7 +110,9 @@ test("Result order with odd chunks delayed", async (t) => {
 
 test("Result order with varying processing time", async (t) => {
     const inputSize = sampleNumericInput2.length;
-    const ifca = new IFCA(inputSize, transforms.delay);
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize });
+
+    ifca.addTransform(transforms.delay);
 
     writeInput(ifca, sampleNumericInput2);
 
@@ -117,8 +123,10 @@ test("Result order with varying processing time", async (t) => {
 
 test("Write and read in turn", async (t) => {
     const inputSize = sampleNumericInput1.length;
-    const ifca = new IFCA(inputSize, transforms.delay);
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize });
     const reads = [];
+
+    ifca.addTransform(transforms.delay);
 
     for (const i of sampleNumericInput1) {
         ifca.write(i);
@@ -132,7 +140,9 @@ test("Write and read in turn", async (t) => {
 
 test("Multiple concurrent reads", async (t) => {
     const inputSize = sampleNumericInput2.length;
-    const ifca = new IFCA(inputSize, transforms.delay);
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize });
+
+    ifca.addTransform(transforms.delay);
 
     writeInput(ifca, sampleNumericInput2);
 
@@ -143,8 +153,10 @@ test("Multiple concurrent reads", async (t) => {
 
 test("Reads before writes", async (t) => {
     const inputSize = sampleNumericInput2.length;
-    const ifca = new IFCA(inputSize, transforms.delay);
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize });
     const reads = [];
+
+    ifca.addTransform(transforms.delay);
 
     for (let i = 0; i < inputSize; i++) {
         reads.push(ifca.read());
@@ -164,7 +176,9 @@ test("Reads before writes", async (t) => {
 test("Support for dropping chunks", async (t) => {
     const input = [...sampleNumericInput1, ...sampleNumericInput2];
     const inputSize = input.length;
-    const ifca = new IFCA(inputSize / 2, transforms.filter);
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize / 2 });
+
+    ifca.addTransform(transforms.filter);
 
     writeInput(ifca, input);
 
@@ -176,7 +190,10 @@ test("Support for dropping chunks", async (t) => {
 test("Reads before filtering", async (t) => {
     const input = [...sampleNumericInput1, ...sampleNumericInput2];
     const inputSize = input.length;
-    const ifca = new IFCA(inputSize / 2, transforms.filter);
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize / 2 });
+
+    ifca.addTransform(transforms.filter);
+
     const reads = readNTimesConcurrently(ifca, inputSize / 2);
 
     writeInput(ifca, input);
@@ -188,7 +205,7 @@ test("Reads before filtering", async (t) => {
 
 test("Dropping chunks in the middle of chain", async (t) => {
     const inputSize = sampleNumericInput1.length;
-    const ifca = new IFCA<number, any, any>(inputSize);
+    const ifca = new IFCA<number, any, any>({ maxParallel: inputSize });
     const unfilteredChunks: number[] = [];
 
     ifca.addTransform(transforms.filterAll);
@@ -205,7 +222,7 @@ test("Dropping chunks in the middle of chain", async (t) => {
 
 test("Unrestricted writing below limit", async (t) => {
     const inputSize = 4;
-    const ifca = new IFCA(inputSize);
+    const ifca = new IFCA({ maxParallel: inputSize });
     const drains = [];
 
     for (let i = 0; i < inputSize - 1; i++) {
@@ -217,7 +234,7 @@ test("Unrestricted writing below limit", async (t) => {
 
 test("Drain pending when limit reached", async (t) => {
     const inputSize = 4;
-    const ifca = new IFCA(inputSize);
+    const ifca = new IFCA({ maxParallel: inputSize });
     const drains = [];
 
     for (let i = 0; i < inputSize; i++) {
@@ -250,7 +267,7 @@ test("Drain pending when limit reached", async (t) => {
 
 test("Drain resolved when drops below limit", async (t) => {
     const inputSize = 4;
-    const ifca = new IFCA(inputSize);
+    const ifca = new IFCA({ maxParallel: inputSize });
     const drains = [];
     const awaitingDrains: Array<Promise<void>> = [];
 
@@ -276,7 +293,7 @@ test("Drain resolved when drops below limit", async (t) => {
 // Ending
 
 test("Reading from empty Ifca", async (t) => {
-    const ifca = new IFCA(2);
+    const ifca = new IFCA({ maxParallel: 2 });
 
     ifca.end();
 
@@ -286,7 +303,7 @@ test("Reading from empty Ifca", async (t) => {
 });
 
 test("End with pending reads", async (t) => {
-    const ifca = new IFCA(2);
+    const ifca = new IFCA({ maxParallel: 2 });
     const reads = [ifca.read(), ifca.read(), ifca.read()];
 
     ifca.end();
@@ -297,7 +314,7 @@ test("End with pending reads", async (t) => {
 });
 
 test("Write after end errors", async (t) => {
-    const ifca = new IFCA(2);
+    const ifca = new IFCA({ maxParallel: 2 });
 
     ifca.end();
 
@@ -313,7 +330,7 @@ test("Write after end errors", async (t) => {
 });
 
 test("Multiple ends error", async (t) => {
-    const ifca = new IFCA(2);
+    const ifca = new IFCA({ maxParallel: 2 });
 
     let errorMsg = "";
 

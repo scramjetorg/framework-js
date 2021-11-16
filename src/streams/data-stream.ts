@@ -2,8 +2,8 @@ import { Readable } from "stream";
 import { createReadStream, promises as fs } from "fs";
 import { BaseStream } from "./base-stream";
 import { IFCA } from "../ifca";
-import { AnyIterable, Constructor, DroppedChunk, ResolvablePromiseObject, TransformFunction, MaybePromise } from "../types";
 import { createResolvablePromiseObject, isAsyncFunction } from "../utils";
+import { AnyIterable, StreamConstructor, DroppedChunk, ResolvablePromiseObject, TransformFunction, MaybePromise, StreamOptions } from "../types";
 
 type Reducer<T, U> = {
     isAsync: boolean,
@@ -13,8 +13,8 @@ type Reducer<T, U> = {
 };
 
 export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
-    constructor() {
-        this.ifca = new IFCA<T, T, any>(2, (chunk: T) => chunk);
+    constructor(options: StreamOptions = { maxParallel: 4 }) {
+        this.ifca = new IFCA<T, T, any>(options);
         this.corked = createResolvablePromiseObject<void>();
     }
 
@@ -22,18 +22,19 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     protected corked: ResolvablePromiseObject<void> | null;
 
     static from<U extends any, W extends DataStream<U>>(
-        this: Constructor<W>,
-        input: Iterable<U> | AsyncIterable<U> | Readable
+        this: StreamConstructor<W>,
+        input: Iterable<U> | AsyncIterable<U> | Readable,
+        options?: StreamOptions
     ): W {
-        return (new this()).read(input);
+        return (new this(options)).read(input);
     }
 
     static fromFile<U extends any, W extends DataStream<U>>(
-        this: Constructor<W>,
+        this: StreamConstructor<W>,
         path: string,
-        options?: any
+        options?: StreamOptions
     ): W {
-        return (new this()).read(createReadStream(path, options?.readStream));
+        return (new this(options)).read(createReadStream(path, options?.readStream));
     }
 
     [Symbol.asyncIterator]() {
@@ -88,11 +89,13 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
 
         if (isAsyncFunction(callback)) {
             aggregator = async (chunk: T, ...args1: W): Promise<T[]> => {
+                const emitBatch = await callback(chunk, ...args1);
+
                 currentBatch.push(chunk);
 
                 let result: T[] = [];
 
-                if (await callback(chunk, ...args1)) {
+                if (emitBatch) {
                     result = [...currentBatch];
                     currentBatch = [];
                 }
