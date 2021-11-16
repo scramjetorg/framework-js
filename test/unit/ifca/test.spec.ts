@@ -2,10 +2,8 @@
 
 import test from "ava";
 import { IFCA } from "../../../src/ifca";
-import { DroppedChunk } from "../../../src/types";
+import { DroppedChunk, MaybePromise } from "../../../src/types";
 import { defer, transforms } from "../../_helpers/utils";
-
-type MaybePromise<X> = Promise<X>|X;
 
 // Important:
 // IFCA can't detect on its own if input (stream) has ended, so the Stream using it will
@@ -13,7 +11,8 @@ type MaybePromise<X> = Promise<X>|X;
 // "ifca.end()" explicitly (simulating cases when stream has ended).
 
 test("Identity function, numbers starting from 1", async (t) => {
-    const ifca = new IFCA(4, (x: number) => {t.log('Processing', x); return x});
+    const ifca = new IFCA<number>({ maxParallel: 4 })
+        .addTransform(x => {t.log('Processing', x); return x;})
 
     for (let i = 1; i <= 4; i++) {
         ifca.write(i);
@@ -31,7 +30,8 @@ test("Identity function, numbers starting from 1", async (t) => {
 });
 
 test("Identity function, numbers starting from 1 (writev)", async (t) => {
-    const ifca = new IFCA(4, (x: number) => {t.log('Processing', x); return x});
+    const ifca = new IFCA<number>({ maxParallel: 4 })
+        .addTransform(x => {t.log('Processing', x); return x;})
 
     const chunks: number[] = [];
     for (let i = 1; i <= 4; i++) {
@@ -51,7 +51,8 @@ test("Identity function, numbers starting from 1 (writev)", async (t) => {
 });
 
 test("Identity function, objects starting from 0", async (t) => {
-    const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x; });
+    const ifca = new IFCA<{ i: number }>({ maxParallel: 4 })
+        .addTransform((x: { i: number }) => {t.log('Processing', x); return x;})
 
     for (let i = 0; i < 4; i++) {
         ifca.write({i});
@@ -67,7 +68,8 @@ test("Identity function, objects starting from 0", async (t) => {
 });
 
 test("Identity function, numbers starting from 0", async (t) => {
-    const ifca = new IFCA(4, (x: number) => {t.log('Processing', x); return x; });
+    const ifca = new IFCA<number>({ maxParallel: 4 })
+        .addTransform(x => {t.log('Processing', x); return x;})
 
     for (let i = 0; i < 4; i++) {
         ifca.write(i);
@@ -93,7 +95,9 @@ test("Falsy values in results", async (t) => {
             case 5: return NaN;
         }
     }
-    const ifca = new IFCA(4, (x: number) => {t.log('Processing:', x); return makeSomeFalsyValues(x)});
+
+    const ifca = new IFCA<number>({ maxParallel: 4 })
+        .addTransform(x => {t.log('Processing', x); return makeSomeFalsyValues(x);})
 
     // Use more input elems to make sure processing doesn't stop after 6th one
     for (let i = 0; i < 8; i++) {
@@ -112,7 +116,8 @@ test("Falsy values in results", async (t) => {
 });
 
 test("Identity function, 4x write, 8x read (with explicit end)", async (t) => {
-    const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x});
+    const ifca = new IFCA<{ i: number }>({ maxParallel: 4 })
+        .addTransform(x => {t.log('Processing', x); return x;})
 
     for (let i = 0; i < 4; i++) {
         ifca.write({i});
@@ -130,7 +135,8 @@ test("Identity function, 4x write, 8x read (with explicit end)", async (t) => {
 });
 
 test("Identity function, 8x write, 1x read + 4x read (with explicit end)", async (t) => {
-    const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x});
+    const ifca = new IFCA<{ i: number }>({ maxParallel: 4 })
+        .addTransform(x => {t.log('Processing', x); return x;})
 
     for (let i = 0; i < 8; i++) {
         ifca.write({i});
@@ -150,7 +156,8 @@ test("Identity function, 8x write, 1x read + 4x read (with explicit end)", async
 });
 
 test("Identity function, 8x write, 1x read + 4x read (without explicit end)", async (t) => {
-    const ifca = new IFCA(4, (x: {i: number}) => {t.log('Processing', x); return x});
+    const ifca = new IFCA<{ i: number }>({ maxParallel: 4 })
+        .addTransform(x => {t.log('Processing', x); return x;})
 
     for (let i = 0; i < 8; i++) {
         ifca.write({i});
@@ -169,7 +176,7 @@ test("Identity function, 8x write, 1x read + 4x read (without explicit end)", as
 });
 
 test("Overflow reads", async (t) => {
-    const ifca = new IFCA(4, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 4}).addTransform(x => x+1);
 
     const read8: MaybePromise<number|null>[] = [];
     for (let i = 0; i < 8; i++) {
@@ -192,7 +199,7 @@ test("Overflow reads", async (t) => {
 });
 
 test("Overflow writes. Read 8 x 2", async (t) => {
-    const ifca = new IFCA(4, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 4}).addTransform(x => x+1);
 
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
@@ -215,7 +222,7 @@ test("Overflow writes. Read 8 x 2", async (t) => {
 });
 
 test("Overflow writes Write: 5x Read: 3x Max Parallel: 2", async(t) => {
-    const ifca = new IFCA(2, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 2}).addTransform(x => x+1);
 
     for (let i = 0; i < 5; i++) {
         ifca.write(i);
@@ -228,7 +235,7 @@ test("Overflow writes Write: 5x Read: 3x Max Parallel: 2", async(t) => {
 })
 
 test("Overflow writes. Read 7x + read 9x", async (t) => {
-    const ifca = new IFCA(4, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 4}).addTransform(x => x+1);
 
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
@@ -251,7 +258,7 @@ test("Overflow writes. Read 7x + read 9x", async (t) => {
 });
 
 test("Overflow writes. Read 4x (with end)", async (t) => {
-    const ifca = new IFCA(2, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 2}).addTransform(x => x+1);
 
     for (let i = 0; i < 4; i++) {
         ifca.write(i);
@@ -267,7 +274,7 @@ test("Overflow writes. Read 4x (with end)", async (t) => {
 });
 
 test("Overflow writes. Read 4x (without end)", async (t) => {
-    const ifca = new IFCA(2, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 2}).addTransform(x => x+1);
 
     for (let i = 0; i < 4; i++) {
         ifca.write(i);
@@ -282,7 +289,7 @@ test("Overflow writes. Read 4x (without end)", async (t) => {
 });
 
 test("Overflow writes. Read 12x (with end)", async (t) => {
-    const ifca = new IFCA(4, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 4}).addTransform(x => x+1);
 
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
@@ -298,7 +305,7 @@ test("Overflow writes. Read 12x (with end)", async (t) => {
 });
 
 test("Overflow writes. Read 12x (without end)", async (t) => {
-    const ifca = new IFCA(4, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 4}).addTransform(x => x+1);
 
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
@@ -314,7 +321,7 @@ test("Overflow writes. Read 12x (without end)", async (t) => {
 });
 
 test("Overflow writes. Read 12x (with end, writev)", async (t) => {
-    const ifca = new IFCA(4, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 4}).addTransform(x => x+1);
 
     const chunks: number[] = [];
     for (let i = 0; i < 12; i++) {
@@ -334,7 +341,7 @@ test("Overflow writes. Read 12x (with end, writev)", async (t) => {
 });
 
 test("Write. Read. Write. Read", async (t) => {
-    const ifca = new IFCA(4, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 4}).addTransform(x => x+1);
 
     for (let i = 0; i < 4; i++) {
         ifca.write(i);
@@ -358,7 +365,7 @@ test("Write. Read. Write. Read", async (t) => {
 });
 
 test("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times", async (t) => {
-    const ifca = new IFCA(4, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 4}).addTransform(x => x+1);
 
     for (let i = 0; i < 12; i++) {
         ifca.write(i);
@@ -375,7 +382,7 @@ test("Overflow writes with read 2x (lower than max parallel(4)) repeated 6 times
 });
 
 test("Processing order (chunks and transforms with generator)", async (t) => {
-    const ifca = new IFCA(4, (x: Object) => x);
+    const ifca = new IFCA<Object>({ maxParallel: 4}).addTransform(x => x);
 
     function* chunks() {
         for (let i = 0; i < 4; i++) {
@@ -412,7 +419,7 @@ test("Processing order (chunks and transforms with generator)", async (t) => {
 });
 
 test("Ending IFCA more than once throws an error", async (t) => {
-    const ifca = new IFCA(2, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 2}).addTransform(x => x+1);
 
     for (let i = 0; i < 4; i++) {
         ifca.write(i);
@@ -424,7 +431,7 @@ test("Ending IFCA more than once throws an error", async (t) => {
 });
 
 test("Writitng null chunk to IFCA triggers end", async (t) => {
-    const ifca = new IFCA(2, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 2}).addTransform(x => x+1);
 
     const whenEnded = ifca.whenEnded();
 
@@ -440,7 +447,7 @@ test("Writitng null chunk to IFCA triggers end", async (t) => {
 });
 
 test("Writitng to IFCA after it's ended throws an error (write)", async (t) => {
-    const ifca = new IFCA(2, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 2}).addTransform(x => x+1);
 
     for (let i = 0; i < 4; i++) {
         ifca.write(i);
@@ -452,7 +459,7 @@ test("Writitng to IFCA after it's ended throws an error (write)", async (t) => {
 });
 
 test("Writitng to IFCA after it's ended throws an error (writev)", async (t) => {
-    const ifca = new IFCA(2, (x: number) => x+1);
+    const ifca = new IFCA<number>({ maxParallel: 2}).addTransform(x => x+1);
 
     ifca.writev([1, 2, 3, 4]);
 
@@ -464,7 +471,7 @@ test("Writitng to IFCA after it's ended throws an error (writev)", async (t) => 
 test("Drain is emitted and resolved correctly", async (t) => {
     // maxParellel === 2, means 2 chunks can be processed in the same time,
     // this means second write should return promise.
-    const ifca = new IFCA(2, (x: number) => x*10);
+    const ifca = new IFCA<number>({ maxParallel: 2}).addTransform(x => x*10);
 
     const drains1: Array<Promise<void> | void | string> = [];
     for (let i = 0; i < 4; i++) {
@@ -564,7 +571,7 @@ test("Drain is emitted and resolved correctly", async (t) => {
 });
 
 test("Drain is resolved correctly on end only after reads", async (t) => {
-    const ifca = new IFCA(2, (x: number) => x*10);
+    const ifca = new IFCA<number>({ maxParallel: 2}).addTransform(x => x*10);
 
     const drains1: Array<Promise<void> | void | string> = [];
     for (let i = 0; i < 4; i++) {
@@ -606,9 +613,10 @@ test("Drain is resolved correctly on end only after reads", async (t) => {
 // We can't predict what data will be there thus can't emit 'null's for filtered items.
 
 test("Dropped chunks are filtered out correctly (strict, sync chain)", async (t) => {
-    const ifca = new IFCA(4, transforms.identity, { strict: true });
+    const ifca = new IFCA<number>({ maxParallel: 4, strict: true });
     const transformChunks: number[] = [];
 
+    ifca.addTransform(transforms.identity);
     ifca.addTransform(transforms.filter);
     ifca.addTransform(transforms.logger(transformChunks));
 
@@ -629,10 +637,11 @@ test("Dropped chunks are filtered out correctly (strict, sync chain)", async (t)
     t.deepEqual(results, [1,3,null,null], "Chunks should be resolved in the correct order with correct values.");
 });
 
-test("Dropped chunks are filtered out correctly (strict, async chain, sync filter )", async (t) => {
-    const ifca = new IFCA(4, transforms.identity, { strict: true });
+test("Dropped chunks are filtered out correctly (strict, async chain, sync filter)", async (t) => {
+    const ifca = new IFCA<number>({ maxParallel: 4, strict: true });
     const transformChunks: number[] = [];
 
+    ifca.addTransform(transforms.identity);
     ifca.addTransform(transforms.filter);
     ifca.addTransform(transforms.loggerAsync(transformChunks));
 
@@ -654,9 +663,10 @@ test("Dropped chunks are filtered out correctly (strict, async chain, sync filte
 });
 
 test("Dropped chunks are filtered out correctly (strict, async chain, async filter)", async (t) => {
-    const ifca = new IFCA(4, transforms.identity, { strict: true });
+    const ifca = new IFCA<number>({ maxParallel: 4, strict: true });
     const transformChunks: number[] = [];
 
+    ifca.addTransform(transforms.identity);
     ifca.addTransform(transforms.filterAsync);
     ifca.addTransform(transforms.loggerAsync(transformChunks));
 
@@ -678,9 +688,10 @@ test("Dropped chunks are filtered out correctly (strict, async chain, async filt
 });
 
 test("Dropped chunks are filtered out correctly (sync chain)", async (t) => {
-    const ifca = new IFCA(4, transforms.identity);
+    const ifca = new IFCA<number>({ maxParallel: 4 });
     const transformChunks: number[] = [];
 
+    ifca.addTransform(transforms.identity);
     ifca.addTransform(transforms.filter);
     ifca.addTransform(transforms.logger(transformChunks));
 
@@ -702,9 +713,10 @@ test("Dropped chunks are filtered out correctly (sync chain)", async (t) => {
 });
 
 test("Dropped chunks are filtered out correctly (sync filter to async chain)", async (t) => {
-    const ifca = new IFCA(4, transforms.identity);
+    const ifca = new IFCA<number>({ maxParallel: 4 });
     const transformChunks: number[] = [];
 
+    ifca.addTransform(transforms.identity);
     ifca.addTransform(transforms.filter);
     ifca.addTransform(transforms.loggerAsync(transformChunks));
 
@@ -726,9 +738,10 @@ test("Dropped chunks are filtered out correctly (sync filter to async chain)", a
 });
 
 test("Dropped chunks are filtered out correctly (async chain)", async (t) => {
-    const ifca = new IFCA(4, transforms.identity);
+    const ifca = new IFCA<number>({ maxParallel: 4 });
     const transformChunks: number[] = [];
 
+    ifca.addTransform(transforms.identity);
     ifca.addTransform(transforms.filterAsync);
     ifca.addTransform(transforms.loggerAsync(transformChunks));
 
@@ -750,10 +763,11 @@ test("Dropped chunks are filtered out correctly (async chain)", async (t) => {
 });
 
 test("IFCA ends correctly if all values are filtered out", async (t) => {
-    const ifca = new IFCA(4, transforms.identity);
+    const ifca = new IFCA<number>({ maxParallel: 4 });
     const transformChunks: number[] = [];
 
-    ifca.addTransform((x: number) => DroppedChunk);
+    ifca.addTransform(transforms.identity);
+    ifca.addTransform(() => DroppedChunk);
     ifca.addTransform(transforms.loggerAsync(transformChunks));
 
     for (let i = 0; i <= 3; i++) {

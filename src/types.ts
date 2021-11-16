@@ -1,5 +1,3 @@
-export type Constructor<T> = { new (): T };
-
 export type AnyIterable<T> = T[] | Iterable<T> | AsyncIterable<T>;
 
 export type MaybePromise<S> = Promise<S> | S;
@@ -16,5 +14,10 @@ export type TransformArray<S, T> = [TransformFunction<S, T>] | [
 export type TransformHandler<S, T> =
     [TransformFunction<S, T>, TransformErrorHandler<S, T>?] |
     [undefined, TransformErrorHandler<S, T>];
+
+export type IFCAOptions = { maxParallel?: number, ordered?: boolean, strict?: boolean };
+export type StreamOptions = IFCAOptions & { [key: string]: any };
+
+export type StreamConstructor<T> = { new (options?: StreamOptions): T };
 
 export const DroppedChunk = Symbol("DroppedChunk");

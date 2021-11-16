@@ -1,14 +1,9 @@
 /* eslint-disable */
 import { cpus } from "os";
-import { DroppedChunk, MaybePromise, ResolvablePromiseObject, TransformFunction, TransformErrorHandler, TransformHandler } from "./types"
+import { DroppedChunk, MaybePromise, ResolvablePromiseObject, TransformFunction, TransformErrorHandler, TransformHandler, IFCAOptions } from "./types"
 import { trace, createResolvablePromiseObject, isAsyncTransformHandler } from "./utils";
 
-export type IFCAOptions = Partial<{ strict: boolean }>;
-
 export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
-    // TODO: This may need a setter if maxParallel is increased so that chunks are not waiting for drain.
-    maxParallel: number;
-
     // TODO: make these two into one array of `ChunkResolver`s
     // transforms: TransformArray<S, T>;
     // handlers: TransformErrorHandler<S, T>[];
@@ -61,33 +56,42 @@ export interface IIFCA<S,T,I extends IIFCA<S,any,any>> {
 
 type ChunkResolver<S> = [TransformFunction<S|null,void>, TransformErrorHandler<S,void>?];
 
-export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
+export class IFCA<S,T=S,I extends IFCA<S,any,any>=IFCA<S,any,any>> implements IIFCA<S,T,I> {
 
     /**
-     * Create IFCA.
+     * Creates new IFCA instances.
      *
      * ```javascript
-     * const MAX_PARALLEL = 4;
-     *
-     * const fn = (x: {i: number}) => {t.log('Processing', x); return x};
-     *
-     * const ifca = new IFCA(MAX_PARALLEL, fn, { strict: false });
+     * const ifca = new IFCA({ maxParallel: 4, strict: false });
      * ```
      *
-     * @param {number} maxParallel Max Parallel defines how many items we can process parallel
-     * @param {TransformFunction} initialTransform Initial Transformation
-     * @param {IFCAOptions} [options] Options
+     * @param {IFCAOptions} [options] options
      */
     constructor(
-        public maxParallel = 2 * cpus().length,
-        initialTransform?: TransformFunction<S,T>,
-        options: IFCAOptions = {}
+        options: IFCAOptions
     ) {
-        if (initialTransform) {
-            this.transformHandlers.push([initialTransform]);
-        }
-        this.strict = !!options.strict;
+        this.maxParallel = options.maxParallel === undefined ? 2 * cpus().length : options.maxParallel;
+        this.strict = options.strict === undefined ? true : !!options.strict;
+        this.ordered = options.ordered === undefined ? true : !!options.ordered;
     }
+
+    /**
+     * Defines how many chunks can be processed by IFCA at the same time. Both chunks that are being
+     * currently procesed by transforms and those waiting to be read are counted to maxParallel.
+     */
+     maxParallel: number;
+
+     /**
+      * Whether all synchronous transformations which occurs one after another should be processed
+      * synchronosuly (wrapped into single syncrhonus function) or should be chained with 'await' statemnet in-between.
+      */
+     strict: boolean;
+
+     /**
+      * Whether IFCA should keep order of input/output chunks (ala FIFO queue) or just make chunks available as soon
+      * as they are ready (FRFO - first ready first out).
+      */
+     ordered: boolean;
 
     /**
      * Transformation Handlers Array
@@ -100,7 +104,6 @@ export class IFCA<S,T,I extends IFCA<S,any,any>> implements IIFCA<S,T,I> {
     private processingQueue: ProcessingQueue<T> = new ProcessingQueue();
     private readers: ChunkResolver<T>[] = [];
     private ended: boolean = false;
-    private readonly strict: boolean;
     private endedPromise: Promise<void> | null = null;
     private endedPromiseResolver: Function | null = null;
     private drain: ResolvablePromiseObject<void> | undefined = undefined;

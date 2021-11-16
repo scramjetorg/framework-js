@@ -43,7 +43,8 @@ test("PTS", async (t) => {
     const syncPromiseTransform = ({ a, n, x }: Dict) => ({ a, n, x, y: y++ });
     const syncPromiseTransform2 = ({ a, n, x, y }: Dict) => ({ a, n, x, y, z: z++ });
 
-    const ifca = new IFCA(MAX_PARALLEL, asyncPromiseTransform, {strict: true})
+    const ifca = new IFCA<{ [k: string]: number }, { a: number }, any>({ maxParallel: MAX_PARALLEL, strict: true })
+        .addTransform(asyncPromiseTransform)
         .addTransform(syncPromiseTransform)
         .addTransform(syncPromiseTransform2);
 
@@ -152,7 +153,8 @@ test("Simple order check", async (t) => {
     const syncPromiseTransform = ({ a, n, x }: Dict) => ({ a, n, x, y: y++ });
     const syncPromiseTransform2 = ({ a, n, x, y }: Dict) => ({ a, n, x, y, z: z++ });
 
-    const ifca = new IFCA(MAX_PARALLEL, asyncPromiseTransform, {strict: true})
+    const ifca = new IFCA<{ [k: string]: number }, { a: number }, any>({ maxParallel: MAX_PARALLEL, strict: true })
+        .addTransform(asyncPromiseTransform)
         .addTransform(syncPromiseTransform)
         .addTransform(syncPromiseTransform2);
 
