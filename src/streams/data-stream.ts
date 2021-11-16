@@ -26,7 +26,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         input: Iterable<U> | AsyncIterable<U> | Readable,
         options?: StreamOptions
     ): W {
-        return (new this(options)).read(input);
+        return (new this(options)).readSource(input);
     }
 
     static fromFile<U extends any, W extends DataStream<U>>(
@@ -34,7 +34,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         path: string,
         options?: StreamOptions
     ): W {
-        return (new this(options)).read(createReadStream(path, options?.readStream));
+        return (new this(options)).readSource(createReadStream(path, options?.readStream));
     }
 
     [Symbol.asyncIterator]() {
@@ -49,6 +49,74 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
                 return Promise.resolve({ value, done: value === null } as IteratorResult<T, boolean>);
             }
         };
+    }
+
+    /**
+     * Writes new values to this stream. An equivalent
+     * of [native nodejs `.write()` method](https://nodejs.org/api/stream.html#writablewritechunk-encoding-callback).
+     *
+     * @param {T} chunk Value to be written to a stream.
+     * @returns {boolean} Returns `false` if the stream wishes for the calling code to wait
+     * before continuing to write additional data; otherwise true.
+     */
+    write(chunk: T): boolean {
+        const drain = this.ifca.write(chunk);
+
+        return !(drain instanceof Promise);
+    }
+
+    /**
+     * Reads from this stream. An equivalent
+     * of [native nodejs streams `.read()` method](https://nodejs.org/api/stream.html#readablereadsize).
+     *
+     * @returns {T | null} Value or `null` if there is nothing to read at the moment.
+     */
+    read(): T | null {
+        if (this.ifca.hasReadyChunks) {
+            return this.ifca.read() as T;
+        }
+
+        return null;
+    }
+
+    /**
+     * Closes this stream. After closing nothing can be written to this stream. An equivalent
+     * of [native nodejs `.end()` method](https://nodejs.org/api/stream.html#writableendchunk-encoding-callback).
+     *
+     * @returns {DataStream} This stream instance.
+     */
+    end(): DataStream<T> {
+        this.ifca.end();
+
+        return this;
+    }
+
+    /**
+     * Resumes stream if it was paused. An equivalent
+     * of [native nodejs `.resume()` method](https://nodejs.org/api/stream.html#readableresume).
+     *
+     * @returns {DataStream} This stream instance.
+     */
+    resume(): DataStream<T> {
+        if (this.corked) {
+            this._uncork();
+        }
+
+        return this;
+    }
+
+    /**
+     * Pauses this stream. An equivalent
+     * of [native nodejs `.pause()` method](https://nodejs.org/api/stream.html#readablepause).
+     *
+     * @returns {DataStream} This stream instance.
+     */
+    pause(): DataStream<T> {
+        if (!this.corked) {
+            this._cork();
+        }
+
+        return this;
     }
 
     create(): DataStream<T>;
@@ -227,7 +295,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     ): DataStream<U> {
         const newStream = this.create<U>();
 
-        newStream.read((async function * (stream){
+        newStream.readSource((async function * (stream){
             for await (const chunks of stream) {
                 yield* chunks;
             }
@@ -350,7 +418,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
     }
 
     // Native node readables also implement AsyncIterable interface.
-    protected read(iterable: Iterable<T> | AsyncIterable<T>): this {
+    protected readSource(iterable: Iterable<T> | AsyncIterable<T>): this {
         // We don't want to return or wait for the result of the async call,
         // it will just run in the background reading chunks as they appear.
         (async (): Promise<void> => {

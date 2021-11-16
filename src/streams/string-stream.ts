@@ -7,6 +7,18 @@ export class StringStream extends DataStream<string> {
         return new StringStream();
     }
 
+    end(): StringStream {
+        return super.end() as StringStream;
+    }
+
+    resume(): StringStream {
+        return super.resume() as StringStream;
+    }
+
+    pause(): StringStream {
+        return super.pause() as StringStream;
+    }
+
     split(splitBy: string): StringStream;
     split(splitBy: RegExp): StringStream;
     split(splitBy: string | RegExp): StringStream {

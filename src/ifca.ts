@@ -44,6 +44,13 @@ class ProcessingQueue<T> {
     }
 
     /**
+     * @returns {number} Number of ready chunks at the given moment.
+     */
+    get readyLength(): number {
+        return this._ready.length;
+    }
+
+    /**
      * Last chunk which was pushed to the queue.
      * If there were no chunks pushed, resolved promise is returned.
      *
@@ -253,6 +260,13 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
             all: this.processingQueue.length,
             pending: this.processingQueue.pendingLength
         };
+    }
+
+    /**
+     * @returns {boolean} Whether there are any ready chunks waiting to be read.
+     */
+    get hasReadyChunks(): boolean {
+        return this.processingQueue.readyLength > 0;
     }
 
     /**
