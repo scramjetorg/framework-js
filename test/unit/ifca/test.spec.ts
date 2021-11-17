@@ -432,22 +432,6 @@ for (const strict of [true, false]) {
         t.throws(ifca.end);
     });
 
-    test(`Writitng null chunk to IFCA triggers end (strict: ${ strict })`, async (t) => {
-        const ifca = new IFCA<number>({ maxParallel: 2, strict}).addTransform(x => x+1);
-
-        const whenEnded = ifca.whenEnded();
-
-        for (let i = 0; i < 4; i++) {
-            ifca.write(i);
-        }
-
-        ifca.write(null);
-
-        await whenEnded;
-
-        t.pass();
-    });
-
     test(`Writitng to IFCA after it's ended throws an error (write) (strict: ${ strict })`, async (t) => {
         const ifca = new IFCA<number>({ maxParallel: 2, strict}).addTransform(x => x+1);
 
@@ -586,14 +570,14 @@ for (const strict of [true, false]) {
 
         // processing queue [0, 1, 2, 3]
         // ready queue []
-        t.deepEqual({pending: 4, all: 4}, ifca.state);
+        t.like(ifca.state, {pending: 4, all: 4});
         t.deepEqual(mapDrainsArray(drains1), [undefined, "Promise", "Promise", "Promise"]);
 
         await ifca.end();
 
         // processing queue []
         // ready queue [0, 1, 2, 3]
-        t.deepEqual({pending: 0, all: 4}, ifca.state);
+        t.like(ifca.state, {pending: 0, all: 4});
         t.deepEqual(mapDrainsArray(drains1), [undefined, "Promise", "Promise", "Promise"]);
 
         for (let i = 0; i < 4; i++) {
@@ -605,7 +589,7 @@ for (const strict of [true, false]) {
 
         // processing queue []
         // ready queue []
-        t.deepEqual({pending: 0, all: 0}, ifca.state);
+        t.like(ifca.state, {pending: 0, all: 0});
         t.deepEqual(mapDrainsArray(drains1), [undefined, "ResolvedPromise", "ResolvedPromise", "ResolvedPromise"]);
     });
 }
