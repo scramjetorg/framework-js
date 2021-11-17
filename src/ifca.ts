@@ -191,7 +191,7 @@ export interface IIFCA<S, T, I extends IIFCA<S, any, any>> {
      * @param {TransformErrorHandler} [handler] Optional transform error handler
      * @returns {IFCA}
      */
-    addTransform<W>(tr: TransformFunction<T, W>, err?: TransformErrorHandler<T, W>): IIFCA<S, W, this>;
+    addTransform<W>(tr: TransformFunction<S, W>, err?: TransformErrorHandler<S, W>): IIFCA<S, W, this>;
 
     /**
      * Remove transform (pop)
@@ -630,8 +630,8 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
      * @returns {IFCA} Mutated IFCA instance.
      */
     addTransform<W, Args extends any[] = []>(
-        transform: TransformFunction<T, W, Args>,
-        handler?: TransformErrorHandler<T, W>
+        transform: TransformFunction<S, W, Args>,
+        handler?: TransformErrorHandler<S, W>
     ): IFCA<S, W, this> {
         (this.transformHandlers as any[]).push([transform, handler]);
         return this as IFCA<S, unknown, any> as IFCA<S, W, this>;

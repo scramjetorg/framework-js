@@ -12,14 +12,17 @@ type Reducer<T, U> = {
     onChunkCallback: (chunk: T) => MaybePromise<void>
 };
 
-export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
+export class DataStream<T, Z=T> implements BaseStream<T, Z>, AsyncIterable<Z> {
+
     constructor(options: StreamOptions = { maxParallel: 4 }) {
-        this.ifca = new IFCA<T, T, any>(options);
+        this.ifca = new IFCA<T, Z, any>(options);
         this.corked = createResolvablePromiseObject<void>();
+        this.parentStream = null;
     }
 
-    protected ifca: IFCA<T, T, any>;
+    protected ifca: IFCA<T, Z, any>;
     protected corked: ResolvablePromiseObject<void> | null;
+    protected parentStream: DataStream<T, any> | null;
 
     static from<U extends any, W extends DataStream<U>>(
         this: StreamConstructor<W>,
@@ -46,7 +49,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
             next: async () => {
                 const value = await this.ifca.read();
 
-                return Promise.resolve({ value, done: value === null } as IteratorResult<T, boolean>);
+                return Promise.resolve({ value, done: value === null } as IteratorResult<Z, boolean>);
             }
         };
     }
@@ -69,11 +72,11 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
      * Reads from this stream. An equivalent
      * of [native nodejs streams `.read()` method](https://nodejs.org/api/stream.html#readablereadsize).
      *
-     * @returns {T | null} Value or `null` if there is nothing to read at the moment.
+     * @returns {Z | null} Value or `null` if there is nothing to read at the moment.
      */
-    read(): T | null {
+    read(): Z | null {
         if (this.ifca.hasReadyChunks) {
-            return this.ifca.read() as T;
+            return this.ifca.read() as Z;
         }
 
         return null;
@@ -85,7 +88,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
      *
      * @returns {DataStream} This stream instance.
      */
-    end(): DataStream<T> {
+    end(): DataStream<T, Z> {
         this.ifca.end();
 
         return this;
@@ -97,7 +100,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
      *
      * @returns {DataStream} This stream instance.
      */
-    resume(): DataStream<T> {
+    resume(): DataStream<T, Z> {
         if (this.corked) {
             this._uncork();
         }
@@ -111,7 +114,7 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
      *
      * @returns {DataStream} This stream instance.
      */
-    pause(): DataStream<T> {
+    pause(): DataStream<T, Z> {
         if (!this.corked) {
             this._cork();
         }
@@ -125,30 +128,92 @@ export class DataStream<T> implements BaseStream<T>, AsyncIterable<T> {
         return new DataStream<U>();
     }
 
-    map<U, W extends any[] = []>(callback: TransformFunction<T, U, W>, ...args: W): DataStream<U> {
-        if (args?.length) {
-            this.ifca.addTransform(this.injectArgsToCallback<U, typeof args>(callback, args));
-        } else {
-            this.ifca.addTransform(callback);
+    createChildStream<U>(newIfca?: IFCA<T, U, any>): DataStream<T, U> {
+        const childStream = new DataStream<T, U>();
+
+        childStream.parentStream = this;
+        childStream.corked = this.corked;
+
+        if (newIfca) {
+            childStream.ifca = newIfca;
         }
 
-        return this as unknown as DataStream<U>;
+        return childStream;
     }
 
-    filter<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T> {
+    map<U, W extends any[] = []>(callback: TransformFunction<T, U, W>, ...args: W): DataStream<T, U> {
+        let transformedIfca: IFCA<T, U, any>;
+
+        if (args?.length) {
+            transformedIfca = this.ifca.addTransform(this.injectArgsToCallback<U, typeof args>(callback, args));
+        } else {
+            transformedIfca = this.ifca.addTransform(callback);
+        }
+
+        return this.createChildStream(transformedIfca);
+    }
+
+    filter<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T, Z> {
         const chunksFilter = (chunk: T, result: Boolean) => result ? chunk : DroppedChunk;
 
         this.ifca.addTransform(
             this.injectArgsToCallbackAndMapResult(callback, chunksFilter, args)
         );
 
-        return this;
+        return this.createChildStream(this.ifca);
     }
 
-    flatMap<W extends any[] = []>(callback: TransformFunction<T, AnyIterable<T>, W>, ...args: W): DataStream<T>;
-    flatMap<U, W extends any[] = []>(callback: TransformFunction<T, AnyIterable<U>, W>, ...args: W): DataStream<U>
-    flatMap<U, W extends any[] = []>(callback: TransformFunction<T, AnyIterable<U>, W>, ...args: W): DataStream<U> {
-        return this.asNewFlattenedStream(this.map<AnyIterable<U>, W>(callback, ...args));
+    flatMap<W extends any[] = []>(callback: TransformFunction<T, AnyIterable<Z>, W>, ...args: W): DataStream<T, Z>;
+    flatMap<U, W extends any[] = []>(callback: TransformFunction<T, AnyIterable<U>, W>, ...args: W): DataStream<T, U>
+    flatMap<U, W extends any[] = []>(callback: TransformFunction<T, AnyIterable<U>, W>, ...args: W): DataStream<T, U> {
+        // const childStream = this.createChildStream<U>();
+        const childStream = new DataStream<T, U>(); // write: T, read: U, IFCA<U, U>
+        // chainedIFCA = [IFCA1, IFCA2, IFCA3]
+        // this.idIfca = 2; -> this.ifca - getter for this.chainedIFCA[this.idIfca]
+        // this.write() -> chainedIfca[0].write(...)
+        // this.read() -> chainedIfca[last].read(...)
+        // this.parentStream
+        //
+        // ChainedIFCA
+        // addIFCA - returns index
+        // getIFCA(index) - returns IFCA by index
+        // write - writes to first IFCA
+        // read - reads from last IFCA
+        //
+        //
+        // const reader = {
+        //     onChunkCallback: async (chunk: T) => {
+        //         await childStream.write(chunk);
+        //     }
+        // };
+
+        // this.getReaderAsyncCallback(false, reader);
+
+        let onChunkCallback: (chunk: T) => Promise<void>;
+
+        // We can have sync/async callback
+        // Each can return sync/async iterable
+        if (isAsyncFunction(callback)) {
+            onChunkCallback = async (chunk: T): Promise<void> => {
+                const parts = await callback(chunk, ...args);
+
+                for await (const part of parts) {
+                    await childStream.ifca.write(part);
+                }
+            };
+        } else {
+            onChunkCallback = async (chunk: T): Promise<void> => {
+                const parts = callback(chunk, ...args) as AnyIterable<U>;
+
+                for await (const part of parts) {
+                    await childStream.write(part);
+                }
+            };
+        }
+
+        this.getReaderAsyncCallback(false, { onChunkCallback });
+
+        return childStream;
     }
 
     batch<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): DataStream<T[]> {
