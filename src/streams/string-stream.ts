@@ -77,6 +77,47 @@ export class StringStream extends DataStream<string> {
         return this.filter(chunk => pattern.test(chunk));
     }
 
+    @checkTransformability
+    match(pattern: RegExp): StringStream {
+        this.ifcaChain.create<string, string>(this.options);
+
+        const regexpGroupsNr = pattern.source.match(/\((?!\?)/g)?.length || 0;
+        const newStream = this.createChildStream();
+
+        let onChunkCallback: (chunk: string) => Promise<void>;
+
+        if (regexpGroupsNr === 0) {
+            onChunkCallback = async (chunk: string) => {
+                const matches = chunk.matchAll(pattern);
+
+                for (const item of matches) {
+                    await newStream.ifca.write(item[0]);
+                }
+            };
+        } else {
+            onChunkCallback = async (chunk: string) => {
+                const matches = chunk.matchAll(pattern);
+
+                for (const item of matches) {
+                    for (let i = 1; i <= regexpGroupsNr; i++) {
+                        await newStream.ifca.write(item[i]);
+                    }
+                }
+            };
+        }
+
+        const callbacks = {
+            onChunkCallback,
+            onEndCallback: async () => {
+                newStream.ifca.end();
+            }
+        };
+
+        (this.getReaderAsyncCallback(false, callbacks))();
+
+        return newStream;
+    }
+
     protected createChildStream(): StringStream {
         this.readable = false;
         this.transformable = false;
