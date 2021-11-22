@@ -1,0 +1,7 @@
+Scramjet is a fast, simple, free and open source functional reactive
+ stream programming framework written on top of node.js streams with
+ multi-threadding support. The code is written by chaining functions
+ that transform data easily with ES7 async/await syntax. It is built
+ upon the logic behind three well known javascript array operations:
+ map, filter and reduce. Scramjet transforms are so standard and natural
+ that we're sure you can start writing your code straight away.
