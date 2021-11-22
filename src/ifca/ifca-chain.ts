@@ -8,7 +8,7 @@ export class IFCAChain<IN> {
     private chain: Array<IFCA<any, any>> = [];
 
     /**
-     * Creates and adds new IFCA to this chain,
+     * Creates and adds new IFCA to this chain.
      *
      * @param {IFCAOptions} options IFCA options.
      * @returns {IFCA} Newly created IFCA instance.
@@ -50,7 +50,7 @@ export class IFCAChain<IN> {
     }
 
     /**
-     * Ends IFCA chain.
+     * Ends IFCA chain (ends first IFCA instance).
      *
      * @returns {MaybePromise<void>} Promise resolving (or already resolved) when chain is ended.
      */
