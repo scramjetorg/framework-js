@@ -22,7 +22,7 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         this.corked = createResolvablePromiseObject<void>();
 
         if (!this.parentStream) {
-            this.ifcaChain = new IFCAChain<IN, OUT>();
+            this.ifcaChain = new IFCAChain<IN>();
             this.ifca = this.ifcaChain.add<IN | OUT, OUT>(options);
         } else {
             this.ifcaChain = this.parentStream.ifcaChain;
@@ -31,7 +31,7 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
     }
 
     protected corked: ResolvablePromiseObject<void> | null;
-    protected ifcaChain: IFCAChain<IN, OUT>;
+    protected ifcaChain: IFCAChain<IN>;
     protected ifca: IFCA<IN | OUT, OUT, any>;
 
     // Whether we can write to, end, pasue and resume this stream instance.
@@ -82,7 +82,7 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
 
         this.uncork();
 
-        return this.ifcaChain.read();
+        return this.ifcaChain.read<OUT>();
     }
 
     pause(): void {

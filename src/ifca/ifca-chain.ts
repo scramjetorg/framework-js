@@ -1,7 +1,7 @@
 import { IFCA } from "../ifca";
 import { MaybePromise, IFCAOptions } from "../types";
 
-export class IFCAChain<IN, OUT> {
+export class IFCAChain<IN> {
     /**
      * All IFCA instances managed by this chain.
      */
@@ -45,7 +45,7 @@ export class IFCAChain<IN, OUT> {
      *
      * @returns {MaybePromise<OUT|null>} Promise resolving to a chunk, chunk itself or null if there is nothing to read.
      */
-    read(): MaybePromise<OUT|null> {
+    read<OUT>(): MaybePromise<OUT|null> {
         return this.chain[this.chain.length - 1].read();
     }
 
