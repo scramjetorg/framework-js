@@ -70,8 +70,7 @@ test("StringStream map returns instance of StringStream", (t) => {
     t.deepEqual(newStream2.constructor.name, "StringStream");
 });
 
-// Since batch returns "string[]" it cannot be StringStream.
-// This is reveresed situation than the above and returns StringStream ATM which is incorrect.
+// Since batch returns "string[]" so it cannot be StringStream.
 test("StringStream batch returns instance of DataStream", (t) => {
     const stringStream = StringStream.from(["11", "22", "31", "41"]);
     const newStream = stringStream.batch(chunk => chunk.endsWith("1"));
