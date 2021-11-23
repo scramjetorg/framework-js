@@ -11,7 +11,7 @@ test("Acceptable latency test", async (t) => {
     let sum: bigint = BigInt(0);
     let cnt = BigInt(0);
 
-    const ifca = new IFCA<{ i: any }, {i: number, ts: number}, any>({ maxParallel: MAX_PARALLEL })
+    const ifca = new IFCA<{ i: number}, {i: number, ts: number}, any>({ maxParallel: MAX_PARALLEL })
         .addTransform(({ i }: {i: number}) => ({ i, ts: process.hrtime.bigint() }))
         .addTransform(({ i, ts }) => ({ i, latency: process.hrtime.bigint() - ts }));
 

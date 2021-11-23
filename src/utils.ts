@@ -43,11 +43,16 @@ function isAsyncTransformHandler(func: TransformHandler<any, any>): boolean {
     return isAsyncFunction(func[0]) || isAsyncFunction(func[1]);
 }
 
+function getId(prefix: string): string {
+    return `${ prefix }-${ Date.now() }`;
+}
+
 export {
     trace,
     createResolvablePromiseObject,
     isIterable,
     isAsyncIterable,
     isAsyncFunction,
-    isAsyncTransformHandler
+    isAsyncTransformHandler,
+    getId
 };

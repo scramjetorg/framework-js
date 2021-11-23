@@ -1,147 +1,8 @@
 import { cpus } from "os";
 import { DroppedChunk, MaybePromise, ResolvablePromiseObject, TransformFunction, TransformErrorHandler, TransformHandler, IFCAOptions } from "./types";
-import { trace, createResolvablePromiseObject, isAsyncTransformHandler } from "./utils";
+import { trace, createResolvablePromiseObject, isAsyncTransformHandler, getId } from "./utils";
+import { ProcessingQueue } from "./ifca/processing-queue";
 
-class ProcessingQueue<T> {
-
-    /**
-     * Ready chunks waitng to be read.
-     */
-    private _ready: T[] = [];
-
-    /**
-     * Awaitng chunk requests.
-     */
-    private _requested: Object[] = [];
-
-    /**
-     * Number of chunks processed at the given moment.
-     */
-    private _pendingLength: number = 0;
-
-    /**
-     * Whenever the queue is closed.
-     */
-    private _hasEnded: Boolean = false;
-
-    /**
-     * Last chunk which was pushed to the queue.
-     */
-    private previousChunk: Promise<T | void> = Promise.resolve();
-
-    /**
-     * @returns {number} Number of chunks (both being processed and ready) in the queue at the given moment.
-     */
-    get length(): number {
-        return this._pendingLength + this._ready.length;
-    }
-
-    /**
-     * @returns {number} Number of chunks processed at the given moment.
-     */
-    get pendingLength(): number {
-        return this._pendingLength;
-    }
-
-    /**
-     * Last chunk which was pushed to the queue.
-     * If there were no chunks pushed, resolved promise is returned.
-     *
-     * @returns {Promise<T|void>} Last chunk from the queue.
-     */
-    get last(): Promise<T|void> {
-        return this.previousChunk;
-    }
-
-    /**
-     * Adds chunk promise to the queue.
-     *
-     * @param {Promise<T>} chunkResolver Promise resolving to a chunk.
-     * @returns {void}
-     */
-    push(chunkResolver: Promise<T>): void {
-        // We don't need to worry about chunks resolving order since it is guaranteed
-        // by IFCA with Promise.all[previousChunk, currentChunk].
-        chunkResolver.then((result: T) => {
-            this._pendingLength--;
-
-            if (result as any !== DroppedChunk) {
-                this._ready.push(result);
-
-                // If there is any chunk requested (read awaiting) resolve it.
-                if (this._requested.length) {
-                    const chunkRequest: any = this._requested.shift();
-
-                    chunkRequest.resolver(this._ready.shift() as T);
-                }
-            }
-
-            // If queue is closed and there are no more pending items we need to make sure
-            // to resolve all waiting chunks requests (with nulls since there is no more data).
-            if (this._hasEnded) {
-                this.resolveAwaitingRequests();
-            }
-        });
-
-        this._pendingLength++;
-
-        this.previousChunk = chunkResolver;
-    }
-
-    /**
-     * Reads chunk from the queue.
-     *
-     * If there are ready chunks waiting, value is returned. If not, a promise
-     * which will resolved upon next chunk processing completes is returned.
-     *
-     * If the queue is closed and no more data avaialbe, `null`s are retruned.
-     *
-     * @returns {MaybePromise<T|null>} Promise resolving to a chunk or chunk.
-     */
-    read(): MaybePromise<T|null> {
-        // If chunk is ready, simply return it.
-        if (this._ready.length) {
-            // TODO handle nulls?
-
-            return this._ready.shift() as T;
-        }
-
-        // Add chunk request to a queue if:
-        // * queue is not closed and there are no ready chunks
-        // * queue is closed but there are still pending chunks
-        if (!this._hasEnded || this._hasEnded && this._pendingLength > 0) {
-            const chunkRequest = createResolvablePromiseObject();
-
-            this._requested.push(chunkRequest);
-            return chunkRequest.promise as Promise<T>;
-        }
-
-        return null;
-    }
-
-    /**
-     * Closes the queue and resolves all awaiting chunk requests.
-     *
-     * @returns {void}
-     */
-    close() {
-        this._hasEnded = true;
-        this.resolveAwaitingRequests();
-    }
-
-    /**
-     * Resolves all awaiting chunk requests which cannot be resolved due to end of data.
-     *
-     * @returns {void}
-     */
-    private resolveAwaitingRequests() {
-        if (this._hasEnded && this._pendingLength === 0 && this._requested.length > 0) {
-            for (const chunkRequest of this._requested) {
-                (chunkRequest as any).resolver(null);
-            }
-        }
-    }
-}
 export interface IIFCA<S, T, I extends IIFCA<S, any, any>> {
     // TODO: make these two into one array of `ChunkResolver`s
     // transforms: TransformArray<S, T>;
@@ -199,7 +60,7 @@ type ChunkResolver<S> = [TransformFunction<S|null, void>, TransformErrorHandler<
 export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> implements IIFCA<S, T, I> {
 
     /**
-     * Creates new IFCA instances.
+     * Creates new IFCA instance.
      *
      * ```javascript
      * const ifca = new IFCA({ maxParallel: 4, strict: false });
@@ -216,22 +77,27 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
     }
 
     /**
+     * IFCA unique id.
+     */
+    private id: string = getId("IFCA:IFCA");
+
+    /**
      * Defines how many chunks can be processed by IFCA at the same time. Both chunks that are being
      * currently procesed by transforms and those waiting to be read are counted to maxParallel.
      */
-    maxParallel: number;
+    private maxParallel: number;
 
     /**
       * Whether all synchronous transformations which occurs one after another should be processed
       * synchronosuly (wrapped into single syncrhonus function) or should be chained with 'await' statemnet in-between.
       */
-    strict: boolean;
+    private strict: boolean;
 
     /**
       * Whether IFCA should keep order of input/output chunks (ala FIFO queue) or just make chunks available as soon
       * as they are ready (FRFO - first ready first out).
       */
-    ordered: boolean;
+    private ordered: boolean;
 
     /**
      * Transformation Handlers Array
@@ -241,17 +107,19 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
     // transforms: TransformArray<S, T>;
     // public handlers = [] as TransformErrorHandler<S,T>[];
 
-    private processingQueue: ProcessingQueue<T> = new ProcessingQueue();
+    private processingQueue: ProcessingQueue<T> = new ProcessingQueue(this.getDrainResolver());
     private readers: ChunkResolver<T>[] = [];
     private ended: boolean = false;
-    private endedPromise: Promise<void> | null = null;
-    private endedPromiseResolver: Function | null = null;
     private drain: ResolvablePromiseObject<void> | undefined = undefined;
 
     get state() {
         return {
+            id: this.id,
             all: this.processingQueue.length,
-            pending: this.processingQueue.pendingLength
+            pending: this.processingQueue.pendingLength,
+            maxParallel: this.maxParallel,
+            strict: this.strict,
+            ordered: this.ordered
         };
     }
 
@@ -269,8 +137,12 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
      * @returns {MaybePromise} Drain value.
      */
     write(_chunk: S|null): MaybePromise<void> {
+        trace("IFCA-WRITE_TRY", _chunk, this.state);
+
         if (this.ended) throw new Error("Write after end");
         if (_chunk === null) return this.end();
+
+        trace("IFCA-WRITE", _chunk, this.state);
 
         const chunkBeforeThisOne = this.processingQueue.last as any;
         const currentChunkResult = this.strict
@@ -432,13 +304,6 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
             .catch(e => {
                 if (typeof e === "undefined") return;
                 throw e;
-            })
-            .finally(() => {
-                trace("IFCA ON-CHUNK-RESOLVED", this.processingQueue.length, this.maxParallel, this.drain);
-                if (this.processingQueue.length < this.maxParallel && this.drain !== undefined) {
-                    this.drain.resolver();
-                    this.drain = undefined;
-                }
             });
     }
 
@@ -546,6 +411,20 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
     }
 
     /**
+     * @returns {Function} Callback which when called resolves current drain promise.
+     */
+    private getDrainResolver() {
+        return () => {
+            trace("IFCA ON-CHUNK-RESOLVED", this.processingQueue.length, this.maxParallel, this.drain, this.id);
+
+            if (this.processingQueue.length < this.maxParallel && this.drain !== undefined) {
+                this.drain.resolver();
+                this.drain = undefined;
+            }
+        };
+    }
+
+    /**
      * End
      *
      * Sets `this.ended` as `true`. Resolves all promises pending in processing and calls `handleEnd` method.
@@ -559,21 +438,15 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
             throw new Error("End called multiple times");
         }
 
+        trace("ENDING IFCA", this.state);
+
         this.processingQueue.close();
 
         this.ended = true;
 
-        const onEnd = () => {
-            if (this.endedPromiseResolver) {
-                this.endedPromiseResolver();
-            }
-        };
-
         if (this.processingQueue.pendingLength > 0) {
-            return this.processingQueue.last.then(onEnd);
+            return this.processingQueue.last.then(() => {});
         }
-
-        return onEnd();
     }
 
     /**
@@ -582,19 +455,7 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
      * @returns {MaybePromise|null} Promise resolving to a chunk value or chunk value.
      */
     read(): MaybePromise<T|null> {
-        const chunk = this.processingQueue.read();
-
-        // Handles 2 cases:
-        // * When IFCA is ended (with queue above maxParallel) and then after some time
-        //   read is called. If queue length drops below maxParallel, this.drain should resolve.
-        // * When N items (where N == maxParallel) are written to IFCA, processed (so all are ready)
-        //   and the read is called. So in such case read is the only place we can check and resolve drain.
-        if (this.processingQueue.length < this.maxParallel && this.drain !== undefined) {
-            this.drain.resolver();
-            this.drain = undefined;
-        }
-
-        return chunk;
+        return this.processingQueue.read();
     }
 
     /**
@@ -631,15 +492,5 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
     removeTransform(): I {
         this.transformHandlers.shift();
         return this as IFCA<S, unknown, any> as I;
-    }
-
-    whenEnded(): Promise<void> {
-        if (!this.endedPromise) {
-            this.endedPromise = new Promise(res => {
-                this.endedPromiseResolver = res;
-            });
-        }
-
-        return this.endedPromise;
     }
 }
