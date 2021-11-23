@@ -73,6 +73,10 @@ export class StringStream extends DataStream<string> {
         return super.map(callback, ...args);
     }
 
+    grep(pattern: RegExp): StringStream {
+        return this.filter(chunk => pattern.test(chunk));
+    }
+
     protected createChildStream(): StringStream {
         this.readable = false;
         this.transformable = false;
