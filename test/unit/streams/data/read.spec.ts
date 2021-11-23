@@ -69,3 +69,47 @@ test("Reading from intermediate streams throws an error (middle stream)", async 
 
     t.throws(() => stream.read(), { message: "Stream is not readable." });
 });
+
+test("Reading from intermediate streams with for..of loop throws an error (first stream)", async (t) => {
+    const stream = new DataStream<number>()
+        .map(chunk => `foo${ chunk }`);
+
+    stream.batch(chunk => chunk.endsWith("1"))
+        .map(chunk => chunk.join(""))
+        .map(chunk => ({ value: chunk }));
+
+    let error: Error | undefined;
+
+    try {
+        for await (const chunk of stream) {
+            console.log(chunk);
+            t.fail();
+        }
+    } catch (err) {
+        error = err as Error;
+    } finally {
+        t.is(error!.message, "Stream is not readable.");
+    }
+});
+
+test("Reading from intermediate streams with for..of throws an error (middle stream)", async (t) => {
+    const stream = new DataStream<number>()
+        .map(chunk => `foo${ chunk }`);
+    const stream2 = stream.batch(chunk => chunk.endsWith("1"))
+        .map(chunk => chunk.join(""));
+
+    stream2.map(chunk => ({ value: chunk }));
+
+    let error: Error | undefined;
+
+    try {
+        for await (const chunk of stream2) {
+            console.log(chunk);
+            t.fail();
+        }
+    } catch (err) {
+        error = err as Error;
+    } finally {
+        t.is(error!.message, "Stream is not readable.");
+    }
+});
