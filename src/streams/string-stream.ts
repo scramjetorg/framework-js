@@ -1,36 +1,29 @@
 import { DataStream } from "./data-stream";
 import { AnyIterable, TransformFunction } from "../types";
+import { checkTransformability } from "../decorators";
 
 export class StringStream extends DataStream<string> {
 
-    create(): StringStream {
-        return new StringStream();
+    map<ARGS extends any[] = []>(callback: TransformFunction<string, string, ARGS>, ...args: ARGS): StringStream {
+        return super.map(callback, ...args) as StringStream;
     }
 
-    split(splitBy: string): StringStream;
-    split(splitBy: RegExp): StringStream;
-    split(splitBy: string | RegExp): StringStream {
-        const splitter = this.getSplitter(splitBy);
-        const onEndYield = () => ({ yield: splitter.emitLastValue, value: splitter.lastValue });
-
-        return this.asNewFlattenedStream(
-            this.map<AnyIterable<string>>(splitter.fn),
-            onEndYield
-        ) as StringStream;
-    }
-
-    filter<W extends any[] = []>(callback: TransformFunction<string, Boolean, W>, ...args: W): StringStream {
+    filter<ARGS extends any[] = []>(callback: TransformFunction<string, Boolean, ARGS>, ...args: ARGS): StringStream {
         return super.filter(callback, ...args) as StringStream;
     }
 
-    flatMap<W extends any[] = []>(
-        callback: TransformFunction<string, AnyIterable<string>, W>,
-        ...args: W
+    flatMap<ARGS extends any[] = []>(
+        callback: TransformFunction<string, AnyIterable<string>, ARGS>,
+        ...args: ARGS
     ): StringStream {
         return super.flatMap(callback, ...args) as StringStream;
     }
 
-    private getSplitter(splitBy: string | RegExp) {
+    split(splitBy: string): StringStream;
+    split(splitBy: RegExp): StringStream;
+
+    @checkTransformability
+    split(splitBy: string | RegExp): StringStream {
         const result: any = {
             emitLastValue: false,
             lastValue: ""
@@ -38,23 +31,45 @@ export class StringStream extends DataStream<string> {
         const testFn = toString.call(splitBy) === "[object RegExp]"
             ? (chunk: string) => (splitBy as RegExp).test(chunk) : (chunk: string) => chunk.includes(splitBy as string);
 
-        result.fn = (chunk: string): string[] => {
-            const tmpChunk = `${result.lastValue}${chunk}`;
+        this.ifcaChain.create<string, string>(this.options);
 
-            result.emitLastValue = true;
+        const newStream = this.createChildStream();
+        const callbacks = {
+            onChunkCallback: async (chunk: string) => {
+                const tmpChunk = `${result.lastValue}${chunk}`;
 
-            if (!testFn(tmpChunk)) {
-                result.lastValue = tmpChunk;
-                return [];
+                result.emitLastValue = true;
+
+                if (testFn(tmpChunk)) {
+                    const chunks = tmpChunk.split(splitBy);
+
+                    result.lastValue = chunks.pop() as string;
+
+                    for (const item of chunks) {
+                        await newStream.ifca.write(item);
+                    }
+                } else {
+                    result.lastValue = tmpChunk;
+                }
+            },
+            onEndCallback: async () => {
+                if (result.emitLastValue) {
+                    await newStream.ifca.write(result.lastValue);
+                }
+
+                newStream.ifca.end();
             }
-
-            const chunks = tmpChunk.split(splitBy);
-
-            result.lastValue = chunks.pop() as string;
-
-            return chunks;
         };
 
-        return result;
+        (this.getReaderAsyncCallback(false, callbacks))();
+
+        return newStream;
+    }
+
+    protected createChildStream(): StringStream {
+        this.readable = false;
+        this.transformable = false;
+
+        return new StringStream(this.options, this);
     }
 }

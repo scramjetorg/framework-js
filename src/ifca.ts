@@ -445,7 +445,7 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
         this.ended = true;
 
         if (this.processingQueue.pendingLength > 0) {
-            return this.processingQueue.last.then(() => {});
+            return this.processingQueue.last.then();
         }
     }
 

@@ -1,8 +1,19 @@
 import { TransformFunction, AnyIterable, MaybePromise } from "../types";
-export interface BaseStream<T extends any> {
-    map<U, W extends any[]>(callback: TransformFunction<T, U, W>, ...args: W): BaseStream<U>;
-    flatMap<U, W extends any[]>(callback: TransformFunction<T, AnyIterable<U>, W>, ...args: W): BaseStream<U>;
-    filter<W extends any[]>(callback: TransformFunction<T, Boolean, W>, ...args: W): BaseStream<T>;
-    batch<W extends any[] = []>(callback: TransformFunction<T, Boolean, W>, ...args: W): BaseStream<T[]>;
-    reduce<U = T>(callback: (previousValue: U, currentChunk: T) => MaybePromise<U>, initial?: U): Promise<U>;
+
+export interface BaseStream<IN extends any, OUT extends any> {
+    write(chunk: IN): MaybePromise<void>;
+    read(): MaybePromise<OUT|null>;
+    pause(): void;
+    resume(): void;
+    end(): MaybePromise<void>;
+
+    map<NEW_OUT, ARGS extends any[]>(
+        callback: TransformFunction<OUT, NEW_OUT, ARGS>, ...args: ARGS): BaseStream<IN, NEW_OUT>;
+    filter<ARGS extends any[]>(callback: TransformFunction<OUT, Boolean, ARGS>, ...args: ARGS): BaseStream<IN, OUT>;
+    batch<ARGS extends any[]>(callback: TransformFunction<OUT, Boolean, ARGS>, ...args: ARGS): BaseStream<IN, OUT[]>;
+    flatMap<NEW_OUT, ARGS extends any[]>(
+        callback: TransformFunction<OUT, AnyIterable<NEW_OUT>, ARGS>, ...args: ARGS): BaseStream<IN, NEW_OUT>;
+    reduce<NEW_OUT>(
+        callback: (previous: NEW_OUT, current: OUT) => MaybePromise<NEW_OUT>, initial?: NEW_OUT): Promise<NEW_OUT>;
+    toArray(): Promise<OUT[]>;
 }

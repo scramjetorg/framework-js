@@ -126,7 +126,7 @@ test("DataStream will not start reading until 'output' transfomration is called 
     t.true(readable.readableEnded);
 });
 
-test("DataStream can be corked and uncorked", async (t) => {
+test("DataStream can be pasued and resumed", async (t) => {
     const ref: any = {};
     const yielded: number[] = [];
 
@@ -135,7 +135,7 @@ test("DataStream can be corked and uncorked", async (t) => {
             yield i;
             yielded.push(i);
             if (i % 3 === 1) {
-                ref.dataStream._cork();
+                ref.dataStream.pause();
             }
         }
     }
@@ -152,13 +152,13 @@ test("DataStream can be corked and uncorked", async (t) => {
 
     t.deepEqual(yielded, [0, 1]);
 
-    dsNumber._uncork();
+    dsNumber.resume();
 
     await defer(0);
 
     t.deepEqual(yielded, [0, 1, 2, 3, 4]);
 
-    dsNumber._uncork();
+    dsNumber.resume();
 
     await defer(0);
 
@@ -167,4 +167,26 @@ test("DataStream can be corked and uncorked", async (t) => {
     const result = await resultPromise;
 
     t.deepEqual(result, [0, 1, 2, 3, 4, 5, 6, 7]);
+});
+
+test("Transforming intermediate streams throws an error (first stream)", async (t) => {
+    const stream = new DataStream<number>()
+        .map(chunk => `foo${ chunk }`);
+
+    stream.batch(chunk => chunk.endsWith("1"))
+        .map(chunk => chunk.join(""))
+        .map(chunk => ({ value: chunk }));
+
+    t.throws(() => stream.map(chunk => `foo${ chunk }`), { message: "Stream is not transformable." });
+});
+
+test("Transforming intermediate streams throws an error (middle stream)", async (t) => {
+    const stream = new DataStream<number>()
+        .map(chunk => `foo${ chunk }`);
+    const stream2 = stream.batch(chunk => chunk.endsWith("1"))
+        .map(chunk => chunk.join(""));
+
+    stream2.map(chunk => ({ value: chunk }));
+
+    t.throws(() => stream2.map(chunk => ({ value: chunk })), { message: "Stream is not transformable." });
 });
