@@ -86,12 +86,12 @@ export class StringStream extends DataStream<string> {
 
         let onChunkCallback: (chunk: string) => Promise<void>;
 
-        if (regexpGroupsNr === 0) {
+        if (regexpGroupsNr === 0 || regexpGroupsNr === 1) {
             onChunkCallback = async (chunk: string) => {
                 const matches = chunk.matchAll(pattern);
 
                 for (const item of matches) {
-                    await newStream.ifca.write(item[0]);
+                    await newStream.ifca.write(item[regexpGroupsNr]);
                 }
             };
         } else {
