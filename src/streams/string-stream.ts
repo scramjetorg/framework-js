@@ -66,6 +66,13 @@ export class StringStream extends DataStream<string> {
         return newStream;
     }
 
+    parse<OUT, ARGS extends any[] = []>(
+        callback: TransformFunction<string, OUT, ARGS>,
+        ...args: ARGS
+    ): DataStream<string, OUT> {
+        return super.map(callback, ...args);
+    }
+
     protected createChildStream(): StringStream {
         this.readable = false;
         this.transformable = false;
