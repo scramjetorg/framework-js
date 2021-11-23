@@ -13,12 +13,24 @@ export class IFCAChain<IN> {
      * @param {IFCAOptions} options IFCA options.
      * @returns {IFCA} Newly created IFCA instance.
      */
-    add<NEW_IN, NEW_OUT>(options: IFCAOptions): IFCA<NEW_IN, NEW_OUT, any> {
+    create<NEW_IN, NEW_OUT>(options: IFCAOptions): IFCA<NEW_IN, NEW_OUT, any> {
         const ifca = new IFCA<NEW_IN, NEW_OUT, any>(options);
 
         this.chain.push(ifca);
 
         return ifca;
+    }
+
+    /**
+     * Adds passed IFCA instance to this chain. If the instance is already
+     * the last item in a chain, it will be ignored.
+     *
+     * @param {IFCA} ifca IFCA instance to ba added to a chain.
+     */
+    add<NEW_IN, NEW_OUT>(ifca: IFCA<NEW_IN, NEW_OUT, any>): void {
+        if (this.chain[this.chain.length - 1] !== ifca) {
+            this.chain.push(ifca);
+        }
     }
 
     /**

@@ -31,7 +31,7 @@ export class StringStream extends DataStream<string> {
         const testFn = toString.call(splitBy) === "[object RegExp]"
             ? (chunk: string) => (splitBy as RegExp).test(chunk) : (chunk: string) => chunk.includes(splitBy as string);
 
-        this.ifcaChain.add<string, string>(this.options);
+        this.ifcaChain.create<string, string>(this.options);
 
         const newStream = this.createChildStream();
         const callbacks = {

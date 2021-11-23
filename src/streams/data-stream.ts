@@ -23,7 +23,7 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
 
         if (!this.parentStream) {
             this.ifcaChain = new IFCAChain<IN>();
-            this.ifca = this.ifcaChain.add<IN | OUT, OUT>(options);
+            this.ifca = this.ifcaChain.create<IN | OUT, OUT>(options);
         } else {
             this.ifcaChain = this.parentStream.ifcaChain;
             this.ifca = this.ifcaChain.get<IN | OUT, OUT>();
@@ -108,9 +108,13 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         ...args: ARGS
     ): DataStream<IN, NEW_OUT> {
         if (args?.length) {
-            this.ifca.addTransform(this.injectArgsToCallback<NEW_OUT, typeof args>(callback, args));
+            this.ifcaChain.add(
+                this.ifca.addTransform(this.injectArgsToCallback<NEW_OUT, typeof args>(callback, args))
+            );
         } else {
-            this.ifca.addTransform(callback);
+            this.ifcaChain.add(
+                this.ifca.addTransform(callback)
+            );
         }
 
         return this.createChildStream<NEW_OUT>();
@@ -122,10 +126,11 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         ...args: ARGS
     ): DataStream<IN, OUT> {
         const chunksFilter = (chunk: OUT, result: Boolean) => result ? chunk : DroppedChunk;
-
-        this.ifca.addTransform(
+        const ifca = this.ifca.addTransform(
             this.injectArgsToCallbackAndMapResult(callback, chunksFilter, args)
         );
+
+        this.ifcaChain.add(ifca);
 
         return this.createChildStream<OUT>();
     }
@@ -137,7 +142,7 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
     ): DataStream<IN, OUT[]> {
         let currentBatch: OUT[] = [];
 
-        this.ifcaChain.add<OUT[], OUT[]>(this.options);
+        this.ifcaChain.create<OUT[], OUT[]>(this.options);
         const newStream = this.createChildStreamSuperType<OUT[]>();
         const callbacks = {
             onChunkCallback: async (chunk: OUT) => {
@@ -175,7 +180,7 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         callback: TransformFunction<OUT, AnyIterable<NEW_OUT>, ARGS>,
         ...args: ARGS
     ): DataStream<IN, NEW_OUT> {
-        this.ifcaChain.add<NEW_OUT, NEW_OUT>(this.options);
+        this.ifcaChain.create<NEW_OUT, NEW_OUT>(this.options);
         const newStream = this.createChildStream<NEW_OUT>();
         const callbacks = {
             onChunkCallback: async (chunk: OUT) => {
