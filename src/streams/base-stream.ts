@@ -7,10 +7,14 @@ export interface BaseStream<IN extends any, OUT extends any> {
     resume(): void;
     end(): MaybePromise<void>;
 
+    map<ARGS extends any[]>(
+        callback: TransformFunction<OUT, OUT, ARGS>, ...args: ARGS): BaseStream<IN, OUT>;
     map<NEW_OUT, ARGS extends any[]>(
         callback: TransformFunction<OUT, NEW_OUT, ARGS>, ...args: ARGS): BaseStream<IN, NEW_OUT>;
     filter<ARGS extends any[]>(callback: TransformFunction<OUT, Boolean, ARGS>, ...args: ARGS): BaseStream<IN, OUT>;
     batch<ARGS extends any[]>(callback: TransformFunction<OUT, Boolean, ARGS>, ...args: ARGS): BaseStream<IN, OUT[]>;
+    flatMap<ARGS extends any[]>(
+        callback: TransformFunction<OUT, AnyIterable<OUT>, ARGS>, ...args: ARGS): BaseStream<IN, OUT>;
     flatMap<NEW_OUT, ARGS extends any[]>(
         callback: TransformFunction<OUT, AnyIterable<NEW_OUT>, ARGS>, ...args: ARGS): BaseStream<IN, NEW_OUT>;
     reduce<NEW_OUT>(
