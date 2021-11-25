@@ -14,25 +14,36 @@ type Reducer<IN, OUT> = {
     onChunkCallback: (chunk: IN) => MaybePromise<void>
 };
 
+type Pipe<IN> = {
+    destination: BaseStream<IN, any>, // TODO BaseStream<IN, any> | Writable
+    options: { end: boolean }
+};
+
 export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncIterable<OUT> {
     constructor(
         protected options: StreamOptions = { maxParallel: 4 },
         protected parentStream?: DataStream<IN, any>
     ) {
-        this.corked = createResolvablePromiseObject<void>();
-
         if (!this.parentStream) {
             this.ifcaChain = new IFCAChain<IN>();
             this.ifca = this.ifcaChain.create<IN | OUT, OUT>(options);
+            this.pipes = [];
         } else {
             this.ifcaChain = this.parentStream.ifcaChain;
             this.ifca = this.ifcaChain.get<IN | OUT, OUT>();
+            this.pipes = this.parentStream.pipes;
         }
     }
 
-    protected corked: ResolvablePromiseObject<void> | null;
+    protected corked: ResolvablePromiseObject<void> | null = createResolvablePromiseObject<void>();
     protected ifcaChain: IFCAChain<IN>;
     protected ifca: IFCA<IN | OUT, OUT, any>;
+    protected pipes: Array<Pipe<OUT>>;
+
+    // All streams in chain are writable.
+    // Only the last stream created through transforms (the one with no children streams)
+    // is readable, transformable and pipeable.
+    // Piped source stream (one on which pipe() was called) is writable, readable, pipeable but not transformable.
 
     // Whether we can write to, end, pasue and resume this stream instance.
     protected writable: boolean = true;
@@ -40,6 +51,10 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
     protected readable: boolean = true;
     // Whether we can add transforms to this stream instance.
     protected transformable: boolean = true;
+    // Whether we can pipe from this stream.
+    protected pipeable: boolean = true;
+    // Whether this stream has been piped from.
+    protected isPiped: boolean = false;
 
     static from<IN extends any, STREAM extends DataStream<IN>>(
         this: StreamConstructor<STREAM>,
@@ -200,6 +215,41 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         return newStream;
     }
 
+    pipe<DEST extends BaseStream<OUT, any>>(destination: DEST, options: { end: boolean } = { end: true }): DEST {
+    // pipe<DEST extends Writable>(destination: DEST, options?: { end: boolean }): DEST;
+    // pipe<DEST extends BaseStream<OUT, any> | Writable>(
+    //     destination: DEST,
+    //     options?: { end: boolean }
+    // ): DEST
+    // {
+        if (!this.pipeable) {
+            throw new Error("Stream is not pipeable.");
+        }
+
+        this.transformable = false;
+
+        this.pipes.push({ destination, options: options });
+
+        if (!this.isPiped) {
+            this.isPiped = true;
+
+            const onChunkCallback = async (chunk: OUT) => {
+                // This is the simplest approach - wait until all pipe destinations are ready
+                // again to accept incoming chunk. This also means that chunks reading speed
+                // in all piped streams (both source and all destinations) will be as fast as
+                // the slowest stream can accept new chunks.
+                return Promise.all(this.pipes.map(pipe => pipe.destination.write(chunk))) as Promise<any>;
+            };
+            const onEndCallback = async () => {
+                this.pipes.filter(pipe => pipe.options.end).forEach(pipe => pipe.destination.end());
+            };
+
+            (this.getReaderAsyncCallback(true, { onChunkCallback, onEndCallback }))();
+        }
+
+        return destination;
+    }
+
     @checkTransformability
     async reduce<NEW_OUT = OUT>(
         callback: (previousValue: NEW_OUT, currentChunk: OUT) => MaybePromise<NEW_OUT>,
@@ -251,6 +301,7 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
     protected createChildStream<NEW_OUT>(): DataStream<IN, NEW_OUT> {
         this.readable = false;
         this.transformable = false;
+        this.pipeable = false;
 
         return new DataStream<IN, NEW_OUT>(this.options, this);
     }
@@ -265,6 +316,7 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
     protected createChildStreamSuperType<NEW_OUT>(): DataStream<IN, NEW_OUT> {
         this.readable = false;
         this.transformable = false;
+        this.pipeable = false;
 
         return new DataStream<IN, NEW_OUT>(this.options, this);
     }

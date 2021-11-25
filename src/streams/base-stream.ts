@@ -17,6 +17,7 @@ export interface BaseStream<IN extends any, OUT extends any> {
         callback: TransformFunction<OUT, AnyIterable<OUT>, ARGS>, ...args: ARGS): BaseStream<IN, OUT>;
     flatMap<NEW_OUT, ARGS extends any[]>(
         callback: TransformFunction<OUT, AnyIterable<NEW_OUT>, ARGS>, ...args: ARGS): BaseStream<IN, NEW_OUT>;
+    pipe<DEST extends BaseStream<OUT, any>>(destination: DEST, options: { end: boolean }): DEST;
     reduce<NEW_OUT>(
         callback: (previous: NEW_OUT, current: OUT) => MaybePromise<NEW_OUT>, initial?: NEW_OUT): Promise<NEW_OUT>;
     toArray(): Promise<OUT[]>;
