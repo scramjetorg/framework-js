@@ -2,7 +2,7 @@ name: Coverage
 
 on:
   push:
-    branches: [ main, feature/**, task/** ]
+    branches: [ main, feature/**, task/**, fix/** ]
 
 jobs:
   check:

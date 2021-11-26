@@ -58,6 +58,10 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
     }
 
     [Symbol.asyncIterator]() {
+        if (!this.readable) {
+            throw new Error("Stream is not readable.");
+        }
+
         this.uncork();
 
         return {
