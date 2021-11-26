@@ -1,12 +1,12 @@
-import { DataStream } from "../../streams/data-stream";
+// Run with: npm run dist && node dist/src/demo/demo-1/step2.js
 
-const FRUITS = ["🍎", "🍐", "🍊", "🍌", "🥑"];
-const VEGGIES = ["🥦", "🍅", "🥬", "🥕", "🍆"];
+import { DataStream } from "../../streams/data-stream";
+import { FRUITS, VEGGIES } from "../foods";
 
 (async () => {
     const result = await DataStream
         .from(["ffv"], { maxParallel: 10 })
-        .map(x => x.repeat(20))
+        .map(x => x.repeat(5))
         .flatMap(chunk => chunk.split(""))
         .map(chunk => chunk === "v"
             ? VEGGIES[Math.floor(Math.random() * VEGGIES.length)]

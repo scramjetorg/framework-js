@@ -1,7 +1,7 @@
-import { DataStream } from "../../streams/data-stream";
+// Run with: npm run dist && node dist/src/demo/demo-1/step4.js
 
-const FRUITS = ["🍎", "🍐", "🍊", "🍌", "🥑"];
-const VEGGIES = ["🥦", "🍅", "🥬", "🥕", "🍆"];
+import { DataStream } from "../../streams/data-stream";
+import { FRUITS, VEGGIES } from "../foods";
 
 (async () => {
     const stream = DataStream
