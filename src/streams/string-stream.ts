@@ -4,6 +4,10 @@ import { checkTransformability } from "../decorators";
 
 export class StringStream extends DataStream<string> {
 
+    each<ARGS extends any[] = []>(callback: TransformFunction<string, void, ARGS>, ...args: ARGS): StringStream {
+        return super.each(callback, ...args) as StringStream;
+    }
+
     map<ARGS extends any[] = []>(callback: TransformFunction<string, string, ARGS>, ...args: ARGS): StringStream {
         return super.map(callback, ...args) as StringStream;
     }

@@ -101,6 +101,19 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         return this.ifcaChain.end();
     }
 
+    @checkTransformability
+    each<ARGS extends any[] = []>(callback: TransformFunction<OUT, void, ARGS>, ...args: ARGS): DataStream<IN, OUT> {
+        const eachCallback = isAsyncFunction(callback)
+            ? async (chunk: OUT) => { await callback(chunk, ...args); return chunk; }
+            : (chunk: OUT) => { callback(chunk, ...args); return chunk; };
+
+        this.ifcaChain.add(
+            this.ifca.addTransform(eachCallback)
+        );
+
+        return this.createChildStream<OUT>();
+    }
+
     map<ARGS extends any[] = []>(
         callback: TransformFunction<OUT, IN, ARGS>, ...args: ARGS): DataStream<IN>;
     map<NEW_OUT, ARGS extends any[] = []>(
