@@ -54,10 +54,10 @@
     ]
   },
   "nyc": {
-    "branches": 75,
-    "lines": 90,
-    "functions": 90,
-    "statements": 85,
+    "branches": 79,
+    "lines": 92,
+    "functions": 92,
+    "statements": 91,
     "include": "build/src/",
     "exclude": "build/test/**/*.js"
   },
