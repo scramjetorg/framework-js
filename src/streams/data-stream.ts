@@ -233,6 +233,11 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         return reader().then(() => chunks);
     }
 
+    @checkTransformability
+    async run(): Promise<void> {
+        return this.getReader(true, { onChunkCallback: () => {} })();
+    }
+
     // TODO
     // Helper created to be used in E2E test.
     // After DataStream will be a subclass of Transform, it can be simply piped to naitve writeStream.
