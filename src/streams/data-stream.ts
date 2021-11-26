@@ -1,4 +1,4 @@
-import { Readable } from "stream";
+import { Readable, Writable } from "stream";
 import { createReadStream, promises as fs } from "fs";
 import { BaseStream } from "./base-stream";
 import { IFCA } from "../ifca";
@@ -14,8 +14,13 @@ type Reducer<IN, OUT> = {
     onChunkCallback: (chunk: IN) => MaybePromise<void>
 };
 
+type WritableProxy<IN> = {
+    write: (chunk: IN) => MaybePromise<void>,
+    end: () => void
+};
+
 type Pipe<IN> = {
-    destination: BaseStream<IN, any>, // TODO BaseStream<IN, any> | Writable
+    destination: BaseStream<IN, any> | WritableProxy<IN>,
     options: { end: boolean }
 };
 
@@ -232,20 +237,56 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         return newStream;
     }
 
-    pipe<DEST extends BaseStream<OUT, any>>(destination: DEST, options: { end: boolean } = { end: true }): DEST {
-    // pipe<DEST extends Writable>(destination: DEST, options?: { end: boolean }): DEST;
-    // pipe<DEST extends BaseStream<OUT, any> | Writable>(
-    //     destination: DEST,
-    //     options?: { end: boolean }
-    // ): DEST
-    // {
+    pipe<DEST extends BaseStream<OUT, any>>(destination: DEST, options?: { end: boolean }): DEST;
+    pipe<DEST extends Writable>(destination: DEST, options?: { end: boolean }): DEST;
+    pipe<DEST extends BaseStream<OUT, any> | Writable>(
+        destination: DEST,
+        options: { end: boolean } = { end: true }
+    ): DEST {
         if (!this.pipeable) {
             throw new Error("Stream is not pipeable.");
         }
 
         this.transformable = false;
 
-        this.pipes.push({ destination, options: options });
+        if ((destination as any).ifca) {
+            this.pipes.push({ destination: destination as BaseStream<OUT, any>, options: options });
+        } else {
+            let onDrain: ResolvablePromiseObject<void> | null = null;
+
+            const writable = destination as Writable;
+            const drainCallback = () => {
+                if (onDrain) {
+                    onDrain.resolver();
+                    onDrain = null;
+                }
+            };
+
+            writable.on("drain", drainCallback);
+
+            const writableProxy = {
+                write: (chunk: OUT): MaybePromise<void> => {
+                    if (!writable.writable) {
+                        return undefined;
+                    }
+
+                    const canWrite = writable.write(chunk);
+
+                    if (!canWrite) {
+                        onDrain = createResolvablePromiseObject<void>();
+                        return onDrain.promise;
+                    }
+
+                    return undefined;
+                },
+                end: () => {
+                    writable.end();
+                    writable.removeListener("drain", drainCallback);
+                }
+            };
+
+            this.pipes.push({ destination: writableProxy, options: options });
+        }
 
         if (!this.isPiped) {
             this.isPiped = true;

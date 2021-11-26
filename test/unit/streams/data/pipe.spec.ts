@@ -1,7 +1,8 @@
 import test from "ava";
+import fs from "fs";
 import { DataStream } from "../../../../src/streams/data-stream";
 import { StringStream } from "../../../../src/streams/string-stream";
-import { deferReturn } from "../../../_helpers/utils";
+import { defer, deferReturn } from "../../../_helpers/utils";
 
 // Run tests for different sets of "maxParallel" values for each stream.
 const maxParallels = [
@@ -147,6 +148,28 @@ for (const maxParallel of maxParallels) {
         }
 
         t.deepEqual(result, ["4", "8", "12", "16"]);
+    });
+
+    test(`DataStream can pipe to nodejs Writbale stream, ${ maxParallel.slice(0, 2) }`, async (t) => {
+        const filePath = `./build/test/_assets/tmp-pipe-${ maxParallel[0] }-${ maxParallel[1] }`;
+        const writable = fs.createWriteStream(filePath);
+        const sourceStream = DataStream
+            .from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], { maxParallel: maxParallel[1] })
+            .map(x => `${ x }\n`);
+
+        // Make sure writable is ready.
+        await defer(0);
+
+        sourceStream.pipe(writable);
+
+        const result = await StringStream
+            .fromFile<string, StringStream>(filePath, { readStream: { encoding: "utf8" } })
+            .split("\n")
+            .toArray();
+
+        t.deepEqual(result, ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", ""]);
+
+        fs.unlinkSync(filePath);
     });
 }
 
