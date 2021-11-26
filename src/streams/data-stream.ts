@@ -1,4 +1,4 @@
-import { Readable } from "stream";
+import { Readable, Writable } from "stream";
 import { createReadStream, promises as fs } from "fs";
 import { BaseStream } from "./base-stream";
 import { IFCA } from "../ifca";
@@ -14,8 +14,13 @@ type Reducer<IN, OUT> = {
     onChunkCallback: (chunk: IN) => MaybePromise<void>
 };
 
+type WritableProxy<IN> = {
+    write: (chunk: IN) => MaybePromise<void>,
+    end: () => void
+};
+
 type Pipe<IN> = {
-    destination: BaseStream<IN, any>, // TODO BaseStream<IN, any> | Writable
+    destination: BaseStream<IN, any> | WritableProxy<IN>,
     options: { end: boolean }
 };
 
@@ -110,6 +115,18 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
 
     end(): MaybePromise<void> {
         return this.ifcaChain.end();
+    }
+
+    each<ARGS extends any[] = []>(callback: TransformFunction<OUT, void, ARGS>, ...args: ARGS): DataStream<IN, OUT> {
+        const eachCallback = isAsyncFunction(callback)
+            ? async (chunk: OUT) => { await callback(chunk, ...args); return chunk; }
+            : (chunk: OUT) => { callback(chunk, ...args); return chunk; };
+
+        this.ifcaChain.add(
+            this.ifca.addTransform(eachCallback)
+        );
+
+        return this.createChildStream<OUT>();
     }
 
     map<ARGS extends any[] = []>(
@@ -215,20 +232,63 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         return newStream;
     }
 
-    pipe<DEST extends BaseStream<OUT, any>>(destination: DEST, options: { end: boolean } = { end: true }): DEST {
-    // pipe<DEST extends Writable>(destination: DEST, options?: { end: boolean }): DEST;
-    // pipe<DEST extends BaseStream<OUT, any> | Writable>(
-    //     destination: DEST,
-    //     options?: { end: boolean }
-    // ): DEST
-    // {
+    pipe<DEST extends BaseStream<OUT, any>>(destination: DEST, options?: { end: boolean }): DEST;
+    pipe<DEST extends Writable>(destination: DEST, options?: { end: boolean }): DEST;
+    pipe<DEST extends BaseStream<OUT, any> | Writable>(
+        destination: DEST,
+        options: { end: boolean } = { end: true }
+    ): DEST {
         if (!this.pipeable) {
             throw new Error("Stream is not pipeable.");
         }
 
         this.transformable = false;
 
-        this.pipes.push({ destination, options: options });
+        if ((destination as any).ifca) {
+            this.pipes.push({ destination: destination as BaseStream<OUT, any>, options: options });
+        } else {
+            let onDrain: ResolvablePromiseObject<void> | null = null;
+            let isWritable: boolean = true;
+
+            const writable = destination as Writable;
+            const drainCallback = () => {
+                if (onDrain) {
+                    onDrain.resolver();
+                    onDrain = null;
+                }
+            };
+            const endCallback = () => {
+                isWritable = false;
+            };
+
+            writable.on("drain", drainCallback);
+            writable.on("close", endCallback);
+
+            const writableProxy = {
+                write: (chunk: OUT): MaybePromise<void> => {
+                    // console.log(writable);
+                    if (writable.writableEnded || !writable.writable || !isWritable) {
+                        return undefined;
+                    }
+
+                    const canWrite = writable.write(chunk);
+
+                    if (!canWrite) {
+                        onDrain = createResolvablePromiseObject<void>();
+                        return onDrain.promise;
+                    }
+
+                    return undefined;
+                },
+                end: () => {
+                    writable.end();
+                    writable.removeListener("drain", drainCallback);
+                    writable.removeListener("close", endCallback);
+                }
+            };
+
+            this.pipes.push({ destination: writableProxy, options: options });
+        }
 
         if (!this.isPiped) {
             this.isPiped = true;
@@ -277,6 +337,13 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         const reader = this.getReader(true, { onChunkCallback: chunk => { chunks.push(chunk); } });
 
         return reader().then(() => chunks);
+    }
+
+    @checkTransformability
+    async run(): Promise<void> {
+        const reader = this.getReader(true, { onChunkCallback: () => {} });
+
+        return reader();
     }
 
     // TODO
