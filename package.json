@@ -12,6 +12,7 @@
     "test": "npm run build && npm run test:run:unit && npm run test:run:bdd",
     "test:unit": "npm run build && npm run test:run:unit",
     "test:unit:w": "concurrently 'npm run build:w' 'sleep 8 && npm test:run:unit -- -w'",
+    "test:unit:d": "npm run build && npm run test:run:unit -- debug --break",
     "test:bdd": "npm run build && npm run test:run:bdd",
     "dist": "rm -rf ./dist && tsc",
     "lint": "eslint src/ test/ --ext .ts",
