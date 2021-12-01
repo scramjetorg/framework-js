@@ -16,4 +16,5 @@ export interface BaseStream<IN extends any, OUT extends any> {
     reduce<NEW_OUT>(
         callback: (previous: NEW_OUT, current: OUT) => MaybePromise<NEW_OUT>, initial?: NEW_OUT): Promise<NEW_OUT>;
     toArray(): Promise<OUT[]>;
+    run(): Promise<void>;
 }
