@@ -1,8 +1,8 @@
 import EventEmitter from "events";
 import { Readable, Writable } from "stream";
-import { BaseStream } from "./base-stream";
+import { BaseStream } from "../base-stream";
 
-export class WritableNodeProxy<IN, OUT> extends EventEmitter {
+export class StreamAsNodeWritableProxy<IN, OUT> extends EventEmitter {
 
     constructor(
         protected instance: BaseStream<IN, OUT>

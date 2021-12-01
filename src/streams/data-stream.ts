@@ -6,7 +6,7 @@ import { IFCAChain } from "../ifca/ifca-chain";
 import { createResolvablePromiseObject, isAsyncFunction } from "../utils";
 import { AnyIterable, StreamConstructor, DroppedChunk, ResolvablePromiseObject, TransformFunction, MaybePromise, StreamOptions } from "../types";
 import { checkTransformability } from "../decorators";
-import { WritableNodeProxy } from "./writable-proxy";
+import { StreamAsNodeWritableProxy } from "./proxies/stream-node-writable-proxy";
 
 type Reducer<IN, OUT> = {
     isAsync: boolean,
@@ -42,7 +42,6 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
     }
 
     protected corked: ResolvablePromiseObject<void> | null = createResolvablePromiseObject<void>();
-    protected writableProxy: WritableNodeProxy<IN, OUT> | null = null;
     protected ifcaChain: IFCAChain<IN>;
     protected ifca: IFCA<IN | OUT, OUT, any>;
     protected pipes: Array<Pipe<OUT>>;
@@ -354,19 +353,16 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         await fs.writeFile(filePath, results.map(line => `${line}\n`).join(""));
     }
 
+    // Decorates this stream with 'on', 'once', 'emit' and 'removeListener' methods so it can be passed to native pipe
+    // and returns this instance as 'Writable'. After the source is re-piped to 'StreamAsNodeWritableProxy'
+    // instance, decorated methods are removed.
     asWritable(): Writable {
-        return new WritableNodeProxy(this).writable;
+        return new StreamAsNodeWritableProxy(this).writable;
     }
 
-    // We don't want to provide a full event emmiter (and support nodejs native stream events) in DataStream
-    // direclty. However, pipe'ing from native streams requries destination to be an event emmiter (supporting at least
-    // on, once, and emit methods)
-    // events -> pipe to this
-    // - on: unpipe, error
-    // - once: close, finish
-    // - emit: pipe
-    // events -> unpipe from this
-    // - emit: unpipe
+    // Whenever native '.pipe(destination)' is called the first thing it does
+    // is to call 'destination.on("unpipe", callback)'.
+    // Here we catch this call and throw an error saying that '.asWritable()' method needs to be used.
     protected on(eventName: string): void {
         if (eventName === "unpipe") {
             throw new Error("Use 'stream.asWritable()' when passing this stream to a native '.pipe()' method.");
