@@ -1,9 +1,0 @@
-{
-  "extends": "../tsconfig.base.json",
-  "compilerOptions": {
-    "target": "es2017",
-    "sourceMap": false,
-    "declaration": false,
-    "esModuleInterop": true
-  }
-}
