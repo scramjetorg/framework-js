@@ -69,82 +69,106 @@ test("DataStream can piped from nodejs Readable stream and keep correct backpres
     t.deepEqual(result, ["fo", "o\n", "ba", "r\n", "ba", "z\n", "ba", "x\n"]);
 });
 
-test("Piped DataStream can be unpiped via '.unpipe(instance)'", async (t) => {
+test("Piped DataStream can be unpiped via '.unpipe(instance)'", (t) => {
     const readable = createReadStream("./build/test/_assets/sample.txt", { encoding: "utf8", highWaterMark: 2 });
     const stream = new DataStream<string>({ maxParallel: 2 })
-        .map(chunk => deferReturn(40, chunk));
+        .map(chunk => deferReturn(20, chunk));
 
-    const writable = readable.pipe(stream.asWritable());
+    return new Promise(resolve => {
+        readable.once("readable", async () => {
+            const writable = readable.pipe(stream.asWritable());
 
-    // This call in comibnation with defer below will make 2 first ready chunks to be read and 2 next
-    // pending before unpipeing occurs.
-    const result = stream.toArray();
+            // This call in comibnation with defer below will make 2 first ready chunks to be read and 2 next
+            // pending before unpipeing occurs.
+            const result = stream.toArray();
 
-    // We need quite significant delay to keep this test stable.
-    await defer(60);
+            // We need quite significant delay to keep this test stable.
+            await defer(30);
 
-    readable.unpipe(writable);
+            readable.unpipe(writable);
 
-    // Calling end will simply flush all pending chunks from IFCA queue (so we will have 4 chunks in total).
-    await stream.end();
+            // Calling end will simply flush all pending chunks from IFCA queue (so we will have 4 chunks in total).
+            await stream.end();
 
-    t.deepEqual(await result, ["fo", "o\n", "ba", "r\n"]);
+            t.deepEqual(await result, ["fo", "o\n", "ba", "r\n"]);
+
+            resolve();
+        });
+    });
 });
 
-test("Piped DataStream can be unpiped via '.unpipe(instance)' #2", async (t) => {
+test("Piped DataStream can be unpiped via '.unpipe(instance)' #2", (t) => {
     const readable = createReadStream("./build/test/_assets/sample.txt", { encoding: "utf8", highWaterMark: 2 });
     const stream = new DataStream<string>({ maxParallel: 2 })
         .map(chunk => deferReturn(10, chunk));
 
-    const writable = readable.pipe(stream.asWritable());
+    return new Promise(resolve => {
+        readable.once("readable", async () => {
+            const writable = readable.pipe(stream.asWritable());
 
-    await defer(15);
+            await defer(5);
 
-    readable.unpipe(writable);
+            readable.unpipe(writable);
 
-    // Calling end will simply flush all pending chunks from IFCA queue (so we will have 2 chunks in total).
-    await stream.end();
+            // Calling end will simply flush all pending chunks from IFCA queue (so we will have 2 chunks in total).
+            await stream.end();
 
-    t.deepEqual(await stream.toArray(), ["fo", "o\n"]);
+            t.deepEqual(await stream.toArray(), ["fo", "o\n"]);
+
+            resolve();
+        });
+    });
 });
 
-test("Piped DataStream can be unpiped via '.unpipe()'", async (t) => {
+test("Piped DataStream can be unpiped via '.unpipe()'", (t) => {
     const readable = createReadStream("./build/test/_assets/sample.txt", { encoding: "utf8", highWaterMark: 2 });
     const stream = new DataStream<string>({ maxParallel: 2 })
-        .map(chunk => deferReturn(40, chunk));
+        .map(chunk => deferReturn(20, chunk));
 
-    readable.pipe(stream.asWritable());
+    return new Promise(resolve => {
+        readable.once("readable", async () => {
+            readable.pipe(stream.asWritable());
 
-    // This call in comibnation with defer below will make 2 first ready chunks to be read and 2 next
-    // pending before unpipeing occurs.
-    const result = stream.toArray();
+            // This call in comibnation with defer below will make 2 first ready chunks to be read and 2 next
+            // pending before unpipeing occurs.
+            const result = stream.toArray();
 
-    // We need quite significant delay to keep this test stable.
-    await defer(60);
+            // We need quite significant delay to keep this test stable.
+            await defer(30);
 
-    readable.unpipe();
+            readable.unpipe();
 
-    // Calling end will simply flush all pending chunks from IFCA queue (so we will have 4 chunks in total).
-    await stream.end();
+            // Calling end will simply flush all pending chunks from IFCA queue (so we will have 4 chunks in total).
+            await stream.end();
 
-    t.deepEqual(await result, ["fo", "o\n", "ba", "r\n"]);
+            t.deepEqual(await result, ["fo", "o\n", "ba", "r\n"]);
+
+            resolve();
+        });
+    });
 });
 
-test("Piped DataStream can be unpiped via '.unpipe()' #2", async (t) => {
+test("Piped DataStream can be unpiped via '.unpipe()' #2", (t) => {
     const readable = createReadStream("./build/test/_assets/sample.txt", { encoding: "utf8", highWaterMark: 2 });
     const stream = new DataStream<string>({ maxParallel: 2 })
         .map(chunk => deferReturn(10, chunk));
 
-    readable.pipe(stream.asWritable());
+    return new Promise(resolve => {
+        readable.once("readable", async () => {
+            readable.pipe(stream.asWritable());
 
-    await defer(15);
+            await defer(5);
 
-    readable.unpipe();
+            readable.unpipe();
 
-    // Calling end will simply flush all pending chunks from IFCA queue (so we will have 4 chunks in total).
-    await stream.end();
+            // Calling end will simply flush all pending chunks from IFCA queue (so we will have 2 chunks in total).
+            await stream.end();
 
-    t.deepEqual(await stream.toArray(), ["fo", "o\n"]);
+            t.deepEqual(await stream.toArray(), ["fo", "o\n"]);
+
+            resolve();
+        });
+    });
 });
 
 test("Native pipe with DataStream returns the same instance which was passed as an argument #1", async (t) => {
