@@ -355,7 +355,7 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
     }
 
     asWritable(): Writable {
-        return this as any as Writable;
+        return new WritableNodeProxy(this).writable;
     }
 
     // We don't want to provide a full event emmiter (and support nodejs native stream events) in DataStream
@@ -367,78 +367,12 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
     // - emit: pipe
     // events -> unpipe from this
     // - emit: unpipe
-    protected on(eventName: string, listener: (...args: any[]) => void): this {
-        if (!this.writableProxy) {
-            this.writableProxy = new WritableNodeProxy(this);
+    protected on(eventName: string): void {
+        if (eventName === "unpipe") {
+            throw new Error("Use 'stream.asWritable()' when passing this stream to a native '.pipe()' method.");
         }
 
-        this.writableProxy.on(eventName, listener);
-
-        return this;
-    }
-
-    protected once(eventName: string, listener: (...args: any[]) => void): this {
-        if (!this.writableProxy) {
-            this.writableProxy = new WritableNodeProxy(this);
-        }
-
-        this.writableProxy.once(eventName, listener);
-
-        return this;
-    }
-
-    protected removeListener(eventName: string, listener: (...args: any[]) => void): this {
-        if (!this.writableProxy) {
-            this.writableProxy = new WritableNodeProxy(this);
-        }
-
-        this.writableProxy.removeListener(eventName, listener);
-
-        return this;
-    }
-
-    protected emit(eventName: string, ...args: any[]): boolean {
-        if (!this.writableProxy) {
-            this.writableProxy = new WritableNodeProxy(this);
-        }
-
-        const hasListeners = this.writableProxy.emit(eventName, ...args);
-
-        if (!this.writableProxy.asPipe) {
-            const source = args[0] as Readable;
-
-            if (eventName === "pipe") {
-                source.unpipe(this as any as Writable);
-
-                if (!this.readable) {
-                    throw new Error("Cannot pipe. Stream is not readable.");
-                }
-            } else if (eventName === "unpipe") {
-                this.writableProxy.asPipe = true;
-
-                source.pipe(this.writableProxy as any as Writable);
-
-                const unpipe = source.unpipe;
-
-                (source as any).unpipe = (...args1: any[]) => {
-                    if (args1[0] === this) {
-                        args1[0] = this.writableProxy;
-                    }
-
-                    const cleanup = args1.length === 0 || args[1] === this.writableProxy;
-
-                    unpipe.call(source, ...args1);
-
-                    if (cleanup) {
-                        source.unpipe = unpipe;
-
-                        this.writableProxy = null;
-                    }
-                };
-            }
-        }
-
-        return hasListeners;
+        throw new Error("The '.on()' method should not be called directly.");
     }
 
     // Creates a new instance of this class. Marks this stream as non-readable and non-transfromable.
