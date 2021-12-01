@@ -7,6 +7,7 @@ export interface BaseStream<IN extends any, OUT extends any> {
     resume(): void;
     end(): MaybePromise<void>;
 
+    each<ARGS extends any[]>(callback: TransformFunction<OUT, void, ARGS>, ...args: ARGS): BaseStream<IN, OUT>;
     map<NEW_OUT, ARGS extends any[]>(
         callback: TransformFunction<OUT, NEW_OUT, ARGS>, ...args: ARGS): BaseStream<IN, NEW_OUT>;
     filter<ARGS extends any[]>(callback: TransformFunction<OUT, Boolean, ARGS>, ...args: ARGS): BaseStream<IN, OUT>;
