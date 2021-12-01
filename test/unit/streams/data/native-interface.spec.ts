@@ -19,17 +19,6 @@ test("DataStream can be iterated with 'for await..of'", async (t) => {
     t.deepEqual(result, [1, 3, 5]);
 });
 
-test("DataStream can piped from nodejs Readable stream directly", async (t) => {
-    const readable = createReadStream("./build/test/_assets/sample.txt", "utf8");
-    const stream = new DataStream<string>();
-
-    readable.pipe(stream as any as Writable);
-
-    const result = await stream.toArray();
-
-    t.deepEqual(result, ["foo\nbar\nbaz\nbax\n"]);
-});
-
 test("DataStream can piped from nodejs Readable stream", async (t) => {
     const readable = createReadStream("./build/test/_assets/sample.txt", "utf8");
     const stream = new DataStream<string>();
@@ -39,6 +28,26 @@ test("DataStream can piped from nodejs Readable stream", async (t) => {
     const result = await stream.toArray();
 
     t.deepEqual(result, ["foo\nbar\nbaz\nbax\n"]);
+});
+
+test("DataStream can piped from nodejs Readable stream (intermediate stream)", async (t) => {
+    const readable = createReadStream("./build/test/_assets/sample.txt", "utf8");
+    const stream = new DataStream<string>();
+    const stream2 = stream.map(chunk => chunk.toUpperCase());
+
+    readable.pipe(stream.asWritable());
+
+    const result = await stream2.toArray();
+
+    t.deepEqual(result, ["FOO\nBAR\nBAZ\nBAX\n"]);
+});
+
+
+test("DataStream cannot be piped directly from nodejs Readable stream", async (t) => {
+    const readable = createReadStream("./build/test/_assets/sample.txt", "utf8");
+    const stream = new DataStream<string>();
+
+    t.throws(() => readable.pipe(stream as any as Writable));
 });
 
 test("DataStream can piped from nodejs Readable stream (read one byte at a time)", async (t) => {
@@ -171,16 +180,7 @@ test("Piped DataStream can be unpiped via '.unpipe()' #2", (t) => {
     });
 });
 
-test("Native pipe with DataStream returns the same instance which was passed as an argument #1", async (t) => {
-    const readable = createReadStream("./build/test/_assets/sample.txt", "utf8");
-    const stream = new DataStream<string>();
-
-    const stream2 = readable.pipe(stream as any as Writable);
-
-    t.is(stream, stream2 as any as DataStream<string>);
-});
-
-test("Native pipe with DataStream returns the same instance which was passed as an argument #2", async (t) => {
+test("Native pipe with DataStream returns the same instance which was passed as an argument", async (t) => {
     const readable = createReadStream("./build/test/_assets/sample.txt", "utf8");
     const stream = new DataStream<string>();
 
@@ -189,11 +189,19 @@ test("Native pipe with DataStream returns the same instance which was passed as 
     t.is(stream, stream2 as any as DataStream<string>);
 });
 
-test("Cannot pipe to not readable (intermediate) stream", async (t) => {
+test("Calling 'DataStream.on()' should throw", async (t) => {
+    const stream = new DataStream<string>();
+
+    t.throws(() => (stream as any).on("fake"));
+});
+
+test("After pipe is called DataStream has no event-emitter like methods", async (t) => {
     const readable = createReadStream("./build/test/_assets/sample.txt", "utf8");
     const stream = new DataStream<string>();
 
-    stream.map(chunk => chunk);
+    readable.pipe(stream.asWritable());
 
-    t.throws(() => readable.pipe(stream.asWritable()));
+    t.true((stream as any).once === undefined);
+    t.true((stream as any).removeListener === undefined);
+    t.true((stream as any).emit === undefined);
 });
