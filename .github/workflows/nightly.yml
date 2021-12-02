@@ -1,0 +1,31 @@
+name: Nightly
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  run:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        token: ${{ secrets.SCRAMJET_DEV }}
+    - uses: actions/setup-node@v2
+      with:
+        node-version: 14.x
+        cache: npm
+    - run: npm -v
+    - run: node -v
+    - run: npm ci
+    - run: npm run dist
+    - name: Push dist
+      run: |
+        git config --global user.name 'Your Name'
+        git config --global user.email 'your-username@users.noreply.github.com'
+        git add -f dist
+        git commit -m "Nightly build $(date +%F_%T)"
+        git push origin main:nightly
