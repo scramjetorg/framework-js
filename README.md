@@ -23,7 +23,7 @@ The main advantage of Scramjet is running asynchronous operations on your data s
 
 This is a pre-release of the next major version (v5) of [JavaScript Scramjet Framework](https://github.com/scramjetorg/scramjet).
 
-**We are open to your feedback!** You can report an issue with any ideas, suggestions and features you would like to see in this version. You can also upvote (`+1`) existing issues to show us the direction we should take in developing Scramjet Framework.
+**We are open to your feedback!** We encourage you to report issues with any ideas, suggestions and features you would like to see in this version. You can also upvote (`+1`) existing ones to show us the direction we should take in developing Scramjet Framework.
 
 ## Table of contents
 
@@ -36,7 +36,7 @@ This is a pre-release of the next major version (v5) of [JavaScript Scramjet Fra
 
 ## Installation
 
-Since this is a pre-release version it is not available as a npm package yet. However, it can be used as npm dependencies by referring to `nightly` branch from this repository:
+Since this is a pre-release version it is not available as a npm package yet. However, it can be used as npm dependency by referring to `nightly` branch (which is the latest build) from this repository:
 
 _package.json_
 ```json
@@ -58,15 +58,15 @@ You can also build it yourself. Please refer to [Development Setup](#development
 
 ## Usage
 
-Scramjet streams are similar and behave similar to native nodejs streams and to streams in any programing language in general. The allow operating on streams of data (were each separate data part is called a `chunk`) and process it in any way through transforms like mapping or filtering.
+Scramjet streams are similar and behave similar to native nodejs streams and to streams in any programing language in general. They allow operating on streams of data (were each separate data part is called a `chunk`) and process it in any way through transforms like mapping or filtering.
 
-Let's take a look how to create and operate on Scramjet streams.
+Let's take a look on how to create and operate on Scramjet streams.
 
-If you would like to dive deeper please refer to [stream source file](tree/main/src/streams).
+_If you would like to dive deeper, please refer to [streams source files](tree/main/src/streams)_.
 
 ### Creating Scramjet streams
 
-The basic method for creating Scramjet streams is `from()` static method. It accepts iterbales (both sync and async) and native nodejs streams. As for iterables it can be a simple array, generator or anything iterable:
+The basic method for creating Scramjet streams is `from()` static method. It accepts iterables (both sync and async) and native nodejs streams. As for iterables it can be a simple array, generator or anything iterable:
 
 ```ts
 import { DataStream } from "scramjet";
@@ -83,7 +83,7 @@ const stream1 = DataStream.from(["foo", "bar", "baz"]);
 const stream2 = DataStream.from(stream1);
 ```
 
-They can be also created from native nodejs Readables:
+They can be also created from native nodejs `Readable`s:
 
 ```ts
 import { createReadStream } from "fs";
@@ -100,7 +100,7 @@ import { DataStream } from "scramjet";
 const stream = new DataStream();
 ```
 
-Such approach is useful when one needs to manually write data to a stream or use it as pipe destination:
+Such approach is useful when one needs to manually write data to a stream or use it as a pipe destination:
 
 ```ts
 import { DataStream } from "scramjet";
@@ -114,7 +114,7 @@ stream.pipe(stream2);
 
 ### Getting data from Scramjet streams
 
-Similar as to creating Scramjet streams, there are specific methods which allows getting data out of them. Those are sometimes called `sink` methods as they allow data to flow through and out of the stream. As those methods needs to wait for the stream end, they return a `Promise` which need to be awaited and is resolved when all data from source is processed.
+Similar as to creating Scramjet streams, there are specific methods which allow getting data out of them. Those are sometimes called `sink` methods as they allow data to flow through and out of the stream. As those methods needs to wait for the stream end, they return a `Promise` which needs to be awaited and is resolved when all data from source is processed.
 
 ```ts
 import { DataStream } from "scramjet";
@@ -132,7 +132,7 @@ await stream3.reduce(
 ); // "foo-bar-baz"
 ```
 
-As Scramjet streams are asynchronous iterables they can be itarated too:
+As Scramjet streams are asynchronous iterables they can be iterated too:
 
 ```ts
 import { DataStream } from "scramjet";
@@ -148,7 +148,7 @@ for await (const chunk of stream) {
 // "baz"
 ```
 
-Similar to writing, there is also more "manual" way to read from streams using `.read()` method:
+Similar to writing, there is also more "manual" way of reading from streams using `.read()` method:
 
 ```ts
 import { DataStream } from "scramjet";
@@ -159,15 +159,15 @@ await stream.read(); // "foo"
 await stream.read(); // "bar"
 ```
 
-Read returns a Promise which waits until there is something ready to be read from a stream.
+Read returns a `Promise` which waits until there is something ready to be read from a stream.
 
 ### Basic operations
 
-The whole idea of stream processing is an ability to quickly and efficiently transfom data which flows through the stream. Let's take a look at basic operations (called `transforms`) and what they do.
+The whole idea of stream processing is an ability to quickly and efficiently transfom data which flows through the stream. Let's take a look at basic operations (called `transforms`) and what they do:
 
 #### Mapping
 
-Mapping stream data is bascially the same as mapping array. It allows to map a chunk to a new value:
+Mapping stream data is bascially the same as mapping an array. It allows to map a `chunk` to a new value:
 
 ```ts
 import { DataStream } from "scramjet";
@@ -220,7 +220,33 @@ DataStream
     .toArray(); // [[1, 2], [3, 4], [5, 6], [7, 8]]
 ```
 
-Whenever callback function passed to `.batch()` call returns true, new group is emitted.
+Whenever callback function passed to `.batch()` call returns `true`, new group is emitted.
+
+#### Flattening
+
+Operation opposite to batching is flattening. At the moment, Scramjet streams provides `.flatMap()` method which allows first to map chunks and then flatten the resulting arrays:
+
+```ts
+import { DataStream } from "scramjet";
+
+DataStream
+    .from(["foo", "bar", "baz"])
+    .flatMap(chunk => chunk.split(""))
+    .toArray(); // ["f", "o", "o", "b", "a", "r", "b", "a", "z"]
+```
+
+But it can be also used to only flatten the stream by providing a callback which only passes values through:
+
+```ts
+import { DataStream } from "scramjet";
+
+DataStream
+    .from([1, 2, 3, 4, 5, 6, 7, 8])
+    .batch(chunk => chunk % 2 === 0)
+    .flatMap(chunk => chunk)
+    .toArray(); // [1, 2, 3, 4, 5, 6, 7, 8]
+```
+
 #### Pipeing
 
 Pipeing is essential for operating on streams. Scramjet streams can be both used as pipe source and destination. They can be also combined with native nodejs streams having native streams as pipe source or destination.
@@ -241,7 +267,7 @@ import { DataStream } from "scramjet";
 const readStream = createReadStream("path/to/file"));
 const scramjetStream = new DataStream();
 
-readStream.pipe(scramjetStream); // All file contents read by native nodejs stream will be passed to "stream2".
+readStream.pipe(scramjetStream); // All file contents read by native nodejs stream will be passed to "scramjetStream".
 ```
 
 ```ts
@@ -255,35 +281,35 @@ scramjetStream.pipe(createWriteStream("path/to/file")); // All data flowing thro
 
 ## Requesting Features
 
-Anything missing? Or maybe there is something which would make using Scramjet framework much easier or efficent? Don't hesiatet to fill up [new feature request](https://github.com/scramjetorg/scramjet-dev/issues/new?assignees=&labels=&template=feature_request.md&title=)! We really appreciate all feedback.
+Anything missing? Or maybe there is something which would make using Scramjet Framework much easier or efficent? Don't hesiatet to fill up a [new feature request](https://github.com/scramjetorg/scramjet-dev/issues/new?assignees=&labels=&template=feature_request.md&title=)! We really appreciate all feedback.
 
 ## Reporting Bugs
 
-If you have found a bug, unconsistent or confusing behaviour please fill up [new bug report](https://github.com/scramjetorg/scramjet-dev/issues/new?assignees=&labels=&template=bug_report.md&title=).
+If you have found a bug, unconsistent or confusing behaviour please fill up a [new bug report](https://github.com/scramjetorg/scramjet-dev/issues/new?assignees=&labels=&template=bug_report.md&title=).
 
 ## Contributing
 
-You can conriubte to this project by giving us feedback (reporting [bugs](#reporting-bugs) and requesting [features](#reporting-features)) and also by writing code yourself! We have some introductory issues labaled with `good first issue` which should be a perfect starter.
+You can conriubte to this project by giving us feedback ([reporting bugs](#reporting-bugs) and [requesting features](#reporting-features)) and also by writing code yourself! We have some introductory issues labaled with `good first issue` which should be a perfect starter.
 
-The easiest way is to [create a fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) of this repository and then [create a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork) with all you changes. In most cases you should target brnach from and target `main` branch.
+The easiest way is to [create a fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) of this repository and then [create a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork) with all your changes. In most cases, you should branch from and target `main` branch.
 
 Please refer to [Development Setup](#development-setup) section on how to setup this project.
 
 ## Development Setup
 
-### Node.js (14.x)
+### Project setup
+
+1. Install nodejs (`14.x`).
 
 Refer to [official docs](https://nodejs.org/en/download/). Alternatively you may use Node version manager like [nvm](https://github.com/nvm-sh/nvm).
 
-### Project setup
-
-1. Clone this repository:
+2. Clone this repository:
 
 ```bash
 git clone git@github.com:scramjetorg/scramjet-dev.git
 ```
 
-2. Install project dependencies:
+3. Install project dependencies:
 
 ```bash
 npm i
@@ -291,7 +317,7 @@ npm i
 
 ### Commands
 
-There are multiple npm commands avaialble which helps to run test,build the project and help during development.
+There are multiple npm commands avaialble which helps run tests,cbuild the project and help during development.
 
 #### Running tests
 
