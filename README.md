@@ -163,11 +163,11 @@ Read returns a `Promise` which waits until there is something ready to be read f
 
 ### Basic operations
 
-The whole idea of stream processing is an ability to quickly and efficiently transfom data which flows through the stream. Let's take a look at basic operations (called `transforms`) and what they do:
+The whole idea of stream processing is an ability to quickly and efficiently transform data which flows through the stream. Let's take a look at basic operations (called `transforms`) and what they do:
 
 #### Mapping
 
-Mapping stream data is bascially the same as mapping an array. It allows to map a `chunk` to a new value:
+Mapping stream data is basically the same as mapping an array. It allows to map a `chunk` to a new value:
 
 ```ts
 import { DataStream } from "scramjet";
@@ -209,7 +209,7 @@ DataStream
 
 #### Grouping
 
-Batching allows to group chunks into arrays, effecitvely changing chunks number flowing though the stream:
+Batching allows to group chunks into arrays, effectively changing chunks number flowing though the stream:
 
 ```ts
 import { DataStream } from "scramjet";
@@ -247,9 +247,9 @@ DataStream
     .toArray(); // [1, 2, 3, 4, 5, 6, 7, 8]
 ```
 
-#### Pipeing
+#### Piping
 
-Pipeing is essential for operating on streams. Scramjet streams can be both used as pipe source and destination. They can be also combined with native nodejs streams having native streams as pipe source or destination.
+Piping is essential for operating on streams. Scramjet streams can be both used as pipe source and destination. They can be also combined with native nodejs streams having native streams as pipe source or destination.
 
 ```ts
 import { DataStream } from "scramjet";
@@ -281,15 +281,15 @@ scramjetStream.pipe(createWriteStream("path/to/file")); // All data flowing thro
 
 ## Requesting Features
 
-Anything missing? Or maybe there is something which would make using Scramjet Framework much easier or efficent? Don't hesiatet to fill up a [new feature request](https://github.com/scramjetorg/scramjet-dev/issues/new?assignees=&labels=&template=feature_request.md&title=)! We really appreciate all feedback.
+Anything missing? Or maybe there is something which would make using Scramjet Framework much easier or efficient? Don't hesitate to fill up a [new feature request](https://github.com/scramjetorg/scramjet-dev/issues/new?assignees=&labels=&template=feature_request.md&title=)! We really appreciate all feedback.
 
 ## Reporting Bugs
 
-If you have found a bug, unconsistent or confusing behaviour please fill up a [new bug report](https://github.com/scramjetorg/scramjet-dev/issues/new?assignees=&labels=&template=bug_report.md&title=).
+If you have found a bug, inconsistent or confusing behavior please fill up a [new bug report](https://github.com/scramjetorg/scramjet-dev/issues/new?assignees=&labels=&template=bug_report.md&title=).
 
 ## Contributing
 
-You can conriubte to this project by giving us feedback ([reporting bugs](#reporting-bugs) and [requesting features](#reporting-features)) and also by writing code yourself! We have some introductory issues labaled with `good first issue` which should be a perfect starter.
+You can contribute to this project by giving us feedback ([reporting bugs](#reporting-bugs) and [requesting features](#reporting-features)) and also by writing code yourself! We have some introductory issues labeled with `good first issue` which should be a perfect starter.
 
 The easiest way is to [create a fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) of this repository and then [create a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork) with all your changes. In most cases, you should branch from and target `main` branch.
 
@@ -317,7 +317,7 @@ npm i
 
 ### Commands
 
-There are multiple npm commands avaialble which helps run tests,cbuild the project and help during development.
+There are multiple npm commands available which helps run tests, build the project and help during development.
 
 #### Running tests
 
@@ -331,7 +331,7 @@ Runs all tests from `test` directory. It runs `build` internally so it doesn't h
 npm run test:unit[:w]
 ```
 
-Runs all unit tests (`test/unit` directory). It runs `build` internally so it doesn't have to be run manually. When run with `:w` it will watch for changes, rebuild and rerun test automatically. To run unit tests wihtout rebuilding the project use `npm run test:run:unit`.
+Runs all unit tests (`test/unit` directory). It runs `build` internally so it doesn't have to be run manually. When run with `:w` it will watch for changes, rebuild and rerun test automatically. To run unit tests without rebuilding the project use `npm run test:run:unit`.
 
 ```bash
 npm run test:unit:d -- build/test/.../test.js [--host ...] [--port ...]
@@ -345,7 +345,7 @@ by going to `chrome://inspect`.
 npm run test:bdd
 ```
 
-Runs all BDD tests (`test/bdd` directory). It runs `build` internally so it doesn't have to be run manually. To run BDD tests wihtout rebuilding the project use `npm run test:run:bdd`.
+Runs all BDD tests (`test/bdd` directory). It runs `build` internally so it doesn't have to be run manually. To run BDD tests without rebuilding the project use `npm run test:run:bdd`.
 
 **Running single test file or specific tests**
 
@@ -379,7 +379,7 @@ Transpiles `.ts` sources and tests (`src` and `test` directories) and outputs JS
 npm run dist
 ```
 
-Builds dist files - similar to `build` but skips `test` directory and additionaly generates source maps.
+Builds dist files - similar to `build` but skips `test` directory and additionally generates source maps.
 
 #### Miscellaneous
 
