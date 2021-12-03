@@ -1,6 +1,6 @@
 ---
-name: Bug report
-about: Create a report to help us improve
+name: 🐛 Bug report
+about: Report a bug or confusing behavior
 title: ''
 labels: ''
 assignees: ''
@@ -11,24 +11,24 @@ assignees: ''
 
 A clear and concise description of what the bug is.
 
-## Steps to Reproduce
+## Steps to reproduce
 
-1. Go to '...'
+1. Go to ...
 2. ...
 
-### Reproduction repo/branch
+### Actual behavior
 
-1. `git clone <repo>` // optional
-2. `git checkout -b test/somebranch user:branch` // so we can check out the problem
-3. run `npm test:someculprit --that-s=buggin me`
+A clear and concise description of what was the result of the above steps.
 
-**Expected behavior**
+### Expected behavior
 
 A clear and concise description of what you expected to happen.
 
-**Version (please complete the following information):**
+### Reproduction repo/branch/code
 
- - node version:
- - os:
+Provide a code sample where we can reproduce this issue.
 
-**Additional information like logs, screenshots etc.**
+## Additional details
+
+1. node version:
+1. os:
