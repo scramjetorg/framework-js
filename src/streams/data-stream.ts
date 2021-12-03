@@ -1,5 +1,5 @@
 import { Readable, Writable } from "stream";
-import { createReadStream, promises as fs } from "fs";
+import { createReadStream, createWriteStream } from "fs";
 import { BaseStream } from "./base-stream";
 import { IFCA } from "../ifca";
 import { IFCAChain } from "../ifca/ifca-chain";
@@ -343,14 +343,16 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         return this.getReader(true, { onChunkCallback: () => {} })();
     }
 
-    // TODO
-    // Helper created to be used in E2E test.
-    // After DataStream will be a subclass of Transform, it can be simply piped to naitve writeStream.
     @checkTransformability
     async toFile(filePath: string): Promise<void> {
-        const results: OUT[] = await this.toArray();
+        const writer = createWriteStream(filePath);
 
-        await fs.writeFile(filePath, results.map(line => `${line}\n`).join(""));
+        this.pipe(writer);
+
+        return new Promise((res, rej) => {
+            writer.on("finish", res);
+            writer.on("error", rej);
+        });
     }
 
     // Decorates this stream with 'on', 'once', 'emit' and 'removeListener' methods so it can be passed to native pipe
