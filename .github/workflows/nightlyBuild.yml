@@ -1,0 +1,33 @@
+name: Nightly
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+jobs:
+  nightly-build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v2
+      with:
+        node-version: 14.x
+        cache: npm
+
+    - run: npm -v
+
+    - run: node -v
+
+    - run: npm ci
+
+    - run: npm run dist
+
+    - uses: EndBug/add-and-commit@v7
+      with:
+        add: 'dist --force'
+        message: Nightly build from ${{ github.sha }}
+        author_name: Nightly Build
+        author_email: nb@scramjet.org
+        push: origin main:nightly --force
