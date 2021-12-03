@@ -1,8 +1,11 @@
 {
   "name": "@scramjet/framework",
   "version": "5.0.0-pre.1",
-  "description": "The implementation of scramjet framework",
-  "main": "./src/index.ts",
+  "description": "Simple yet powerful live data computation framework.",
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "rm -rf ./build && npm run copy && tsc -p tsconfig.build.json",
     "build:w": "npm run build -- -w",
