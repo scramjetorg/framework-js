@@ -44,7 +44,7 @@ function isAsyncTransformHandler(func: TransformHandler<any, any>): boolean {
 }
 
 function getId(prefix: string): string {
-    return `${ prefix }-${ Date.now() }`;
+    return `${ prefix }-${ Date.now() }${ (Math.random() * 100).toPrecision(2) }`;
 }
 
 export {
