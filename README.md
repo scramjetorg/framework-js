@@ -45,6 +45,14 @@ npm run test:unit[:w]
 Runs all unit tests (`test/unit` folder). It runs `build` internally so it doesn't have to be run manually. When run with `:w` it will watch for changes, rebuild and rerun test automatically. To run unit tests wihtout rebuilding the project use `npm run test:run:unit`.
 
 ```bash
+npm run test:unit:d -- build/test/.../test.js [--host ...] [--port ...]
+```
+
+Runs specified test file in a debug mode. It runs `build` internally so it doesn't have to be run manually. This is the same as running
+`npm run build && npx ava debug --break build/test/.../test.js [--host ...] [--port ...]`. Then it can be inpsected e.g. via Chrome inspector
+by going to `chrome://inspect`.
+
+```bash
 npm run test:bdd
 ```
 

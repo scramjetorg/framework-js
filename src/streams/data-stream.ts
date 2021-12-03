@@ -6,6 +6,7 @@ import { IFCAChain } from "../ifca/ifca-chain";
 import { createResolvablePromiseObject, isAsyncFunction } from "../utils";
 import { AnyIterable, StreamConstructor, DroppedChunk, ResolvablePromiseObject, TransformFunction, MaybePromise, StreamOptions } from "../types";
 import { checkTransformability } from "../decorators";
+import { StreamAsNodeWritableProxy } from "./proxies/stream-node-writable-proxy";
 
 type Reducer<IN, OUT> = {
     isAsync: boolean,
@@ -350,6 +351,24 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         const results: OUT[] = await this.toArray();
 
         await fs.writeFile(filePath, results.map(line => `${line}\n`).join(""));
+    }
+
+    // Decorates this stream with 'on', 'once', 'emit' and 'removeListener' methods so it can be passed to native pipe
+    // and returns this instance as 'Writable'. After the source is re-piped to 'StreamAsNodeWritableProxy'
+    // instance, decorated methods are removed.
+    asWritable(): Writable {
+        return new StreamAsNodeWritableProxy(this).writable;
+    }
+
+    // Whenever native '.pipe(destination)' is called the first thing it does
+    // is to call 'destination.on("unpipe", callback)'.
+    // Here we catch this call and throw an error saying that '.asWritable()' method needs to be used.
+    protected on(eventName: string): void {
+        if (eventName === "unpipe") {
+            throw new Error("Use 'stream.asWritable()' when passing this stream to a native '.pipe()' method.");
+        }
+
+        throw new Error("The '.on()' method should not be called directly.");
     }
 
     // Creates a new instance of this class. Marks this stream as non-readable and non-transfromable.
