@@ -15,20 +15,15 @@ test("DataStream use correctly uses passed callback (returns new stream instance
     };
 
     const newStream = stream.use(parseSquareEvenDollars);
-    const result = await newStream.toArray();
 
-    t.deepEqual(result, ["$64", "$196", "$400", "$256"]);
+    t.deepEqual(await newStream.toArray(), ["$64", "$196", "$400", "$256"]);
 });
 
 test("DataStream use correctly uses passed callback (returns array)", async (t) => {
     const data = ["$8", "$25", "$3", "$14", "$20", "$9", "$13", "$16"];
     const stream = DataStream.from(data, { maxParallel: 4 });
 
-    const parseSquareEvenDollars = (streamInstance: DataStream<string>) => {
-        return streamInstance.toArray();
-    };
-
-    const result = await stream.use(parseSquareEvenDollars);
+    const result = await stream.use((streamInstance: DataStream<string>) => streamInstance.toArray());
 
     t.deepEqual(result, ["$8", "$25", "$3", "$14", "$20", "$9", "$13", "$16"]);
 });
@@ -37,13 +32,8 @@ test("DataStream use correctly uses passed callback (returns new stream instance
     const data = ["$8", "$25", "$3", "$14", "$20", "$9", "$13", "$16"];
     const stream = StringStream.from(data, { maxParallel: 4 });
 
-    const parseSquareEvenDollars = (streamInstance: StringStream) => {
-        return streamInstance
-            .filter(chunk => chunk.length > 2);
-    };
-
     const newStream = stream
-        .use(parseSquareEvenDollars)
+        .use((streamInstance: StringStream) => streamInstance.filter(chunk => chunk.length > 2))
         .match(/\$1\d+/g);
 
     t.deepEqual(await newStream.toArray(), ["$14", "$13", "$16"]);
