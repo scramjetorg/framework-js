@@ -25,6 +25,8 @@ This is a pre-release of the next major version (v5) of [JavaScript Scramjet Fra
 
 **We are open to your feedback!** We encourage you to report issues with any ideas, suggestions and features you would like to see in this version. You can also upvote (`+1`) existing ones to show us the direction we should take in developing Scramjet Framework.
 
+**Not interested in JavaScript/TypeScript version?** Check out [Scramjet Framework in Python](https://github.com/scramjetorg/framework-python)!
+
 ## Table of contents
 
 - [Installation](#installation)
