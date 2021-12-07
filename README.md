@@ -49,7 +49,13 @@ _package.json_
 }
 ```
 
-and then used like:
+After adding Scramjet Framework as dependency it needs to be installed via `npm` (or similar):
+
+```
+npm i
+```
+
+And then it can be used in the code like:
 
 _sample-file.ts_
 ```ts
