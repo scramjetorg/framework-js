@@ -1,13 +1,13 @@
 Scramjet Framework TypeScript (`pre-v5`)
 ==================
 <p align="center">
-    <a><img src="https://github.com/scramjetorg/scramjet-dev/actions/workflows/test.yml/badge.svg?branch=main" alt="Tests" /></a>
-    <a href="https://snyk.io/test/github/scramjetorg/scramjet-dev">
-        <img src="https://snyk.io/test/github/scramjetorg/scramjet-dev/badge.svg" alt="Known Vulnerabilities" />
+    <a><img src="https://github.com/scramjetorg/framework-js/actions/workflows/test.yml/badge.svg?branch=main" alt="Tests" /></a>
+    <a href="https://snyk.io/test/github/scramjetorg/framework-js">
+        <img src="https://snyk.io/test/github/scramjetorg/framework-js/badge.svg" alt="Known Vulnerabilities" />
     </a>
-    <a><img src="https://img.shields.io/github/license/scramjetorg/scramjet-dev?color=green&style=plastic" alt="License" /></a>
-    <a><img src="https://img.shields.io/github/v/tag/scramjetorg/scramjet-dev?label=version&color=blue&style=plastic" alt="Version" /></a>
-    <a><img src="https://img.shields.io/github/stars/scramjetorg/scramjet-dev?color=pink&style=plastic" alt="GitHub stars" /></a>
+    <a><img src="https://img.shields.io/github/license/scramjetorg/framework-js?color=green&style=plastic" alt="License" /></a>
+    <a><img src="https://img.shields.io/github/v/tag/scramjetorg/framework-js?label=version&color=blue&style=plastic" alt="Version" /></a>
+    <a><img src="https://img.shields.io/github/stars/scramjetorg/framework-js?color=pink&style=plastic" alt="GitHub stars" /></a>
     <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=7F7V65C43EBMW">
         <img src="https://img.shields.io/badge/Donate-PayPal-green.svg?color=yellow&style=plastic" alt="Donate" />
     </a>
@@ -42,7 +42,7 @@ _package.json_
 ```json
 {
     "dependencies": {
-        "scramjet": "scramjetorg/scramjet-dev#nightly"
+        "scramjet": "scramjetorg/framework-js#nightly"
     }
 }
 ```
@@ -281,11 +281,11 @@ scramjetStream.pipe(createWriteStream("path/to/file")); // All data flowing thro
 
 ## Requesting Features
 
-Anything missing? Or maybe there is something which would make using Scramjet Framework much easier or efficient? Don't hesitate to fill up a [new feature request](https://github.com/scramjetorg/scramjet-dev/issues/new?assignees=&labels=&template=feature_request.md&title=)! We really appreciate all feedback.
+Anything missing? Or maybe there is something which would make using Scramjet Framework much easier or efficient? Don't hesitate to fill up a [new feature request](https://github.com/scramjetorg/framework-js/issues/new?assignees=&labels=&template=feature_request.md&title=)! We really appreciate all feedback.
 
 ## Reporting Bugs
 
-If you have found a bug, inconsistent or confusing behavior please fill up a [new bug report](https://github.com/scramjetorg/scramjet-dev/issues/new?assignees=&labels=&template=bug_report.md&title=).
+If you have found a bug, inconsistent or confusing behavior please fill up a [new bug report](https://github.com/scramjetorg/framework-js/issues/new?assignees=&labels=&template=bug_report.md&title=).
 
 ## Contributing
 
@@ -306,7 +306,7 @@ Refer to [official docs](https://nodejs.org/en/download/). Alternatively you may
 2. Clone this repository:
 
 ```bash
-git clone git@github.com:scramjetorg/scramjet-dev.git
+git clone git@github.com:scramjetorg/framework-js.git
 ```
 
 3. Install project dependencies:
