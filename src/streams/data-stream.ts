@@ -310,6 +310,11 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
     }
 
     @checkTransformability
+    use<NEW_OUT>(callback: (stream: DataStream<IN, OUT>) => NEW_OUT): NEW_OUT {
+        return callback(this);
+    }
+
+    @checkTransformability
     async reduce<NEW_OUT = OUT>(
         callback: (previousValue: NEW_OUT, currentChunk: OUT) => MaybePromise<NEW_OUT>,
         initial?: NEW_OUT

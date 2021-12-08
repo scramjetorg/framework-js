@@ -23,6 +23,10 @@ export class StringStream extends DataStream<string> {
         return super.flatMap(callback, ...args) as StringStream;
     }
 
+    use<NEW_OUT>(callback: (stream: StringStream) => NEW_OUT): NEW_OUT {
+        return super.use(callback as (stream: DataStream<string, string>) => NEW_OUT);
+    }
+
     split(splitBy: string): StringStream;
     split(splitBy: RegExp): StringStream;
 
