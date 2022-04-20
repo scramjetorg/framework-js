@@ -225,8 +225,12 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
             onChunkCallback: async (chunk: OUT) => {
                 const items = await callback(chunk, ...args);
 
-                for await (const item of items) {
-                    await newStream.ifca.write(item);
+                /* istanbul ignore next */
+                // eslint-disable-next-line no-lone-blocks
+                {
+                    for await (const item of items) {
+                        await newStream.ifca.write(item);
+                    }
                 }
             },
             onEndCallback: async () => {
@@ -577,15 +581,19 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
                 await this.corked.promise;
             }
 
-            for await (const data of iterable) {
-                if (this.corked) {
-                    await this.corked.promise;
-                }
+            /* istanbul ignore next */
+            // eslint-disable-next-line no-lone-blocks
+            {
+                for await (const data of iterable) {
+                    if (this.corked) {
+                        await this.corked.promise;
+                    }
 
-                const drain = this.ifca.write(data);
+                    const drain = this.ifca.write(data);
 
-                if (drain instanceof Promise) {
-                    await drain;
+                    if (drain instanceof Promise) {
+                        await drain;
+                    }
                 }
             }
 
