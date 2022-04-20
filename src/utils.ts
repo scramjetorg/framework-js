@@ -27,14 +27,6 @@ function createResolvablePromiseObject<T>(): ResolvablePromiseObject<T> {
     return { promise, resolver: resolver as () => (T) };
 }
 
-function isIterable(iterable: any): boolean {
-    return iterable && iterable[Symbol.iterator] && typeof iterable[Symbol.iterator] === "function";
-}
-
-function isAsyncIterable(iterable: any): boolean {
-    return iterable && iterable[Symbol.asyncIterator] && typeof iterable[Symbol.asyncIterator] === "function";
-}
-
 function isAsyncFunction(func: any): boolean {
     return func && func[Symbol.toStringTag] === "AsyncFunction";
 }
@@ -50,8 +42,6 @@ function getId(prefix: string): string {
 export {
     trace,
     createResolvablePromiseObject,
-    isIterable,
-    isAsyncIterable,
     isAsyncFunction,
     isAsyncTransformHandler,
     getId
