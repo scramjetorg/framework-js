@@ -60,3 +60,17 @@ test("DataStream map passes typed variadic args", async (t) => {
 
     t.deepEqual(result, ["300", "600", "900", "1200", "1500"]);
 });
+
+test("DataStream can map chunks via sync callback (to same type) 2", async (t) => {
+    const dsNumber = DataStream.from([1, 2, 3, 4, 5]);
+    const result = await dsNumber.map<number, any>(chunk => chunk * 2, undefined).toArray();
+
+    t.deepEqual(result, [2, 4, 6, 8, 10]);
+});
+
+// test("DataStream can map chunks via sync callback (to same type) 3", async (t) => {
+//     const dsNumber = DataStream.from([1, 2, 3, 4, 5]);
+//     const result = await dsNumber.map<number, any>(chunk => chunk * 2, void).toArray();
+
+//     t.deepEqual(result, [2, 4, 6, 8, 10]);
+// });

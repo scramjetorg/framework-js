@@ -21,7 +21,7 @@ test("DataStream can be created via static from method", (t) => {
     t.true(dsAny instanceof DataStream);
 });
 
-test("DataStream can be cretaed from an empty iterable", async (t) => {
+test("DataStream can be created from an empty iterable", async (t) => {
     const input: number[] = [];
     const dsNumber = DataStream.from(input);
     const result = await dsNumber.toArray();
@@ -126,7 +126,7 @@ test("DataStream will not start reading until 'output' transfomration is called 
     t.true(readable.readableEnded);
 });
 
-test("DataStream can be pasued and resumed", async (t) => {
+test("DataStream can be paused and resumed", async (t) => {
     const ref: any = {};
     const yielded: number[] = [];
 
@@ -189,4 +189,74 @@ test("Transforming intermediate streams throws an error (middle stream)", async 
     stream2.map(chunk => ({ value: chunk }));
 
     t.throws(() => stream2.map(chunk => ({ value: chunk })), { message: "Stream is not transformable." });
+});
+
+test("Pausing DataStream multiple times does not throw", async (t) => {
+    const dsNumber = DataStream.from([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+    try {
+        dsNumber.pause();
+        dsNumber.pause();
+
+        await defer(0);
+
+        dsNumber.pause();
+
+    } catch (err: any) {
+        t.fail(err.message);
+    } finally {
+        t.pass();
+    }
+});
+
+test("Resuming DataStream multiple times does not throw", async (t) => {
+    const dsNumber = DataStream.from([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+    try {
+        dsNumber.resume();
+        dsNumber.resume();
+
+        await defer(0);
+
+        dsNumber.resume();
+
+    } catch (err: any) {
+        t.fail(err.message);
+    } finally {
+        t.pass();
+    }
+});
+
+test("Pausing DataStream with parent stream multiple times does not throw", async (t) => {
+    const dsNumber = DataStream.from([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    const childStream = new DataStream({}, dsNumber);
+
+    try {
+        childStream.pause();
+        childStream.pause();
+
+        await defer(0);
+
+        childStream.pause();
+
+    } catch (err: any) {
+        t.fail(err.message);
+    } finally {
+        t.pass();
+    }
+});
+
+test("DataStream can be written to in multiple ways (internal API too)", async (t) => {
+    const dsNumber = DataStream.from([1, 2, 3, 4, 5]);
+    const dsNumber2 = new DataStream<number, number>({});
+
+    dsNumber2.write(0);
+
+    (dsNumber2 as any).readSource(dsNumber);
+
+    dsNumber2.resume();
+
+    const result = await dsNumber2.toArray();
+
+    t.deepEqual(result, [0, 1, 2, 3, 4, 5]);
 });

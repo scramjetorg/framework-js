@@ -75,7 +75,7 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         path: string,
         options?: StreamOptions
     ): STREAM {
-        return (new this(options)).readSource(createReadStream(path, options?.readStream));
+        return (new this(options)).readSource(createReadStream(path, options && options.readStream));
     }
 
     [Symbol.asyncIterator]() {
@@ -145,7 +145,8 @@ export class DataStream<IN, OUT = IN> implements BaseStream<IN, OUT>, AsyncItera
         callback: TransformFunction<OUT, NEW_OUT, ARGS>,
         ...args: ARGS
     ): DataStream<IN, NEW_OUT> {
-        if (args?.length) {
+        /* istanbul ignore if  */
+        if (args && args.length) {
             this.ifcaChain.add(
                 this.ifca.addTransform(this.injectArgsToCallback<NEW_OUT, typeof args>(callback, args))
             );
