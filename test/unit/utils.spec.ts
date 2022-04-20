@@ -1,5 +1,5 @@
 import test from "ava";
-import { isAsyncFunction } from "../../src/utils";
+import { isAsyncFunction, trace } from "../../src/utils";
 import { TransformFunction } from "../../src/types";
 
 test("isAsyncFunction correctly detects sync function (function declaration)", t => {
@@ -50,4 +50,10 @@ test.skip("isAsyncFunction correctly detects sync function returning promise", t
     }
 
     t.true(isAsyncFunction(syncPromise));
+});
+
+test("trace does not throw", t => {
+    t.notThrows(() => {
+        trace("foo");
+    });
 });

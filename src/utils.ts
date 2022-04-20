@@ -9,7 +9,6 @@ const SCRAMJET_LOG = process.env.SCRAMJET_LOG;
  * @param {*} [array] Optional array of objects
  */
 function trace(msg:any, ...array: any[]) {
-    // TODO: make this into a const false on compile
     if (!SCRAMJET_LOG) return;
 
     const date = new Date();

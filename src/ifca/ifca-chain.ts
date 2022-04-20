@@ -8,6 +8,13 @@ export class IFCAChain<IN> {
     private chain: Array<IFCA<any, any>> = [];
 
     /**
+     * @returns {number} Length of the IFCAChain (number of IFCA instances in a chain).
+     */
+    get length(): number {
+        return this.chain.length;
+    }
+
+    /**
      * Creates and adds new IFCA to this chain.
      *
      * @param {IFCAOptions} options IFCA options.
