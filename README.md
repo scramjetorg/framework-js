@@ -21,7 +21,7 @@ Scramjet is a simple reactive stream programming framework. The code is written 
 
 The main advantage of Scramjet is running asynchronous operations on your data streams concurrently. It allows you to perform the transformations both synchronously and asynchronously by using the same API - so now you can "map" your stream from whatever source and call any number of API's consecutively.
 
-This is a pre-release of the next major version (v5) of [JavaScript Scramjet Framework](https://github.com/scramjetorg/scramjet).
+This is a pre-release of the next major version (v5) of [JavaScript Scramjet Framework](https://www.npmjs.com/package/scramjet).
 
 **We are open to your feedback!** We encourage you to report issues with any ideas, suggestions and features you would like to see in this version. You can also upvote (`+1`) existing ones to show us the direction we should take in developing Scramjet Framework.
 
@@ -38,7 +38,22 @@ This is a pre-release of the next major version (v5) of [JavaScript Scramjet Fra
 
 ## Installation
 
-Since this is a pre-release version it is not available as a npm package yet. However, it can be used as npm dependency by referring to `nightly` branch (which is the latest build) from this repository:
+Simply run:
+
+```bash
+npm i @scramjet/framework
+```
+
+And then you can require it in the JS/TS code like:
+
+_sample-file.ts_
+```ts
+import { DataStream } from "@scramjet/framework";
+```
+
+<!-- DEV_ONLY_START -->
+
+You can also use nightly build as npm dependency by referring to `nightly` branch (which is the latest build) from this repository:
 
 _package.json_
 ```json
@@ -55,14 +70,9 @@ After adding Scramjet Framework as dependency it needs to be installed via `npm`
 npm i
 ```
 
-And then it can be used in the code like:
+You can also build Scramjet Framework yourself. Please refer to [Development Setup](#development-setup) section for more details.
 
-_sample-file.ts_
-```ts
-import { DataStream } from "scramjet";
-```
-
-You can also build it yourself. Please refer to [Development Setup](#development-setup) section for more details.
+<!-- DEV_ONLY_END -->
 
 ## Usage
 
@@ -70,7 +80,7 @@ Scramjet streams are similar and behave similar to native nodejs streams and to 
 
 Let's take a look on how to create and operate on Scramjet streams.
 
-_If you would like to dive deeper, please refer to [streams source files](tree/main/src/streams)_.
+_If you would like to dive deeper, please refer to [streams source files](https://github.com/scramjetorg/framework-js/tree/main/src/streams)_.
 
 ### Creating Scramjet streams
 
@@ -301,6 +311,8 @@ You can contribute to this project by giving us feedback ([reporting bugs](#repo
 
 The easiest way is to [create a fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) of this repository and then [create a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork) with all your changes. In most cases, you should branch from and target `main` branch.
 
+<!-- DEV_ONLY_START -->
+
 Please refer to [Development Setup](#development-setup) section on how to setup this project.
 
 ## Development Setup
@@ -418,3 +430,5 @@ Checks code coverage. Will fail if it is below a threshold defined in `package.j
 ```bash
 npm run coverage:generate
 ```
+
+<!-- DEV_ONLY_END -->
