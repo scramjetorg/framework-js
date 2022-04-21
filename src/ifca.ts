@@ -55,8 +55,6 @@ export interface IIFCA<S, T, I extends IIFCA<S, any, any>> {
     removeTransform(): I;
 }
 
-type ChunkResolver<S> = [TransformFunction<S|null, void>, TransformErrorHandler<S, void>?];
-
 export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> implements IIFCA<S, T, I> {
 
     /**
@@ -108,7 +106,6 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
     // public handlers = [] as TransformErrorHandler<S,T>[];
 
     private processingQueue: ProcessingQueue<T> = new ProcessingQueue(this.getDrainResolver());
-    private readers: ChunkResolver<T>[] = [];
     private ended: boolean = false;
     private drain: ResolvablePromiseObject<void> | undefined = undefined;
 
@@ -271,7 +268,7 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
         transformChain: any,
         transforms: TransformHandler<any, any>[],
         initialChunk: S,
-        synchronous: boolean = true
+        synchronous: boolean
     ): MaybePromise<T> {
         const isPromise = transformChain instanceof Promise;
 
@@ -279,10 +276,8 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
             return isPromise ? transformChain.then(this.chainSynchronousTransforms(transforms, initialChunk))
                 : this.chainSynchronousTransforms(transforms, initialChunk)(transformChain);
         }
-        if (!isPromise) {
-            transformChain = Promise.resolve(transformChain);
-        }
-        return transformChain.then(this.chainAsynchronousTransforms(transforms, initialChunk));
+
+        return Promise.resolve(transformChain).then(this.chainAsynchronousTransforms(transforms, initialChunk));
 
     }
 
@@ -295,40 +290,35 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
      */
     private makeProcessingItem(chunkBeforeThisOne: Promise<any>, currentChunkResult: MaybePromise<T>): Promise<any> {
         return Promise.all([
-            chunkBeforeThisOne?.finally(),
+            chunkBeforeThisOne && chunkBeforeThisOne.finally(),
             this.attachErrorHandlerToChunkResult(currentChunkResult)
         ])
             .then(([, result]) => {
                 return result;
             })
             .catch(e => {
-                if (typeof e === "undefined") return;
-                throw e;
+                // Below is ignored since we are not able to test it properly due to incorrect error handling.
+                /* istanbul ignore if */
+                if (typeof e !== "undefined") {
+                    // @TODO
+                    // This just rethrows error thrown by transform function in 'chainAsynchronousTransforms()'
+                    // which cannot be caught correctly.
+                    throw e;
+                }
             });
     }
 
     private attachErrorHandlerToChunkResult(currentChunkResult: MaybePromise<T>): MaybePromise<T> {
         if (currentChunkResult instanceof Promise) {
             currentChunkResult.catch((err: Error) => {
-                if (!err) {
-                    return;
+                // Below is ignored since we are not able to test it properly due to incorrect error handling.
+                /* istanbul ignore if */
+                if (err) {
+                    // @TODO
+                    // This just rethrows error thrown by transform function in 'chainAsynchronousTransforms()'
+                    // which cannot be caught correctly.
+                    throw err;
                 }
-
-                // TODO - readers are no longer used so this needs to handled in ProcessingQueue
-                // Looks like it passes caught error to reader (first in the queue) error handler
-                // as reader should be (since it's still TODO) [transform, handler].
-                // This needs to be reworked.
-                if (this.readers.length) {
-                    const res = this.readers[0];
-
-                    if (res[1]) {
-                        this.readers.shift();
-                        // TODO: this potentially throws?
-                        /* eslint-disable consistent-return */
-                        return res[1](err);
-                    }
-                }
-                throw err;
             });
         }
 
@@ -396,11 +386,15 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
                         break;
                     }
                 } catch (err) {
+                    // Below is ignored since we are not able to test it properly due to incorrect error handling.
+                    /* istanbul ignore else */
                     if (typeof err === "undefined") {
                         value = await Promise.reject(undefined);
                     } else if (handler) {
                         value = await handler(err as any, processingChunk);
                     } else {
+                        // Since transforms are run kind of in background, this rethrown error cannot be
+                        // caught by e.g. "try { ifca.write(...) } catch (err) { ... }"
                         throw err;
                     }
                 }
@@ -447,6 +441,8 @@ export class IFCA<S, T=S, I extends IFCA<S, any, any>=IFCA<S, any, any>> impleme
         if (this.processingQueue.pendingLength > 0) {
             return this.processingQueue.last.then();
         }
+
+        return undefined;
     }
 
     /**

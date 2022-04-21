@@ -38,6 +38,34 @@ test("Simple transformation", async (t) => {
     t.deepEqual(results, ["foo-a", "foo-b", "foo-c"]);
 });
 
+test("Simple transformation with error handler", async (t) => {
+    const inputSize = sampleStringInput.length;
+    const ifca = new IFCA<string, string, any>({ maxParallel: inputSize });
+
+    ifca.addTransform(transforms.prepend);
+    ifca.addErrorHandler((err, chunk) => `CHUNK ERROR: ${err?.message} - ${chunk}`);
+
+    writeInput(ifca, sampleStringInput);
+
+    const results = await readNTimesConcurrently(ifca, inputSize);
+
+    t.deepEqual(results, ["foo-a", "foo-b", "foo-c"]);
+});
+
+test("Simple async transformation with error handler", async (t) => {
+    const inputSize = sampleNumericInput1.length;
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize });
+
+    ifca.addTransform(transforms.delay);
+    ifca.addErrorHandler(async () => -1);
+
+    writeInput(ifca, sampleNumericInput1);
+
+    const results = await readNTimesConcurrently(ifca, inputSize);
+
+    t.deepEqual(results, sampleNumericInput1);
+});
+
 test("Concurrent processing", async (t) => {
     const input: Array<ObjectChunk> = [
         { id: 0, startTime: 0 },
@@ -349,4 +377,167 @@ test("Multiple ends error", async (t) => {
     }
 
     t.is(errorMsg, "End called multiple times", "Second end call throws error");
+});
+
+test("Writing null chunk ends IFCA", t => {
+    const ifca = new IFCA({ maxParallel: 4, ordered: true });
+
+    ifca.write(1);
+
+    t.false((ifca as any).ended);
+
+    ifca.write(null);
+
+    t.true((ifca as any).ended);
+});
+
+// Error handling
+
+test("IFCA can register error handlers", async (t) => {
+    const ifca = new IFCA({ maxParallel: 4 });
+    const errorHandler = () => {};
+
+    ifca.addErrorHandler(errorHandler);
+
+    t.deepEqual(ifca.transformHandlers.length, 1);
+    t.deepEqual(ifca.transformHandlers[0][1], errorHandler);
+});
+
+test("Simple transformation throwing error", async (t) => {
+    const inputSize = 4;
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize });
+
+    ifca.addTransform(() => {
+        throw new Error("Sample error");
+    });
+
+    try {
+        writeInput(ifca, [0, 1, 2]);
+    } catch (err: any) {
+        t.deepEqual(err.message, "Sample error");
+    }
+});
+
+test("Error handler and simple transformation throwing error", async (t) => {
+    const inputSize = 4;
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize });
+
+    ifca.addTransform(() => {
+        throw new Error("Sample error");
+    }, (err) => {
+        t.deepEqual(err?.message, "Sample error");
+    });
+
+    writeInput(ifca, [0, 1, 2]);
+});
+
+test("Simple transformation throwing undefined error", async (t) => {
+    const inputSize = 4;
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize });
+
+    ifca.addTransform(() => {
+        // eslint-disable-next-line no-throw-literal
+        throw undefined;
+    });
+
+    try {
+        writeInput(ifca, [0, 1, 2]);
+
+        const result = await ifca.read();
+
+        t.true(result === undefined);
+    } catch (err: any) {
+        t.fail();
+    }
+});
+
+// Error thrown here cannot be caught since the processing runs "in the background" (no await attached)
+// and we lack any mechanism for passing such errors safely.
+test.skip("Simple async transformation throwing error", async (t) => {
+    const inputSize = 4;
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize });
+
+    try {
+        ifca.addTransform(async () => {
+            throw new Error("Sample error");
+        });
+
+        await ifca.write(0);
+
+        await defer(25);
+    } catch (err: any) {
+        t.deepEqual(err.message, "Sample error");
+    }
+});
+
+test("Error handler and simple async transformation throwing error", async (t) => {
+    const inputSize = 4;
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize });
+
+    ifca.addTransform(async () => {
+        throw new Error("Sample error");
+    }, (err) => {
+        t.deepEqual(err?.message, "Sample error");
+    });
+
+    writeInput(ifca, [0, 1, 2]);
+
+    await defer(25);
+});
+
+test("Simple async transformation throwing undefined error", async (t) => {
+    const inputSize = 4;
+    const ifca = new IFCA<number, number, any>({ maxParallel: inputSize });
+
+    ifca.addTransform(async () => {
+        // eslint-disable-next-line no-throw-literal
+        throw undefined;
+    });
+
+    try {
+        writeInput(ifca, [0, 1, 2]);
+
+        const result = await ifca.read();
+
+        t.true(result === undefined);
+    } catch (err: any) {
+        t.fail();
+    }
+});
+
+// Various
+
+test("Null chunks on the beginning are handled by writev", t => {
+    const ifca = new IFCA({ maxParallel: 4, ordered: true });
+
+    ifca.writev([null, 1, 2, 3, 4, 5, 6]);
+
+    t.false((ifca as any).ended);
+});
+
+test("IFCA can remove (shift) transforms", async (t) => {
+    const ifca = new IFCA({ maxParallel: 4 });
+
+    ifca.addTransform((chunk) => chunk);
+    ifca.addTransform((chunk) => chunk);
+
+    t.deepEqual(ifca.transformHandlers.length, 2);
+
+    ifca.removeTransform();
+
+    t.deepEqual(ifca.transformHandlers.length, 1);
+});
+
+test("IFCA can handle promise chunks", async (t) => {
+    const inputSize = 2;
+    const ifca = new IFCA({ maxParallel: inputSize });
+
+    writeInput(ifca, [
+        new Promise(res => setTimeout(() => res(1), 5)),
+        new Promise(res => setTimeout(() => res(2), 5)),
+    ]);
+
+    const results = await readNTimesConcurrently(ifca, inputSize);
+
+    t.deepEqual(results, [1, 2]);
 });

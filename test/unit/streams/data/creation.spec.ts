@@ -260,3 +260,81 @@ test("DataStream can be written to in multiple ways (internal API too)", async (
 
     t.deepEqual(result, [0, 1, 2, 3, 4, 5]);
 });
+
+test("DataStream sync reader can handle first sync chunk", async (t) => {
+    const dsNumber = new DataStream<number, number>({});
+    const reader = (dsNumber as any).getReader(false, {
+        onFirstChunkCallback: ((chunk: number) => chunk),
+        onChunkCallback: ((chunk: number) => chunk),
+        onEndCallback: (() => {
+            t.pass();
+        }),
+    });
+
+    const data = ["foo", "bar", null];
+
+    let index = -1;
+
+    (dsNumber as any).ifca.read = () => {
+        index++;
+        return data[index];
+    };
+
+    reader();
+});
+
+test("DataStream sync reader can handle null chunk at the beginning", async (t) => {
+    const dsNumber = new DataStream<number, number>({});
+    const reader = (dsNumber as any).getReader(false, {
+        onFirstChunkCallback: ((chunk: number) => chunk),
+        onChunkCallback: ((chunk: number) => chunk),
+        onEndCallback: (() => {
+            t.pass();
+        }),
+    });
+
+    (dsNumber as any).ifca.read = () => {
+        return null;
+    };
+
+    reader();
+});
+
+test("DataStream async reader can handle first sync chunk", async (t) => {
+    const dsNumber = new DataStream<number, number>({});
+    const reader = (dsNumber as any).getReaderAsyncCallback(false, {
+        onFirstChunkCallback: ((chunk: number) => chunk),
+        onChunkCallback: ((chunk: number) => chunk),
+        onEndCallback: (() => {
+            t.pass();
+        }),
+    });
+
+    const data = ["foo", "bar", null];
+
+    let index = -1;
+
+    (dsNumber as any).ifca.read = () => {
+        index++;
+        return data[index];
+    };
+
+    reader();
+});
+
+test("DataStream async reader can handle null chunk at the beginning", async (t) => {
+    const dsNumber = new DataStream<number, number>({});
+    const reader = (dsNumber as any).getReaderAsyncCallback(false, {
+        onFirstChunkCallback: ((chunk: number) => chunk),
+        onChunkCallback: ((chunk: number) => chunk),
+        onEndCallback: (() => {
+            t.pass();
+        }),
+    });
+
+    (dsNumber as any).ifca.read = () => {
+        return null;
+    };
+
+    reader();
+});
