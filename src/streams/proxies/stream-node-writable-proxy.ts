@@ -13,7 +13,7 @@ export class StreamAsNodeWritableProxy<IN, OUT> extends EventEmitter {
     }
 
     protected isPiped: boolean = false;
-    protected orgOn: Function = () => {};
+    protected orgOn?: Function;
 
     get writable(): Writable {
         return this.instance as any as Writable;
@@ -77,37 +77,34 @@ export class StreamAsNodeWritableProxy<IN, OUT> extends EventEmitter {
     protected getEmitProxy() {
         return (eventName: string, ...args: any[]): boolean => {
             const hasListeners = this.emit(eventName, ...args);
+            const source = args[0] as Readable;
+            const oldDest = this.instance as any as Writable;
+            const newDest = this as any as Writable;
 
-            if (!this.isPiped) {
-                const source = args[0] as Readable;
-                const oldDest = this.instance as any as Writable;
-                const newDest = this as any as Writable;
+            if (eventName === "pipe") {
+                source.unpipe(oldDest);
+            } else if (eventName === "unpipe") {
+                this.isPiped = true;
 
-                if (eventName === "pipe") {
-                    source.unpipe(oldDest);
-                } else if (eventName === "unpipe") {
-                    this.isPiped = true;
+                source.pipe(newDest);
 
-                    source.pipe(newDest);
+                this.detachListeners();
 
-                    this.detachListeners();
+                const unpipe = source.unpipe;
 
-                    const unpipe = source.unpipe;
+                (source as any).unpipe = (...args1: any[]) => {
+                    if (args1[0] === oldDest) {
+                        args1[0] = newDest;
+                    }
 
-                    (source as any).unpipe = (...args1: any[]) => {
-                        if (args1[0] === oldDest) {
-                            args1[0] = newDest;
-                        }
+                    const cleanup = args1.length === 0 || args1[0] === newDest;
 
-                        const cleanup = args1.length === 0 || args1[0] === newDest;
+                    unpipe.call(source, ...args1);
 
-                        unpipe.call(source, ...args1);
-
-                        if (cleanup) {
-                            source.unpipe = unpipe;
-                        }
-                    };
-                }
+                    if (cleanup) {
+                        source.unpipe = unpipe;
+                    }
+                };
             }
 
             return hasListeners;

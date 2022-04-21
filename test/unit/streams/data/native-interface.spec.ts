@@ -205,3 +205,35 @@ test("After pipe is called DataStream has no event-emitter like methods", async 
     t.true((stream as any).removeListener === undefined);
     t.true((stream as any).emit === undefined);
 });
+
+test("DataStream writable proxy emit returns whether there are listeners attached (true)", async (t) => {
+    const stream = new DataStream<string>();
+    const streamAsWritable = stream.asWritable();
+
+    streamAsWritable.on("fake", () => {});
+
+    t.true(streamAsWritable.emit("fake"));
+});
+
+test("DataStream writable proxy emit returns whether there are listeners attached (false)", async (t) => {
+    const stream = new DataStream<string>();
+    const streamAsWritable = stream.asWritable();
+
+    t.false(streamAsWritable.emit("fake"));
+});
+
+test("DataStream writable proxy emit cna handle unexpected unpipe data", async (t) => {
+    const stream = new DataStream<string>();
+    const streamAsWritable = stream.asWritable();
+
+    const streamMock = {
+        pipe: () => {},
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        unpipe: (...args: any[]) => {},
+    };
+
+    t.notThrows(() => {
+        streamAsWritable.emit("unpipe", streamMock);
+        streamMock.unpipe(["fake", "data"]);
+    });
+});

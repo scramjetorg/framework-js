@@ -1,5 +1,6 @@
 import test from "ava";
 import fs from "fs";
+import { Writable } from "stream";
 import { DataStream } from "../../../../src/streams/data-stream";
 import { StringStream } from "../../../../src/streams/string-stream";
 import { deferReturn } from "../../../_helpers/utils";
@@ -274,4 +275,47 @@ test("Pipe keeps correct backpressure (2 destinations)", async (t) => {
     stream1.pipe(stream3);
 
     await Promise.all([stream2.toArray(), stream3.toArray()]);
+});
+
+test("Piping from not pipeable stream throws", async (t) => {
+    const stream1 = DataStream.from([1, 2, 3, 4, 5]);
+    const stream2 = new DataStream<number>();
+
+    (stream1 as any).pipeable = false;
+
+    t.throws(() => {
+        stream1.pipe(stream2);
+    });
+});
+
+test("Piping to not writable stream-like object does not throw", async (t) => {
+    const stream1 = DataStream.from([1, 2, 3, 4, 5]);
+    const streamLike = {
+        writable: false,
+        on: () => {},
+        end: () => {},
+        removeListener: () => {}
+    };
+
+    t.notThrows(() => {
+        stream1.pipe(streamLike as any as Writable);
+    });
+});
+
+test("Draining not writable stream-like object after piping does not throw", async (t) => {
+    const stream1 = DataStream.from([1, 2, 3, 4, 5]);
+    const streamLike = {
+        writable: false,
+        on: (evtName: string, callback: () => {}) => {
+            if (evtName === "drain") {
+                callback();
+            }
+        },
+        end: () => {},
+        removeListener: () => {}
+    };
+
+    t.notThrows(() => {
+        stream1.pipe(streamLike as any as Writable);
+    });
 });
