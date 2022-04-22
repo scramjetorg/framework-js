@@ -14,7 +14,7 @@
     "test:unit:w": "concurrently 'npm run build:w' 'sleep 8 && npm test:run:unit -- -w'",
     "test:unit:d": "npm run build && npm run test:run:unit -- debug --break",
     "test:bdd": "npm run build && npm run test:run:bdd",
-    "dist": "rm -rf ./dist && tsc",
+    "dist": "rm -rf ./dist && tsc && node scripts/prepare-readme.js && node scripts/prepare-package.js",
     "lint": "eslint src/ test/ --ext .ts",
     "lint:f": "eslint src/ test/ --ext .ts --fix",
     "prepare": "husky install",
