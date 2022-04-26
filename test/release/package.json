@@ -1,0 +1,8 @@
+{
+  "name": "@scramjet/framework-release-test",
+  "main": "index.js",
+  "author": "Scramjet <open-source@scramjet.org>",
+  "license": "AGPL-3.0",
+  "private": true,
+  "type": "module"
+}
