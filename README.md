@@ -1,6 +1,9 @@
-Scramjet Framework TypeScript (`pre-v5`)
+Scramjet Framework TypeScript
 ==================
 <p align="center">
+    <a href="https://badge.fury.io/js/@scramjet%2Fframework">
+        <img src="https://badge.fury.io/js/@scramjet%2Fframework.svg" alt="npm version" height="18">
+    </a>
     <a><img src="https://github.com/scramjetorg/framework-js/actions/workflows/test.yml/badge.svg?branch=main" alt="Tests" /></a>
     <a href="https://snyk.io/test/github/scramjetorg/framework-js">
         <img src="https://snyk.io/test/github/scramjetorg/framework-js/badge.svg" alt="Known Vulnerabilities" />
