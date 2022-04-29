@@ -48,7 +48,7 @@ jobs:
         run: npm run dist
 
       - name: Publish dist package as public one
-        run: npm publish dist/ --access restricted
+        run: npm publish dist/ --access public
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
 
