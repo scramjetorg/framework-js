@@ -24,7 +24,7 @@ jobs:
 
       - name: Get tag branch
         run: |
-          raw=$(git branch -r --contains ${{ github.ref }})
+          raw=$(git branch -r --contains ${{ github.ref }} |grep "main" )
           branch=${raw##*/}
           echo "BRANCH=$branch" >> $GITHUB_ENV
           echo ${{ env.BRANCH }}
