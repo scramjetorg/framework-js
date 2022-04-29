@@ -1,0 +1,45 @@
+---
+name: Release framework-js
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  registry: https://registry.npmjs.org/
+
+jobs:
+  run:
+
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        node-version: ["16.x"]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+           registry-url: ${{ env.registry }}
+
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+
+      - name: Instal deps
+        run: npm i
+
+      - name: Build dist package
+        run: npm run dist
+
+      - name: Publish dist package as public one
+        run: npm publish dist/ --access restricted
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+
+      - name: Check npm package
+        run: npm run test:release -- ${{ steps.get_version.outputs.VERSION }}
