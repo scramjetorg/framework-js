@@ -1,0 +1,22 @@
+{
+  "name": "@scramjet/framework",
+  "version": "0.1.0",
+  "description": "Simple yet powerful live data computation framework.",
+  "main": "index.js",
+  "author": "Scramjet <open-source@scramjet.org>",
+  "license": "AGPL-3.0",
+  "keywords": [
+    "react",
+    "javascript",
+    "typescript",
+    "event-stream",
+    "stream",
+    "es6",
+    "promise",
+    "data-stream",
+    "reactive-programming",
+    "spark-streaming",
+    "stream2",
+    "transformations"
+  ]
+}
