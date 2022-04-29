@@ -7,14 +7,15 @@ const { readFileSync, writeFileSync } = require("fs");
 const packagePath = join(__dirname, "..", "package.json");
 const packageContents = readFileSync(packagePath, "utf8");
 
-const { name, version, description, author, license } = JSON.parse(packageContents);
+const { name, version, description, author, license, keywords } = JSON.parse(packageContents);
 const newPackage = {
     name,
     version,
     description,
     main: "index.js",
     author,
-    license
+    license,
+    keywords
 };
 
 writeFileSync(join(__dirname, "../dist/", "package.json"), JSON.stringify(newPackage, null, "  "));

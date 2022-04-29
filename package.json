@@ -67,5 +67,19 @@
     "include": "build/src/",
     "exclude": "build/test/**/*.js"
   },
-  "private": true
+  "private": true,
+  "keywords": [
+    "react",
+    "javascript",
+    "typescript",
+    "event-stream",
+    "stream",
+    "es6",
+    "promise",
+    "data-stream",
+    "reactive-programming",
+    "spark-streaming",
+    "stream2",
+    "transformations"
+  ]
 }
