@@ -13,13 +13,24 @@ jobs:
   run:
 
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     strategy:
       matrix:
         node-version: ["16.x"]
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Get tag branch
+        run: |
+          raw=$(git branch -r --contains ${{ github.ref }})
+          branch=${raw##*/}
+          echo "BRANCH=$branch" >> $GITHUB_ENV
+          echo ${{ env.BRANCH }}
+
+      - name: Exit if tag not on main branch
+        run: if [[ "${{ env.BRANCH }}" != 'main' ]];then exit 1; fi
 
       - uses: actions/setup-node@v2
         with:
